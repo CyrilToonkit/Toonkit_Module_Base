@@ -1,0 +1,2 @@
+import tkRig
+tkRig.convertSkinningToCluster()

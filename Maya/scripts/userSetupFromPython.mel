@@ -1,0 +1,67 @@
+//------------------------- LICENCE INFORMATION -------------------------------
+//    This file is part of Toonkit Module Lite, Python Maya library and module.
+//    Author : Cyril GIBAUD - Toonkit, Stephane Bonnot - Parallel Dev
+//    Copyright (C) 2014-2017 Toonkit
+//    http://toonkit-studio.com/
+//
+//    Toonkit Module Lite is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    Toonkit Module Lite is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
+//-------------------------------------------------------------------------------
+
+global proc string GetScriptPath(string $exisitingProc)
+{
+    string $exisitingProc = "OscarGlobal";
+    if ( `exists $exisitingProc` )
+    {
+        string $result = eval( "whatIs " + $exisitingProc);
+        string $tok[];
+        int $numTokens = `tokenize $result " " $tok`;
+        string $path="";
+        for ( $i = 4; $i < $numTokens; $i++ )
+        {
+        	if ($i > 4)
+        	{
+        		$path += " ";
+        	}
+            $path += $tok[$i];
+        }
+        return $path;
+    }
+    print ("Issue retrieving script location needed for Init");
+    return " ";
+}
+
+global proc string OscarGlobal()
+{
+    // This method inititalize things.
+    // It needs to exists to be able to find the location of the script
+    string $scriptPath = GetScriptPath("OscarGlobal");
+    string $oscarModulePath = dirname($scriptPath) + "/../";
+    print ("Oscar Module path is evaluated as : " + $oscarModulePath);
+    return $oscarModulePath;
+}
+
+global proc InstallOscarShelf(string $topLevel)
+{
+    string $oscarModulePath = OscarGlobal();
+    print ("Oscar Module path : " + $oscarModulePath + "\n"); 
+    if (`shelfLayout -exists Oscar`){
+        print ("Oscar Shelf already exists - skipping installation");        
+        // catchQuiet(`deleteUI -layout ($topLevel + "|Oscar")`);
+    }
+    else{
+        loadNewShelf ($oscarModulePath + "shelves/shelf_Oscar.mel");    
+    }   
+}
+
+evalDeferred("InstallOscarShelf($gShelfTopLevel)");

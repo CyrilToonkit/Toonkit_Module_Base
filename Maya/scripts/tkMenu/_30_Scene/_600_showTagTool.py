@@ -1,0 +1,2 @@
+import tkTagTool
+tkTagTool.showUI()

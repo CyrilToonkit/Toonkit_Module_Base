@@ -1,0 +1,146 @@
+ <connections>
+  <connection>
+   <sender>batcherDoBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>239</x>
+     <y>352</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>101</x>
+     <y>195</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>selectAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>239</x>
+     <y>352</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>303</x>
+     <y>278</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>copy()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>239</x>
+     <y>352</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>327</x>
+     <y>285</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>paste()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>239</x>
+     <y>352</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>101</x>
+     <y>195</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherCodeInputLE</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>setText(QString)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>130</x>
+     <y>311</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>116</x>
+     <y>243</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSimBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>selectAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>97</x>
+     <y>341</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>184</x>
+     <y>257</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSimBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>copy()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>97</x>
+     <y>341</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>184</x>
+     <y>257</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSimBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>121</x>
+     <y>344</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>101</x>
+     <y>195</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSimBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>paste()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>72</x>
+     <y>342</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>101</x>
+     <y>195</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>

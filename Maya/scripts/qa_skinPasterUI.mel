@@ -1,0 +1,1175 @@
+/*
+
+qa_skinPasterUI.mel
+
+Author: Quentin Auger
+				quentin.auger@free.fr
+Created: september 2005
+
+Description:
+	This script makes three different actions:
+	- copies skin weights from one or several point(s) and pastes the average weight values to one or more skinned points.
+	  The paste action can be processed in additive (with multiplier) or replace mode.
+	- updates one destination skinCluster (created if necessary) to match the influences list of a source bound object.
+	- selects the influences objects of a selected smooth bound object.
+	
+Instructions:
+	
+	Run "qa_skinPasterUI;" to open the GUI.
+
+	'Copy Weights' button:
+		Select ONE or SEVERAL source points that you want to copy weights from and hit "Copy Weights".
+		
+	'Paste Weights' button:
+		Select one or more skinned points that you want to paste weights to and hit "Paste Weights".
+		
+		Works with a multiple selection source of any control point type (CVs, vertices, lattices points, particles, subdiv.control points)
+		(COPY)  => will only keep points from the first skinned object (any type) listed in the filterExpanded current selection,
+		(PASTE) => will then average weights from those points before transfer. 
+			
+	!!! Destination object still needs to be bound to same joints than the source.
+	!!! For that, you can use the two other functions:
+		
+	'Select Infl.' button:
+		Select one smooth bound object that you want the influences to be selected, and hit "Select Infl."
+		
+	'Match Infl.' button:
+		Select one source smooth bound object or skinCluster and a destination "skinnable" one (must have control points or particles)
+		and press "Match Infl."
+
+	OPTIONS:
+	- Weights threshold: weights of influences below that value will be ignored by de "Copy Weights" function.
+	- Add Weights : the "Paste Weights" (multiplied by the value after the "x" letter) will add the copied values to the actual weights of the destination points.
+	- Replace Weights: the "Paste Weights" will first reset to zero the actual weights of the destination points before pasting copied values...
+	- Normalize after paste : guess what ;) Weights are normalized after being pasted, in additive or replace mode.
+	- Verbose : each computation is prompted is the scriptEditor.. can slow down the process..
+	
+	
+Last updates:
+			March 2007
+			- best "additive" behaviour ('-r 1' skinPercent option) for Maya 8.5
+			
+			October 2006
+			- 'qa_skinManagerUI' renamed as 'qa_skinPasterUI'
+			- fixed progressBars'bug when nothing is selected
+		
+	     	August 2006
+	     	- faster filtering 
+	     	- progressBars 
+	     	- 'Verbose' + 'Reset' options 
+	     	- collapsable frames (auto. resize) 
+	     	- new Help window"   
+*/
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//	Main proc: 	qa_skinPasterUI()  - no args -
+//
+//			->	qaskinPasterUI   ( - with args- )
+//
+// + UI procs:	qa_skMgrFramesMngr
+//				qa_skinPstrUIResetOptions
+//				qa_skinPstrUIResetOptions
+//				qa_skinPstrGetVerbose
+//				qa_skinPstrGetMinWeight
+//				qa_skinPstrGetPasteMode
+//				qa_skinPstrGetAddPasteMult
+//				qa_skinPstrGetNormalizeAfter
+//	hotkeys :	qa_skinPstrGetCopyWgtHotKeyOptions
+//				qa_skinPstrGetPasteWgtHotKeyOptions
+//				qa_skinPstrSetCopyHotkeys
+//				qa_skinPstrSetPasteHotkeys
+//				qa_setHotkeys
+//				qa_checkHotkeysWithConfirm
+//				qa_checkHotkeys
+//	help UI :	qa_skinPasterShowHelpUI
+//				qa_skinPasterDeleteHelpUI
+//	launching:	qa_fromUIcopyWeights
+//				qa_fromUIpasteWeights
+//
+//	Filtering:	qa_filterSkinnedPoints
+//				qa_isStringInArray
+//				qa_stringArrayAppendNoDuplicate
+//				qa_firstStringIndexInArray
+//				qa_keepThatTypeInArray
+//
+//	action!		qa_copyWeights
+//				qa_pasteWeights
+//				qa_selectInfluences
+//				qa_matchInfluences
+//				qa_doUpdateListOfInfluences
+//
+///////////////////////////////////////////////////////////////////////////////
+
+global string $qa_skinPstrCopyCmd; 
+
+global proc qa_skinPasterUI() {
+		// factory settings
+			int $resetUI = true;
+		float $weightThreshold = 0.001;
+		int $additiveMode = false;
+		float $addMult = 0.5;
+		int $optionsFrameColpsd = 1;
+		int $hotKeysFrameColpsd = 1;
+	qaskinPasterUI( $resetUI , $weightThreshold, $additiveMode, $addMult, $optionsFrameColpsd , $hotKeysFrameColpsd );
+}
+
+global proc qaskinPasterUI( int $resetUI , float $weightThreshold, int $additiveMode, float $addMult, int $optionsFrameColpsd , int $hotKeysFrameColpsd ) 
+{	
+	string $win = "qa_skinPaster_v01";
+	
+	// Reset the window:
+	if(`window -q -ex $win`) 
+		deleteUI $win;
+	if (`windowPref -exists $win` && ( $resetUI == true) )
+		windowPref -r $win;
+
+	int $fullUIHeight = 272 ;
+	int $winH = $fullUIHeight - ($optionsFrameColpsd * 97 ) - ($hotKeysFrameColpsd * 43 )  ; 
+	if (`about -li`) // Linux version (not collapsable frames):
+		$winH = 280;
+
+	window -wh 207 $winH -s 0 -t "qa_skinPasterUI" $win;
+
+	columnLayout;
+		rowColumnLayout -nc 2;
+			button -w 90 -l "Copy Weights" -c ("qa_fromUIcopyWeights();");
+			button -w 90 -l "Paste Weights" -c ("qa_fromUIpasteWeights();");
+
+			button -w 90 -l "Select Inlf." -c "qa_selectInfluences";
+			button -w 90 -l "Match Inlf." -c "qa_matchInfluences";
+		setParent ..;
+
+	if (`about -nt`)
+		frameLayout -label "Copy/Paste options" -w 200 -labelAlign "top" -borderStyle "in"
+		-cll 1 -cl $optionsFrameColpsd  
+		-cc ("qa_skMgrFramesMngr(1,\"qa_optionsFrameLyt\", "+$fullUIHeight+")") 
+		-ec ("qa_skMgrFramesMngr(0,\"qa_optionsFrameLyt\", "+$fullUIHeight+")") 
+		qa_optionsFrameLyt ;
+	if (`about -li`) // Linux version:
+		text -label "Copy/Paste options : " -w 200 ; 
+
+		columnLayout;
+			floatFieldGrp -precision 4 -v1 $weightThreshold -w 193 -label "Weights threshold" qa_skinPstrMinW;
+			checkBox -label "Nomalize after Paste" -align "left" -v 1 qa_skinPstrNorm; 
+			rowColumnLayout -nc 2;
+				radioCollection qa_skinPstrPasteModes;
+				radioButton -label "add Weights   x "  qa_skinPstrAddMode ;
+					floatField -precision 3 -min 0.0 -v $addMult qa_skinPstrAddModeMult;
+ 				radioButton -label "replace Weights" -sl qa_skinPstrReplaceMode;
+				setParent ..;
+
+ 			rowColumnLayout -nc 2;				
+ 				checkBox -label "Verbose..." -align "left" -v 0 qa_skinPstrVerbose; 
+	 			button -w 70 -l "reset options" -c ("qa_skinPstrUIResetOptions();");
+				setParent ..;
+			
+			setParent ..;
+		setParent ..;
+
+	if (`about -nt`)
+		frameLayout -label "Copy/Paste HotKeys" -w 200 -labelAlign "top" -borderStyle "in" 
+		-cll 1 -cl $hotKeysFrameColpsd 
+		-cc ("qa_skMgrFramesMngr(1,\"qa_hotkeysFrameLyt\","+$fullUIHeight+")") 
+		-ec ("qa_skMgrFramesMngr(0,\"qa_hotkeysFrameLyt\","+$fullUIHeight+")") 
+		qa_hotkeysFrameLyt;
+	else if (`about -li`) // Linux version:
+		text -label "Copy/Paste HotKeys : " -w 200; 
+		columnLayout;
+			rowColumnLayout -nc 5 -cw 1 35 -cw 2 25 -cw 3 50 -cw 4 50 -cw 5 35;
+				text -label "Copy : " -w 10; 
+					textField -text "c" -w 10 qa_skinPstrCpWtHk;
+		
+					checkBox -label "+ Alt" -align "left" -v 1 qa_skinPstrCpWtHkAltModif; 
+						checkBox -label "+ Ctrl" -align "left" -v 1 qa_skinPstrCpWtHkCtrlModif; 
+					button -align "center" -w 10 -l "Set.." -c (" qa_skinPstrSetCopyHotkeys();");
+			
+
+				text -label "Paste : "; 
+					textField -text "v" -w 10 qa_skinPstrPstWtHk;
+				checkBox -label "+ Alt" -align "left" -v 1 qa_skinPstrPstWtHkAltModif; 
+					checkBox -label "+ Ctrl" -align "left" -v 1 qa_skinPstrPstWtHkCtrlModif; 
+				button -align "center" -w 10 -l "Set.." -c (" qa_skinPstrSetPasteHotkeys();");
+			
+ 				setParent ..;
+			setParent ..;
+			
+		setParent ..;
+
+	rowColumnLayout -nc 2;
+		button -align "center" -w 100 -l "Help" -c ("qa_skinPasterShowHelpUI");
+		button -align "center" -w 100 -l "Close" -c ("deleteUI "+$win+"; qa_skinPasterDeleteHelpUI;");
+		setParent ..;
+
+	showWindow $win;
+
+	// print $winH ;
+}
+// qaskinPasterUI;
+
+
+// ----------------------------------------------------------------------------------------------------------
+//		FRAME LAYOUT COLLAPSING MANAGEMENT
+// ----------------------------------------------------------------------------------------------------------
+
+global proc qa_skMgrFramesMngr( int $collapse , string $frameLayoutName , int $fullUIHeight ) {
+
+		int $optionsFrameColpsd = `frameLayout -q -cl qa_optionsFrameLyt `;
+		int $hotKeysFrameColpsd = `frameLayout -q -cl qa_hotkeysFrameLyt`;
+
+	if ($frameLayoutName == "qa_optionsFrameLyt")
+		$optionsFrameColpsd = $collapse ;
+	else if ($frameLayoutName == "qa_hotkeysFrameLyt")
+		$hotKeysFrameColpsd = $collapse ;
+
+	string $win = "qa_skinPaster_v01";
+	//int $fullUIHeight = 252 ;
+	int $winH = $fullUIHeight - ($optionsFrameColpsd * 98 ) - ($hotKeysFrameColpsd * 44 )  ; 
+
+	window -e -wh 207 $winH  $win;
+	showWindow $win;
+
+}
+
+// ----------------------------------------------------------------------------------------------------------
+// 		Reseting UI options values.
+// ----------------------------------------------------------------------------------------------------------
+//
+global proc qa_skinPstrUIResetOptions() {
+	checkBox -e -label "Nomalize after Paste" -align "left" -v 1 qa_skinPstrNorm; 
+	floatFieldGrp -e -v1 0.001 qa_skinPstrMinW ;
+	radioButton -e -label "add Weights   x "  qa_skinPstrAddMode ;
+		floatField -e -v 0.5 qa_skinPstrAddModeMult;
+ 	radioButton -e -label "replace Weights" -sl qa_skinPstrReplaceMode;
+	checkBox -e -v 0  qa_skinPstrVerbose;
+	string $win = "qa_skinPaster_v01";
+	showWindow $win;
+}
+
+// ----------------------------------------------------------------------------------------------------------
+// 		GETTING UI VALUES...
+// ----------------------------------------------------------------------------------------------------------
+//
+global proc int qa_skinPstrGetVerbose() {
+	int $vb = `checkBox -q -v qa_skinPstrVerbose`;
+	return $vb ;
+}
+
+global proc float qa_skinPstrGetMinWeight() {
+	float $minW[] = `floatFieldGrp -q -v qa_skinPstrMinW`;
+	return $minW[0];
+}
+global proc string qa_skinPstrGetPasteMode() {
+	string $mode = "additive";
+	string $modeUI = `radioCollection -q -sl qa_skinPstrPasteModes`;
+	if ($modeUI=="qa_skinPstrReplaceMode")
+		$mode = "replace";
+	return $mode;
+}
+global proc float qa_skinPstrGetAddPasteMult() {
+	float $addMult = `floatField -q -v qa_skinPstrAddModeMult `;
+	return $addMult ;
+}
+
+global proc int qa_skinPstrGetNormalizeAfter() {
+	int $norm = `checkBox -q -v qa_skinPstrNorm`;
+	return $norm ;
+}
+
+
+global proc string[] qa_skinPstrGetCopyWgtHotKeyOptions() {
+
+	string $cpHK = `textField -q -tx qa_skinPstrCpWtHk`;
+	int $alt = `checkBox -q -v qa_skinPstrCpWtHkAltModif`;
+	int $ctl = `checkBox -q -v qa_skinPstrCpWtHkCtrlModif`;
+	
+	return { $cpHK , $alt, $ctl };
+}
+global proc string[] qa_skinPstrGetPasteWgtHotKeyOptions() {
+
+	string $pHK = `textField -q -tx qa_skinPstrPstWtHk`;
+	int $alt = `checkBox -q -v qa_skinPstrPstWtHkAltModif`;
+	int $ctl = `checkBox -q -v qa_skinPstrPstWtHkCtrlModif`;
+	
+	return { $pHK , $alt, $ctl };
+}
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------
+// --------- hotKEYs management:
+//------------------------------------------------------
+
+
+global proc qa_skinPstrSetCopyHotkeys() 
+{
+	int $autoSave = true;
+	string $cpHKvals[] = qa_skinPstrGetCopyWgtHotKeyOptions();
+	
+	string $keyShortCut = "c";
+	if (size($cpHKvals[0])==1)
+		$keyShortCut = $cpHKvals[0];
+	int $altBool =  $cpHKvals[1];
+	int $ctlBool =  $cpHKvals[2];
+
+	// Check if that Key is safe and ask to use if not:
+	int $letsSet = qa_checkHotkeysWithConfirm( $keyShortCut, $altBool, $ctlBool ) ;
+
+	if ($letsSet) {
+		string $copyAnnotation = "\"qa_skinPasterUI's Copy Weights\"";
+		string $copyNameCommand = "qa_skinPasterUICopyWeights";
+		string $copyCommand = "\"qa_fromUIcopyWeights()\"";
+
+		qa_setHotkeys( $copyAnnotation, $copyNameCommand, $keyShortCut, $altBool, $ctlBool, $autoSave, $copyCommand ) ;
+	}
+}
+
+global proc qa_skinPstrSetPasteHotkeys() 
+{
+	int $autoSave = true;
+	string $pHKvals[] = qa_skinPstrGetPasteWgtHotKeyOptions();
+
+	string $keyShortCut = "v";
+	if (size($pHKvals[0])==1)
+		$keyShortCut = $pHKvals[0];
+	int $altBool =  $pHKvals[1];
+	int $ctlBool =  $pHKvals[2];
+
+	// Check if that Key is safe and ask to use if not:
+	int $letsSet = qa_checkHotkeysWithConfirm( $keyShortCut, $altBool, $ctlBool ) ;
+
+	if ($letsSet) {
+		string $pasteAnnotation = "\"qa_skinPasterUI's Paste Weights\"";
+		string $pasteNameCommand = "qa_skinPasterUIPasteWeights";
+		string $pasteCommand = "\"qa_fromUIpasteWeights()\"";
+
+		qa_setHotkeys( $pasteAnnotation , $pasteNameCommand, $keyShortCut, $altBool, $ctlBool, $autoSave, $pasteCommand ) ;
+	}
+}
+
+
+global proc qa_setHotkeys( string $annotation, string $nameCommand, string $keyShortCut, int $altBool, int $ctlBool, int $autoSave, string $command ) 
+{
+	string $alt = "-alt";
+	if ($altBool==0)
+		$alt = "";
+	string $ctl = "-ctl";
+	if ($ctlBool==0)
+		$ctl = "";
+
+	eval ("nameCommand -ann "+$annotation+" -c "+$command+" "+$nameCommand+";\n");
+	eval ("hotkey -keyShortcut "+$keyShortCut+" "+$alt+" "+$ctl+" -name "+$nameCommand+";");
+	// hotkey -as 1;  // to auto-save hotkeys when you quit.
+}
+
+// Check if that Key is safe and ask to use if not:
+//
+global proc int qa_checkHotkeysWithConfirm( string $keyShortCut, int $altBool, int $ctlBool ) 
+{
+	int $ok = true;
+	string $alreadySet = qa_checkHotkeys( $keyShortCut, $altBool, $ctlBool ) ;
+
+	if (size($alreadySet)) {
+	
+		string $alt = " +Alt ";
+		if ($altBool==0) $alt = "";
+		string $ctl = " +Ctrl ";
+		if ($ctlBool==0) $ctl = "";
+		string $message = ( "\""+$keyShortCut+"\""+$alt+$ctl+" is already assigned to  \n" 
+				  + "\""+$alreadySet+"\".\n"
+				  + " Still want to Set it ? ");
+
+		string $res = `confirmDialog -title "Oops!!!" -message $message
+				-button "Yes" -button "No!" -defaultButton "No!"
+				-cancelButton "No" -dismissString "Nothing" `;
+
+		if ($res != "Yes")
+			$ok = false;
+	}
+	return $ok;
+}
+	
+global proc string qa_checkHotkeys( string $keyShortCut, int $altBool, int $ctlBool ) 
+{
+	string $alt = "-alt";
+	if ($altBool==0)
+		$alt = "";
+	string $ctl = "-ctl";
+	if ($ctlBool==0)
+		$ctl = "";
+	string $res = eval ("hotkeyCheck -k "+$keyShortCut+" "+ $alt+" "+ $ctl );	
+	return $res;
+}
+
+
+//------------------ end of hotKEYS management
+// ------------------------------------------------------------------------------------------------------------------------------
+
+
+
+// -----------------   HELP --------------------------------------------------//
+//
+global proc qa_skinPasterShowHelpUI() {
+	string $helpWin = "qa_skinPasterShowHelpUI";
+	qa_skinPasterDeleteHelpUI() ;
+
+	string $copyPasteTextCopy = ""
+	+ "   Select one or several points you want to copy weights from\n"
+	+ "   and hit that button.\n";
+
+	string $copyPasteTextPaste = ""
+	+ "   Select points you want to copy weights into and hit 'Paste..'\n\n"
+
+	+ " > ACHTUNG!!!!\n"
+	+ " > Destination object needs to be bound to SAME influences\n"
+	+ " > than the source !!!!   (Use following functions for that...) \n";
+
+	string $inflFnTextSelect = ""
+	+ "   Select one smooth bound object that you want\n"
+	+ "   its influences to be selected, and hit that button.\n";
+
+	string $inflFnTextMatch = ""
+	+ "   Select one source smooth-bound object or skinCluster\n"
+	+ "   and a destination object (must contain control points or particles).\n"
+	+ "   Hit 'Match Infl.' -> the destination will be bound to the same influences \n"
+	+ "   as the source object. Skincluster is created if needed with default skin \n"
+	+ "   weighting, otherwise the influences are added with locked (hold) \n"
+	+ "   and ZERO weighting value.\n" 
+	+ "   That function enables further \"Copy/Paste Weights\" operations,\n" 
+	+ "   as well as Maya \"Copy Skin Weights\" with those objects... :-) \n" ;
+
+	string $optionTextCP = ("\n"
+	+ "  . \"Weights threshold\" : \n"
+	+ "     Influences of selected points with lower weights than\n"
+	+ "     that value will be disgarded by the COPY function.\n\n"
+	
+	+ "  . \"Normalize after Paste\" :\n"
+	+ "    If checked (recommanded) , the resulted weights of the destination \n"
+	+ "    points will be Normalized.\n"
+	+ "    (see Maya Help for a deepest explanation of normalization.}\n\n"
+	
+	+ "  . \"add Weights\" :\n"
+	+ "    If checked, copied weights are multiplied by the value\n"
+	+ "    of the \" x \" field, and then added to actual weights \n"
+	+ "    of the destination points.\n\n" 
+	
+	+ "  . \"replace Weights\" :\n"
+	+ "    If checked, will reset to zero current weights of destination points\n"
+	+ "    before pasting copied values.\n\n"  
+	
+	+ "  . \"Verbose...\" :\n"
+	+ "    If checked, every computation will be prompted in the scriptEditor.\n"
+	+ "    Can slow down the process.\n" 	);
+
+	string $optionTextHK = ("\n"
+	+ "  . The [ Set.. ] buttons will test if the specified key is already assigned \n"
+	+ "    to a command and will prompt user to confirm...\n" );
+
+	string $suggest = ("\n"
+	+ "   Send comments or suggestions to quentin.auger@free.fr  \n");
+
+	window -wh 380 650 -t "qa_skinPasterUI - Help" $helpWin ;
+
+	string $form = `formLayout`;
+		string $scroll = `scrollLayout`;
+		columnLayout;
+			rowColumnLayout -nc 2 -cw 1 100 -cw 2 380 -cal 2 left;
+				text -label " Title: "  -font boldLabelFont;
+					text -label "qa_skinPasterUI.mel"    ;
+				text -label " Author: "  -font boldLabelFont;
+					text -label "Quentin Auger"  ;
+				text -label "";
+					text -label "quentin.auger@free.fr"   -font  obliqueLabelFont  ;
+				text -label " Created:" -font boldLabelFont;
+					text -label "September 2005"  ;
+				text -label " Last update:"  ; //-font  obliqueLabelFont ;  //-font boldLabelFont;
+					text -label "Oct. 26, 2006"  -font  obliqueLabelFont ;
+				text -label ""   ;
+				setParent..;
+
+		separator -w 380;separator -w 380;
+		
+		rowColumnLayout -nc 2 -cw 1 100 -cw 2 380 -cal 2 left;
+			text -label "";   
+				text -label "   [Copy Weights]  " -font boldLabelFont ; 
+			setParent..;
+	 	text -label $copyPasteTextCopy -align "left";
+	 			
+	 	rowColumnLayout -nc 2 -cw 1 100 -cw 2 380 -cal 2 left;
+			text -label "";  
+ 				text -label "   [Paste Weights]  " -font boldLabelFont;
+			setParent..;
+ 		text -label $copyPasteTextPaste -align "left";
+		separator -w 380;
+		
+		
+		rowColumnLayout -nc 2 -cw 1 100 -cw 2 380 -cal 2 left;
+			text -label "";  
+				text -label "   [Select Infl.]  " -font boldLabelFont; 
+				setParent..;
+ 			text -label $inflFnTextSelect -align "left";
+ 		rowColumnLayout -nc 2 -cw 1 100 -cw 2 380 -cal 2 left;
+			text -label "";  
+ 				text -label "   [Match Infl.]  " -font boldLabelFont;
+ 				setParent..;
+ 			text -label $inflFnTextMatch -align "left";
+ 			
+		separator -w 380;
+		text -label "     > Copy/Paste Weights options:   " -font boldLabelFont; 
+			text -label $optionTextCP -align "left";
+		separator -w 380;
+		text -label "     > Copy/Paste Hotkeys options:   " -font boldLabelFont; 
+			text -label $optionTextHK -align "left";
+		separator -w 380;
+		text -label $suggest -align "left"  ;
+		separator -w 380;
+		
+		rowColumnLayout -nc 2 -cw 1 100 -cw 2 380 -cal 2 left;
+				text -label " Last update:"  -font  obliqueLabelFont ;  //-font boldLabelFont;
+					text -label "March.12, 2007"  -font  obliqueLabelFont ;
+				text -label " Added : "  -font  obliqueLabelFont ;
+					text -label "\n - best 'additive' behaviour for Maya 8.5\n - 'skinManagerUI' renamed as 'skinPasterUI' \n - faster filtering \n - progressBar \n - verbose, reset options \n - collapsable frames (auto. resize) \n - new Help window \n";
+			setParent..;
+				
+		setParent..;
+	setParent..;
+
+		string $closeButton = `button -w 380 -l "Close Help" -c ("qa_skinPasterDeleteHelpUI;")`;
+	setParent..;
+	
+		formLayout -e
+		-attachForm $scroll left 0
+		-attachForm $scroll top 0
+		-attachForm $scroll right 0
+		-attachControl $scroll bottom 0 $closeButton
+
+		-attachForm $closeButton left 0
+		-attachNone $closeButton top
+		-attachForm $closeButton right 0
+		-attachForm $closeButton bottom 0
+		$form;
+		
+ 	showWindow;
+}
+// end of proc qa_skinPasterShowHelpUI()
+
+global proc qa_skinPasterDeleteHelpUI() {
+	string $helpWin = "qa_skinPasterShowHelpUI";
+	if(`window -q -ex $helpWin `) {
+		deleteUI $helpWin ;
+		if (`windowPref -exists $helpWin `);
+			windowPref -r $helpWin ;
+	}
+}
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------
+//
+// functionnal procs:
+//
+// ------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------
+
+
+
+global proc qa_fromUIcopyWeights() {
+	float $min= qa_skinPstrGetMinWeight(); 
+	int $verbose= qa_skinPstrGetVerbose(); 
+	qa_copyWeights($min, $verbose);
+}
+
+global proc qa_fromUIpasteWeights() {
+	string $pm = qa_skinPstrGetPasteMode(); 
+	float $addMult = qa_skinPstrGetAddPasteMult(); 
+	int $nrm = qa_skinPstrGetNormalizeAfter(); 
+	int $verbose= qa_skinPstrGetVerbose(); 
+	qa_pasteWeights($pm,$nrm,$addMult,$verbose);
+}
+
+
+
+// -- qa_filterSkinnedPoints()
+//
+// Will return stringArray={ name , skinClusterName } of the first skinned object in the list of points 
+// (can be a mesh, NURBS, subdiv, lattice or particles).
+// and changes the incomming stringArray[] to get rid of not associated points.
+//
+global proc string[] qa_filterSkinnedPoints( string $points[] , int $verbose ) 
+{
+	string $obj = "";
+	string $skinCluster = "";
+	string $keptPoints[] = {};
+	
+	global string $gMainProgressBar;
+	
+	progressBar -edit -beginProgress -isInterruptable true 
+ 			-status ("Filtering "+size($points)+" points..." )
+ 			-maxValue  (size($points)+1)
+ 			$gMainProgressBar;
+ 			
+	for ($pt in $points) {
+		if(`progressBar -query -isCancelled $gMainProgressBar`)	break;
+ 		progressBar -edit	-step 1 $gMainProgressBar;
+ 		
+		string $rootName = `match "^[^\.]*" $pt`;
+		
+		// si notre obj est trouve et que ce point en fait partie, on le garde:
+		if ( (size($obj)) && ($rootName == $obj) ) {
+			 $keptPoints[size($keptPoints)] = $pt;
+		}
+		// si notre obj est trouve et que ce point n'en fait PAS partie, on le skip:
+		else if ( (size($obj)) && ($rootName != $obj) ) {
+			if ($verbose) print ("- skip point "+$pt+" - not owned by first found skinned object!");
+		}
+		// si on a toujours pas trouve un obj skinned ...
+		//
+		else if ($obj == "") {
+			string $tmpSkinCl = findRelatedSkinCluster($rootName) ;
+			
+			// le voila!, on le garde:
+			if (size($tmpSkinCl))  {
+					 $keptPoints[size($keptPoints)] = $pt ;
+					 $obj = $rootName ;
+					 $skinCluster = $tmpSkinCl ;
+					 print ("\n* Let's work with that source object \""+$obj+"\", whose skinCluster is \""+$skinCluster+"\":\n");
+			}
+			// si on a toujours pas trouve un obj skinned et que le voila ! on le vire de la liste:
+			else if (  size($tmpSkinCl)  == 0 )  {
+				if ($verbose) print ("- skip point "+$pt+" - not owned by a skinned object!");
+			}
+		}
+	}
+	$points = $keptPoints;
+	
+	progressBar -edit	-endProgress	$gMainProgressBar;
+
+	return { $obj , $skinCluster } ;
+}
+// end of proc qa_filterSkinnedPoints( string $points[] ) 
+
+
+global proc int qa_copyWeights( float $minWeight , int $verbose)
+{
+	global string $qa_skinPstrCopyCmd; 
+	string $skinCluster = "";
+	string $sourceObj = "";
+	string $jointList[] = {};
+	float $weightList[] = {};
+	float $normalizedWeights[] = {};
+	
+	global string $gMainProgressBar;
+	
+	print ("\n\n>> qa_copyWeights( minimum = "+$minWeight+") :\n");
+	waitCursor -state on;
+	
+	string $sel[] = `ls -sl`;
+	string $points[] = `filterExpand -sm 31 -sm 28 -sm 36 -sm 47 -sm 46 $sel`;
+	/*
+		string $vtcs[] = `filterExpand -sm 31 $sel`;
+		string $CVs[] = `filterExpand -sm 28  $sel`;
+		string $subdivPts[] = `filterExpand -sm 36 $sel`;
+		string $lattPts[] = `filterExpand -sm 46 $sel`;
+		string $particles[] = `filterExpand -sm 47 $sel`;
+	*/
+	
+	string $result[] = qa_filterSkinnedPoints( $points  , $verbose) ;
+	if ( (size($result[0])) &&  (size($result[1])) ) {
+		$sourceObj = $result[0];
+		$skinCluster = $result[1];
+	}
+	else {
+		waitCursor -state off;
+		error "No skinning could be found in selected points!";
+	}
+	
+	progressBar -edit -beginProgress -isInterruptable true 
+ 		-status ("Getting and averaging skin weights from "+size($points)+" points...") 
+ 		-maxValue (size($points))
+ 		$gMainProgressBar;
+
+
+	int $skinnedPoints = 0;
+	for ( $current_point in $points ) 
+	{
+		if(`progressBar -query -isCancelled $gMainProgressBar`)	break;
+ 		progressBar -edit	-step 1 $gMainProgressBar;
+
+		string $currentGroup = "";
+		string $source_pointJoints[] = {};
+		float $source_pointJointWeights[] = {} ;	// string $current_point = $sel[0];
+
+		if ($verbose)
+			print ("\n- \""+$current_point+"\" skin-bound to : \n");
+
+		$source_pointJoints = `skinPercent -ib $minWeight -q -t $skinCluster $current_point `;
+		if (size($source_pointJoints)==0) {
+			if ($verbose)
+				print ("-> \""+$current_point+"\" : no appropriate influence (weight>0.001) found for that point... Skipped. \n");
+			continue;
+		}
+		$skinnedPoints ++;
+
+		int $l = 0;
+		for ($l = 0 ; $l < size($source_pointJoints) ; $l++) {
+			string $current_joint = $source_pointJoints[$l];
+			$source_pointJointWeights[$l] = `skinPercent -t $current_joint -q  $skinCluster $current_point` ;
+			if ($verbose)
+				print ("  ."+$source_pointJoints[$l]+" : "+$source_pointJointWeights[$l]+"\n");
+
+			// Updates joints/weights lists:
+			int $allreadyInlist = qa_firstStringIndexInArray( $current_joint, $jointList);
+			if ($allreadyInlist == -1)
+			{
+				int $freeIndex = size($jointList);
+				qa_stringArrayAppendNoDuplicate ($jointList, $current_joint);
+				$weightList[$freeIndex] = $source_pointJointWeights[$l];
+			}
+			else
+				$weightList[$allreadyInlist] = $weightList[$allreadyInlist] + $source_pointJointWeights[$l];			
+		}
+	}
+		
+	// Normalizing weights:
+	if ($skinnedPoints > 0)
+		for ($j = 0 ; $j < size($jointList) ; $j++)
+			$normalizedWeights[$j] = $weightList[$j] / $skinnedPoints;
+	else {
+		warning "No skinned points could be treated ! - see Script Editor for details...";
+		return 0;
+	}
+	
+	// Command Creation:
+	string $cmd = "skinPercent";
+	
+	int $size = `size($jointList)`;	
+	for($i = 0;$i<$size;$i++) 
+		$cmd += (" -tv " + $jointList[$i] + " " + $normalizedWeights[$i]);
+		
+	$qa_skinPstrCopyCmd = $cmd;
+	print ("\n-> After averaging those weights, the stocked command is: \n");
+	print  (" \" "+$qa_skinPstrCopyCmd+" \"\n");
+	
+	progressBar -edit	-endProgress	$gMainProgressBar;
+	waitCursor -state off;
+
+	return $skinnedPoints;
+		
+}
+// end of proc qa_copyWeights()
+
+
+/*
+ string $pasteMode = "additive";
+ int $normalizeAfterPaste = 1;
+ float $addMult = 0.5;
+
+
+*/
+global proc qa_pasteWeights( string $pasteMode , int $normalizeAfterPaste , float $addMult , int $verbose)
+{
+	global string $qa_skinPstrCopyCmd;
+	string $pasteCommand = "skinPercent";
+	
+	global string $gMainProgressBar;  // This is defined on maya startup
+	
+	string $cmd = "";
+	string $destObj = "";
+	string $skinCluster = "";
+	
+	if ($pasteMode=="replace") 
+		// In this case, assuming that the addMult value is neutral i.e = 1.0
+		$addMult = 1.0;
+	print ("\n\n>> qa_pasteWeights( \""+$pasteMode+"\" mode, mult = "+$addMult+", NormalizeAfterPaste = "+ $normalizeAfterPaste +") :\n");
+
+	waitCursor -state on;
+
+	string $sel[] = `ls -sl -fl`;
+	string $points[] = `filterExpand -sm 31 -sm 28 -sm 36 -sm 47 -sm 46 $sel`;
+	string $result[] = qa_filterSkinnedPoints( $points , $verbose ) ;
+	if ( (size($result[0])) &&  (size($result[1])) ) {
+		$destObj = $result[0];
+		$skinCluster = $result[1];
+	}
+	else {
+		waitCursor -state off;
+		error "No skinning could be found in selected points!";
+	}
+
+	// Disable weight normalisation
+	setAttr ($skinCluster + ".normalizeWeights") 0;
+	
+	
+	// Pre-parsing stored command in case of additive and $addMult != 1.0 (neutral) and > 0.0:
+	//
+	if ( ($pasteMode=="additive") && ($addMult != 1.0) && ($addMult > 0.0) ) {
+	
+		string $tmpArray[] = stringToStringArray($qa_skinPstrCopyCmd, " ");
+		$pasteCommand += " -r 1 " ; // relative mode, to add values.
+
+		for ($jw=1; $jw<size($tmpArray); $jw+=3) {
+			//print ("\n"+$tmpArray[$jw]+" "+ $tmpArray[$jw+1]+" "+ $tmpArray[$jw+2]+"\n");
+			float $multWeight =  $tmpArray[$jw+2] ;
+   			float $multWeight = $multWeight*$addMult;
+			$pasteCommand += (" -tv " + $tmpArray[$jw+1] + " " + $multWeight);
+		}
+	}
+	else if ( ($pasteMode=="additive") && ($addMult < 0.0) ) {
+		waitCursor -state off;
+		error ("The multipicative value for the additive Paste mode is NEGATIVE !...");
+	}
+	else
+		$pasteCommand = $qa_skinPstrCopyCmd;
+					
+
+	// First store actual bound influences and Hold states of that skinCluster, and set them to OFF:
+	string $destJoints[] = `skinCluster -q -inf $skinCluster `;		
+	int $destJointsHolds[] = {};
+	for ($j=0; $j<size($destJoints); $j++) {
+		$destJointsHolds[$j] = `getAttr ($destJoints[$j]+".liw")`;
+		catch(`setAttr ($destJoints[$j]+".liw") 0`);
+	}
+	
+		progressBar -edit -beginProgress -isInterruptable true 
+ 			-status ("Pasting weights onto "+size($points)+" points..." )
+ 			-maxValue  (size($points)+1)
+ 			$gMainProgressBar;
+ 		
+	for($pt in $points) 
+	{	
+			if(`progressBar -query -isCancelled $gMainProgressBar`) break;
+ 			progressBar -edit	-step 1 $gMainProgressBar;
+
+			// If pasteMode = "replace" : must set every current weight to zero first:
+			//
+			if ($pasteMode=="replace") {
+				// In this case, assuming that the addMult value is neutral i.e = 1.0
+				$addMult = 1.0;
+				string $pointJoints[] = `skinPercent -ib 0.0001 -q -t $skinCluster $pt`;	
+				string $resetWeightsCmd = "skinPercent";
+				for ($j=0; $j<size($pointJoints); $j++) 
+					$resetWeightsCmd += (" -tv "+$pointJoints[$j]+" 0.0");
+				$resetWeightsCmd += (" "+$skinCluster+" "+$pt);
+				eval($resetWeightsCmd);
+				if ($verbose)
+					print (" - "+$pt+"'s infl.weights reset to zero first.\n");
+			}
+		
+			// Then set to the copied weights:
+			$cmd = $pasteCommand;
+			$cmd = ($cmd + " " + $skinCluster + " " + $pt);
+			if ($verbose) {
+				print "-> ";
+				evalEcho($cmd);
+			}
+			else
+				eval($cmd);
+			
+	}	
+		
+	// Re-Enable weight normalisation
+	if ($normalizeAfterPaste) {
+		setAttr ($skinCluster + ".normalizeWeights") 1;
+		skinPercent -normalize true $skinCluster;
+	}
+	// Reseting Hold states to previous values:
+	for ($j=0; $j<size($destJoints); $j++) 
+		catch(`setAttr ($destJoints[$j]+".liw") $destJointsHolds[$j]`);
+		
+	progressBar -edit	-endProgress	$gMainProgressBar;
+	waitCursor -state off;
+	
+}
+// end of proc qa_pasteWeights()
+
+
+global proc int qa_isStringInArray( string $theString, string $theArray[] ) {
+	string $s;
+	for ($s in $theArray)
+		if( $s == $theString )
+			return 1;
+	return 0;
+}
+
+
+global proc int qa_stringArrayAppendNoDuplicate (string $theArray[], string $theString) {
+	int $success = false;
+	if (!qa_isStringInArray( $theString, $theArray )) {
+		$theArray[size($theArray)] = $theString;
+		$success = true;
+	}
+	return $success;
+}
+
+global proc int qa_firstStringIndexInArray( string $theString, string $theArray[] ) {
+  	int $i = 0;
+	for ($i=0; $i<size($theArray); $i++)
+		if ($theString == $theArray[$i])
+			return $i;
+	return -1;
+}
+
+
+
+//	qa_matchInfluences()
+//	---------------------------------------------------------------
+//
+//  Author :    Quentin Auger
+//  Creation :  March 2006
+//
+//
+// Synopsis:
+//	Select one source smooth-bound object or a skinCluster, then one destination object (skinned or not)
+//	Launch "qa_matchInfluences() ;"
+//
+//
+// Return Value:
+//	None
+//
+//
+// Description:
+//
+//	The skinCluster of the second object will be updated or created to match the list of influences of the source one.
+//	No skinWeighting will be done ! It is only an update of the influences list. (if added, locked to zero weight)//
+//
+//
+/////////////////////////////////////////////////////////////////////////
+//
+
+global proc qa_matchInfluences ()
+{
+	string $skinClusterTreatment = "" ;
+	int $verbose = true;
+	print "\n>>> \"qa_matchInfluences()\" <<<\n";
+	print   "-------------------------------\n\n";
+	waitCursor -state on;
+	
+	string $sel[] = `ls -sl`;
+	if ( size($sel) == 2 )
+		$skinClusterTreatment = qa_doUpdateListOfInfluences ( $sel[0] , $sel[1], $verbose) ;
+	else {
+		waitCursor -state off;
+		error "Please select 2 objects, first one must be a skinCluster or a smooth bound object, the 2nd one a 'skinable' object.";
+	}
+		
+	waitCursor -state off;
+	
+	if ($skinClusterTreatment == "FAILED")
+		error ("Problems occured while matching Source and Destination objects'influences lists - See Script Editor for details...");
+	else
+		print "\n>> Matching Source and Destination objects skin influences COMPLETE. :-)\n\n" ;
+		print ("Influences list of \""+$sel[1]+"\"s skinCluster was "+$skinClusterTreatment+" according to \""+$sel[0]+"\"s one. :-)\n") ;
+
+}
+
+
+
+global proc string qa_doUpdateListOfInfluences (string $srcObj , string $destObj , int $verbose) 
+{
+	global string $gMainProgressBar;
+	int $success = false;
+	string $skinClusterTreatment = "FAILED";
+	
+	string $srcSkinCluster = "";
+	string $source_infl_list[] = {};
+	
+	int $validDestObj = false ;
+	string $destSkinCluster = "";
+	string $dest_infl_list[] = {};
+
+	if ( size($srcObj) &&  size($destObj) ) {
+		if (`objectType $srcObj`=="skinCluster") 
+			$srcSkinCluster = $srcObj ;
+		else
+			$srcSkinCluster = findRelatedSkinCluster($srcObj) ;
+	}
+	 
+	if (size($srcSkinCluster)) {
+		$source_infl_list = `skinCluster -q -inf $srcObj `;
+
+		if ($verbose) {
+			print ("- Source Object: \""+$srcObj +"\"  -->>  Destination Object: \""+$destObj +"\"\n");
+			print ("\n* "+size($source_infl_list)+" influences for source object's skinCluster \""+$srcSkinCluster+"\".\n\n");
+		}
+		
+		$destSkinCluster = findRelatedSkinCluster($destObj) ;
+		if ( size($destSkinCluster) == 0 )
+			$validDestObj = `objExists ($destObj+".cp")`;
+		else
+			$validDestObj = true;
+	}
+	else {
+		warning "The 1rst object is NOT a skinCluster, neither a smooth bound object...";
+		return $skinClusterTreatment;
+	}
+	
+	
+
+	// Do default skinning if none on the target object :
+	//
+	if ( ( size($destSkinCluster) == 0) && ($validDestObj) )	{
+		if ($verbose) print "* Destination object was NOT skinned : binding it according to source skeleton...\n";
+		string $tempDestSkClArray[] = {};
+		
+		//-----------
+		$source_infl_list = stringArrayRemoveDuplicates($source_infl_list);
+		
+		// Separating pure Joints (directly skinnable) and other influences (shapes, transforms..)
+		// which gonna be bound afterwards:
+		string $inflToAddAfterwards[] = qa_keepThatTypeInArray ( $source_infl_list , "joint" ); // that proc "cleans" the input stringArray and returns the rejected strings.
+		
+		print ("\t- First let's bind to "+size($source_infl_list)+" pure joints ("+size($inflToAddAfterwards)+" other infl. later):\n");
+		if ($verbose) { print "\t  Those ones:\n\n"; print $source_infl_list; print "\n";}
+
+		$success = !catch ($tempDestSkClArray= `skinCluster -tsb $source_infl_list $destObj`) ;
+		if ( ($success) && (size($inflToAddAfterwards)) ) 
+		{
+			print ("\t.... first pass done.\n\n");
+			print ("\t- Then let's add "+size($inflToAddAfterwards)+" non-joint-typed influences into skinCluster \""+$tempDestSkClArray[0]+"\" (without 'Use Geometry' option): \n");
+
+			progressBar -edit -beginProgress -isInterruptable true 
+		 		-status ("Adding "+size($inflToAddAfterwards)+"non-joint-typed influences into skinCluster \""+$tempDestSkClArray[0]+"\"...") 
+		 		-maxValue (size($inflToAddAfterwards))
+		 		$gMainProgressBar;
+		 		
+			int $localSuccess = true;
+			for ( $i = 0 ; $i < size($inflToAddAfterwards) ; $i++ ) 
+			{
+				if(`progressBar -query -isCancelled $gMainProgressBar`)	break;
+ 				progressBar -edit	-step 1 $gMainProgressBar;
+ 				
+				$localSuccess *= !catch(`skinCluster -e -dr 10 -ps 50 -ns 100 -lw true -wt 0 -ai $inflToAddAfterwards[$i] $tempDestSkClArray[0]`);
+				if ( ($verbose) && ($localSuccess))
+					print ("\t  . \""+$inflToAddAfterwards[$i]+"\" added.\n") ;
+			}
+			if ($localSuccess==false)
+				warning ("Could NOT add wanted influences to skinCluster \""+$tempDestSkClArray[0]+"\"...");
+			$success = $localSuccess;
+		}else if ($success==false){
+			warning ("Could NOT bind \""+$destObj+"\!");
+		}
+		if ($success) {
+			$destSkinCluster = $tempDestSkClArray[0] ;
+			$skinClusterTreatment = "CREATED" ;
+			print "\n\t...last pass done.\n" ;
+		}
+	}
+	
+	// If some source influences are missing to actual skinCluster :
+	//
+	else if ( (size($destSkinCluster)) && ($validDestObj)  ) {
+		$dest_infl_list = `skinCluster -q -influence $destSkinCluster`;	
+		$dest_infl_list = stringArrayRemoveDuplicates($dest_infl_list) ;
+		string $missingInfl[] = stringArrayRemove($dest_infl_list , $source_infl_list);
+
+		print ("* "+size($missingInfl)+" missing influences in the destination skinCluster \""+$destSkinCluster+"\" compared to the source one.\n") ;
+
+		if ( size($missingInfl) ) {
+			if ($verbose) 
+				print ("\t- Updating destination skinCluster \""+$destSkinCluster+"\" (without 'Use Geometry' option) :    \n") ;
+				
+			progressBar -edit -beginProgress -isInterruptable true 
+		 		-status ("Adding "+size($missingInfl)+" influences into skinCluster \""+$destSkinCluster+"\"...") 
+		 		-maxValue (size($missingInfl))
+		 		$gMainProgressBar;
+		 		
+			int $localSuccess = true;
+			for ( $miss = 0 ; $miss < size($missingInfl) ; $miss++ ) 
+			{
+				if(`progressBar -query -isCancelled $gMainProgressBar`) break;
+ 				progressBar -edit	-step 1 $gMainProgressBar;
+ 				
+				$localSuccess *= !catch(`skinCluster -e -dr 10 -ps 50 -ns 100 -lw true -wt 0 -ai $missingInfl[$miss] $destSkinCluster`);
+				if ( ($verbose) && ($localSuccess))
+					print ("\t  . \""+$missingInfl[$miss]+"\" added.\n") ;
+				
+			}
+			if ($localSuccess == false)
+				warning ("  - Cannot update the destination skinCluster '"+$destSkinCluster+"' !") ;
+			else {
+				$success = true;
+				$skinClusterTreatment = "UPDATED" ;
+				print "\n\t...adding influences done.\n" ;
+			}
+		}
+		else {
+			print ("Source and Destination influences are already matching !\n");
+			$success = true;
+			$skinClusterTreatment = "ALREADY OK";
+		}
+	}
+	else if ($validDestObj == false)
+		warning "The 2nd object is NOT skinnable...";
+		
+	progressBar -edit	-endProgress $gMainProgressBar;
+
+	return $skinClusterTreatment ;
+}
+// end of proc qa_doUpdateListOfInfluences()
+
+
+
+global proc string[] qa_keepThatTypeInArray ( string $srcArray[] , string $typeToKeep )
+{
+	string $rejectedObj[];
+	if ($typeToKeep == "") error ($typeToKeep+" is NOT a valid type!");
+	string $cleanerArray[] = $srcArray;
+	for ($obj in $srcArray) {
+		if (`nodeType $obj`!= $typeToKeep) {
+			$rejectedObj[size($rejectedObj)] = $obj;
+			$cleanerArray = stringArrayRemove( {$obj}, $cleanerArray) ;
+			}
+	}
+	$srcArray = $cleanerArray ;
+	return $rejectedObj;
+};
+
+
+
+// ----------------------  qa_selectInfluences() :
+//
+global proc qa_selectInfluences()
+{
+	waitCursor -state on;
+	
+	string $sel[] = `ls -sl`;
+
+	string $skcl = "";
+	if ( size($sel) == 1 ) {
+		if (`objectType $sel[0]`=="skinCluster") 
+			$skcl = $sel[0];
+		else
+			$skcl = findRelatedSkinCluster($sel[0]) ;
+	}
+
+	if (size($skcl)) {
+		string $infl[] = `skinCluster -q -inf $sel[0]`;
+		print ("\n>>> qa_selectInfluences() : on object \""+$sel[0]+"\", skinCluster \""+$skcl+"\" : \n\n");
+		print $infl;
+		select -r $infl;
+		print "\n";
+		print (">> "+size($infl)+" influences of  \""+$skcl+"\"  listed above are selected (see script Editor...)");
+	}
+	else 
+		error "Please select a skinCluster or a smooth bound object...";
+	
+	waitCursor -state off;
+	
+};

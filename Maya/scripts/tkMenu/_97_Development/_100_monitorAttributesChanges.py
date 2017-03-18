@@ -1,0 +1,2 @@
+import tkDevHelpers
+tkDevHelpers.monitorAttrChangesUI()

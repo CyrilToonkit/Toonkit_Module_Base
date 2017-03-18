@@ -1,0 +1,2 @@
+import tkWeightsFilters
+tkWeightsFilters.harden()

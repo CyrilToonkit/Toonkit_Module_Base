@@ -1,0 +1,2 @@
+import tkConfo
+tkConfo.checkConformity()

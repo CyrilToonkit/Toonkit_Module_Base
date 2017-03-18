@@ -1,0 +1,2 @@
+import tkPalette
+tkPalette.showUI()

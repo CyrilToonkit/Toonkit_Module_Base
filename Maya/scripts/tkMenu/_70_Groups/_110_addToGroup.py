@@ -1,0 +1,2 @@
+import tkSIGroups
+tkSIGroups.addFromSelection()

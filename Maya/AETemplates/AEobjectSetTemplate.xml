@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<templates>
+
+    <template name='AEobjectSet'>
+                <attribute name='visibility' type='maya.enum'>
+                        <label>Visibility</label>
+                </attribute>
+                <attribute name='selectability' type='maya.enum'>
+                        <label>Selectability</label>
+                </attribute>
+                <attribute name='tkSetPriority' type='maya.int'>
+                        <label>Priority</label>
+                </attribute>
+                
+    </template>
+
+    <view name="SIGroupsView" template="AEobjectSet">
+            <group name='Overrides'>
+                <property name='visibility'>
+                        <description language="cb">py.tkSIGroups.AEaddVisEnumMenu</description>
+                </property>
+                <property name='selectability'>
+                        <description language="cb">py.tkSIGroups.AEaddSelEnumMenu</description>
+                </property>
+            </group>
+            <group name='Advanced'>
+                <property name='tkSetPriority'>
+                        <description language="cb">py.tkSIGroups.AEaddIntSlider</description>
+                </property>
+            </group>
+    </view>
+
+</templates>

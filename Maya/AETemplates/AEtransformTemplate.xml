@@ -1,0 +1,118 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<templates>
+
+    <template name='AEtransform'>
+                <attribute name='size' type='maya.float'>
+                        <label>Size</label>
+                </attribute>
+                <attribute name='offsetDisplayX' type='maya.float'>
+                        <label>X Offset</label>
+                </attribute>
+                <attribute name='offsetDisplayY' type='maya.float'>
+                        <label>Y Offset</label>
+                </attribute>
+                <attribute name='offsetDisplayZ' type='maya.float'>
+                        <label>Z Offset</label>
+                </attribute>
+                <attribute name='scaleDisplayX' type='maya.float'>
+                        <label>X Scale</label>
+                </attribute>
+                <attribute name='scaleDisplayY' type='maya.float'>
+                        <label>Y Scale</label>
+                </attribute>
+                <attribute name='scaleDisplayZ' type='maya.float'>
+                        <label>Z Scale</label>
+                </attribute>
+                <attribute name='tk_type' type='maya.enum'>
+                        <label>Oscar Type</label>
+                </attribute>
+                <attribute name='tk_guideRule' type='maya.enum'>
+                        <label>Guide rule</label>
+                </attribute>
+                <attribute name='tk_placeHolder' type='maya.string'>
+                        <label>PlaceHolder</label>
+                </attribute>
+                <attribute name='tk_upVReference' type='maya.string'>
+                        <label>UpV Reference</label>
+                </attribute>
+                <attribute name='tk_target' type='maya.string'>
+                        <label>Target</label>
+                </attribute>
+                <attribute name='tk_invert' type='maya.bool'>
+                        <label>Invert</label>
+                </attribute>
+                <attribute name='tk_invertUp' type='maya.bool'>
+                        <label>Invert Up</label>
+                </attribute>
+                <attribute name='tk_guideParent' type='maya.string'>
+                        <label>Guide Parent</label>
+                </attribute>
+                <attribute name='initValues' type='maya.string'>
+                        <label>Init Values</label>
+                </attribute>
+                <attribute name='guideHelpers' type='maya.string'>
+                        <label>Guide Helpers</label>
+                </attribute>
+    </template>
+
+    <view name="DisplaysView" template="AEtransform">
+            <group name='Displays'>
+                <property name='size'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='offsetDisplayX'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='offsetDisplayY'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='offsetDisplayZ'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='scaleDisplayX'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='scaleDisplayY'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='scaleDisplayZ'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+            </group>
+            <group name='ElementInfo'>
+                 <property name='tk_type'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='tk_guideRule'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='tk_placeHolder'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='tk_upVReference'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='tk_target'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>                
+                <property name='tk_invert'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>  
+                <property name='tk_invertUp'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property> 
+                <property name='tk_guideParent'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property> 
+            </group>
+            <group name='InitValues'>
+                <property name='initValues'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+                <property name='guideHelpers'>
+                        <description language="cb">py.tkMayaCore.AEaddDisplaysDoubleMenu</description>
+                </property>
+            </group>
+    </view>
+
+</templates>

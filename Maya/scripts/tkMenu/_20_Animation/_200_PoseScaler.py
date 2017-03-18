@@ -1,0 +1,2 @@
+import tkPoseScaler
+tkPoseScaler.showUI()
