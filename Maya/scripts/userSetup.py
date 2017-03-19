@@ -93,7 +93,7 @@ pc.mel.eval("source qa_skinPasterUI")
 
 
 # - Customer specific
-
+""" DEPRECATED
 specificPath = os.path.join(oscarmodulepath, CONST_SPECDIR)
 
 if not os.path.isdir(specificPath):
@@ -114,6 +114,7 @@ else:
                     exec 'if hasattr('+ baseName +', "menu") : pc.evalDeferred('+ baseName +'.menu)'
                 except:
                     pc.warning("Can't load specific script file (%s) !" % specfile)
+"""
 
 #if mayabatch and supplied arguments contains a script, execute items
 app = sys.executable
