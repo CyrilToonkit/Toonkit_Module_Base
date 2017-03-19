@@ -10,4 +10,4 @@ if [%2]==[] (
 	exit /b
 )
 
-robocopy /MIR /S /NFL /NDL /NJH *.* %~dp0\Maya %1\%2 /XF DISTRIB.bat
+robocopy /MIR /S /NFL /NDL /NJH *.* %~dp0\Maya %1\%2 /XF DISTRIB.bat /XD examples
