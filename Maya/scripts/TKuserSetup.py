@@ -24,51 +24,17 @@
     Main loader for Toonkit's python modules and Menu
 """
 
-import subprocess
 import os
-import os.path
-import re
-import xml.dom.minidom as minidom
 
 import pymel.core as pc
-import pymel.core.system as pmsys
 
-import zvRadialBlendShape
-import tkMayaSIBar as tksi
-import tkMayaCore as tkc
-import tkSIGroups
-import tkSpring
-import tkRig
-import tkDevHelpers
-import tkBatcher
-import tkParseMA
-import tkPoseScaler
-import tkOutfits
-import tkPalette
 import locationModule
-import mayaexecpythonfile
-import tkBlendShapes
-import tkSym
-import tkSkinner
-import tkWeightsFilters
-import anim_picker.tkAnimPicker
-import tkTagTool
-import tkConfo
+import tkMayaCore as tkc
 import tkMenus
-
-skinToolsAvailable = True
-
-try:
-    from ngSkinTools.ui.mainwindow import MainWindow
-except:
-    print "Can't load skinning Toolkit, this could be by design..."
-    skinToolsAvailable = False
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
 UINAME = "tkMenuToolsUI"
-
-UITAG = None
 
 HOTKEYS =   [
                 #SI Style
@@ -124,11 +90,8 @@ HOTKEYS =   [
                 }
             ]
 
-print "Initializing Toonkit's core library (%s)" % tkc.VERSIONINFO
+#print "Initializing Toonkit's core library (%s)" % tkc.VERSIONINFO
 
-oscarmodulepath = locationModule.OscarModuleLocation()
-#we arrived in "Scripts" folder, go up one step
-oscarmodulepath = os.path.join(os.path.split(oscarmodulepath)[:-1])[0]
 
 VERSIONINFO = tkc.VERSIONINFO + " [Toonkit - Prod]"
 
@@ -139,14 +102,10 @@ for k in NEEDEDPLUGINS:
     try:
         pc.loadPlugin( k, quiet=True )
         NEEDEDPLUGINS[k] = True
-        print "Toonkit plugin %s loaded" % k
+        #print "Toonkit plugin %s loaded" % k
     except:
-        print("Can't load Toonkit plugin %s, this could be by design..." % k)
-
-PROJECT_DEFINITION_PATH = oscarmodulepath + "\\Standalones\\OSCAR\\Data\\Projects\\Projects.xml"
-
-#Todo : implement this at Oscar project level
-SERVER_PATH_SUBST = ("Z:\\Toonkit\\","\\\\NHAMDS\\Toonkit\\ToonKit\\")
+        pass
+        #print("Can't load Toonkit plugin %s, this could be by design..." % k)
 
 def setHotKey(inName, inShortCut, inCtrlMod=False, inAltMod=False, code="print 'HelloWorld'", desc="", mel=False):
     #starting from maya 2016, we now have different "hotKey sets"
@@ -203,40 +162,7 @@ def hotKeyMap(*args):
 def showHelp():
     pc.showHelp("https://docs.google.com/document/d/1q_aRS0SVRLwTaLVA8Zm6DHvS6vEcjPFptFu--1kXoe0/pub", absolute=True)
 
-def getOscarProject():
-    project = {}
-
-    try:
-        doc = minidom.parse(PROJECT_DEFINITION_PATH)
-        
-        project = {"name":doc.getElementsByTagName("CurrentProject")[0].firstChild.nodeValue}
-        pathsElem = doc.getElementsByTagName("string")
-        
-        for pathElem in pathsElem:
-            fullPath = pathElem.firstChild.nodeValue
-            projPath, projDir = os.path.split(pathElem.firstChild.nodeValue)
-            if projDir == project["name"]:
-                project["path"] = fullPath
-    except:
-        pass
-            
-    if not "path" in project:
-        pc.warning("Cannot detect current Oscar project !!")
-        project = None
-    else:
-        tkc.PROJECT_INFO = project
-
-    return project
-
 def menu():
-    #Perform a deferred loading for Oscar modules
-    global oscarAvailable
-    try: 
-        import LaunchMayaServer
-    except ImportError, e:
-        oscarAvailable = False
-        pc.warning("Oscar modules could not be loaded (%s)!" % str(e))
-
     #Create Toonkit Menu
     if pc.menu("tkMainMenu", query=True, exists=True):
         pc.deleteUI("tkMainMenu", menu=True)
@@ -247,24 +173,9 @@ def menu():
     pc.menuItem(label="Rebuild menu", parent=tkMainMenu, command="TKuserSetup.menu()")
     pc.menuItem(divider=True)
 
-    mainMenuPath = os.path.join(oscarmodulepath, "scripts", "tkMenu")
+    oscarmodulepath = locationModule.OscarModuleLocation()
+    mainMenuPath = os.path.join(oscarmodulepath, "tkMenu")
     tkMenus.generateMenu(tkMainMenu, mainMenuPath, False)
-
-    commonScriptsPath = "Z:\\Toonkit\\RnD\\Scripts\\Maya\\"
-    serverCommonScriptsPath = commonScriptsPath.replace(SERVER_PATH_SUBST[0], SERVER_PATH_SUBST[1])
-
-    if (os.path.isdir(serverCommonScriptsPath) or os.path.isdir(commonScriptsPath)) or oscarAvailable:
-        pc.menuItem(divider=True, parent=tkMainMenu)
-
-        if os.path.isdir(serverCommonScriptsPath) or os.path.isdir(commonScriptsPath):
-            tkCommonMenu = pc.menuItem("tkCommonMenu", label="Scripts", parent=tkMainMenu, subMenu=True, tearOff=True)
-            tkMenus.generateMenu(tkCommonMenu, commonScriptsPath)
-
-        if oscarAvailable:
-            proj = getOscarProject()
-            if proj != None:
-                tkProjectMenu = pc.menuItem("tkProjectMenu", label="Project : '{0}'".format(proj["name"]), parent=tkMainMenu, subMenu=True, tearOff=True)
-                tkMenus.generateMenu(tkProjectMenu, os.path.join(proj["path"], "Scripts", "Maya"))
 
     #General/Version
     pc.menuItem(divider=True, parent=tkMainMenu)
@@ -273,4 +184,4 @@ def menu():
     pc.menuItem(divider=True, parent=tkMainMenu)
     pc.menuItem(label="Help (" + VERSIONINFO + ")", parent=tkMainMenu, command="TKuserSetup.showHelp()")
 
-print "Done Initializing Python Toonkit's core library (menu creation deferred)"
+#print "Done Initializing Python Toonkit's core library (menu creation deferred)"

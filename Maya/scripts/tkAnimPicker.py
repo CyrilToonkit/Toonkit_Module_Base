@@ -31,9 +31,9 @@ anim_picker.load(edit=True)
 
 Pimped version
 
-import anim_picker.tkAnimPicker
-reload(anim_picker.tkAnimPicker)
-anim_picker.tkAnimPicker.load(edit=True, debug=True)
+import tkAnimPicker
+reload(tkAnimPicker)
+tkAnimPicker.load(edit=True, debug=True)
 
 Syno example:
 $PROJECTPATH\Synoptic\Quadruped_Body.xml;$PROJECTPATH\Synoptic\Facial_Complete.xml
@@ -43,9 +43,10 @@ import pymel.core as pc
 
 import tkMayaCore as tkc
 
-import gui
-import node
-from handlers import file_handlers
+import anim_picker
+from anim_picker import node
+from anim_picker import gui
+from anim_picker import handlers
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -55,7 +56,7 @@ DEBUG=False
 DEBUGPATH = "\\\\NHAMDS\\ToonKit\\ToonKit\\Rnd\\Picker\\Picker_Files"
 PRODPATH = None
 
-PICKERFILESCHUNK = "scripts\\anim_picker\\Picker_Files"
+PICKERFILESCHUNK = os.path.join("scripts", "anim_picker","Picker_Files")
 
 def conformPath(inPath):
     return inPath.replace("\\", "/")
@@ -99,7 +100,7 @@ def resolveReferences(inPicker, inNs):
             if "action_script" in item and "#REF:" in item["action_script"]:
                 path = resolvePath(item["action_script"][5:])
                 if os.path.isfile(path):
-                    nodeData = file_handlers.read_data_file(path)
+                    nodeData = anim_picker.handlers.file_handlers.read_data_file(path)
                     resolveReferences(nodeData, inNs)
 
                     if len(nodeData["tabs"]) > 0 and len(nodeData["tabs"][0]["data"]["items"]) > 0:
@@ -153,7 +154,7 @@ def load(edit=False, multi=False, path=None, debug=False, project=None, forceReb
     pickers = {}
 
     #Collect animPicker Maya Nodes
-    pickerNodes = pc.ls('*.%s'%node.DataNode.__TAG__, o=True, r=True) or list()
+    pickerNodes = pc.ls('*.%s'%anim_picker.node.DataNode.__TAG__, o=True, r=True) or list()
     if forceRebuild:
         if len(pickerNodes) > 0:
             pc.delete(pickerNodes)
@@ -186,7 +187,7 @@ def load(edit=False, multi=False, path=None, debug=False, project=None, forceReb
             pickerFiles = pickerPaths.split(";")
             for pickerFile in pickerFiles:
                 if os.path.isfile(pickerFile):
-                    nodeData = file_handlers.read_data_file(pickerFile)
+                    nodeData = anim_picker.handlers.file_handlers.read_data_file(pickerFile)
                     resolveReferences(nodeData, pickerNs)
                     if mainPicker != None:
                         mergePickers(mainPicker, nodeData)
@@ -196,12 +197,12 @@ def load(edit=False, multi=False, path=None, debug=False, project=None, forceReb
                     pc.warning("Synoptic picker file " + pickerFile + " not found !")
 
             if mainPicker != None:
-                data_node = node.DataNode(pickerNs + "tkAnimPicker")
+                data_node = anim_picker.node.DataNode(pickerNs + "tkAnimPicker")
                 data_node.data = mainPicker
                 data_node.create()
                 data_node.write_data()
 
-    ui = gui.load(edit=edit, multi=multi)
+    ui = anim_picker.gui.load(edit=edit, multi=multi)
 
     return
 

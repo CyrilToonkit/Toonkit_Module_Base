@@ -138,9 +138,23 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
     if code == None:
         pc.warning("External menu {0} failed!".format(in_scriptPath))
 
-    folderPath = tkc.executeCode(code, functionName="get")
+    elementName, elementExt = os.path.splitext(os.path.basename(in_scriptPath))
+    elementName = elementName[:-len(SUFFIX_EXTERNALMENU)]
 
-    if folderPath == None or not isinstance(folderPath, basestring or folderPath == "" ):
+    folderPath = None
+    menuInfos = tkc.executeCode(code, functionName="get")
+
+    if menuInfos == None:
+        pc.warning("External menu {0} returned invalid value '{1}', must be a string representing a folder absolute path ' !".format(in_scriptPath, menuInfos))
+        return
+
+    if isinstance(menuInfos, basestring):
+        folderPath = menuInfos
+    elif isinstance(menuInfos, list) or isinstance(menuInfos, tuple):
+        folderPath = menuInfos[0]
+        elementName = menuInfos[1]
+
+    if folderPath == "":
         pc.warning("External menu {0} returned invalid value '{1}', must be a string representing a folder absolute path ' !".format(in_scriptPath, folderPath))
         return
 
@@ -148,8 +162,6 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
         pc.warning("External menu {0}, folder not found '{1}' !".format(in_scriptPath, folderPath))
         return
 
-    elementName, elementExt = os.path.splitext(os.path.basename(in_scriptPath))
-    elementName = elementName[:-len(SUFFIX_EXTERNALMENU)]
     if pc.menuItem(elementName + "Menu", exists=True):
         pc.deleteUI(elementName + "Menu")
 

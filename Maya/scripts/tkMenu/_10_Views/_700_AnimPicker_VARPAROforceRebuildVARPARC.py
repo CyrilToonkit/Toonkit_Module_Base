@@ -1,2 +1,2 @@
-import anim_picker.tkAnimPicker
-anim_picker.tkAnimPicker.show(True)
+import tkAnimPicker
+tkAnimPicker.show(True)
