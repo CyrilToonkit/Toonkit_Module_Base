@@ -108,12 +108,6 @@ for k in NEEDEDPLUGINS:
         #print("Can't load Toonkit plugin %s, this could be by design..." % k)
 
 def setHotKey(inName, inShortCut, inCtrlMod=False, inAltMod=False, code="print 'HelloWorld'", desc="", mel=False):
-    #starting from maya 2016, we now have different "hotKey sets"
-    if pc.versions.current() > 201600:
-        if pc.hotkeySet("Toonkit_KeySet", exists=True):
-            pc.hotkeySet("Toonkit_KeySet", edit=True, delete=True)
-        pc.hotkeySet( "Toonkit_KeySet", current=True )
-
     #clear existing hotkey
     pc.hotkey(keyShortcut=inShortCut, ctrlModifier=inCtrlMod, altModifier=inAltMod, name='')
     #create named command for custom tool
@@ -123,15 +117,15 @@ def setHotKey(inName, inShortCut, inCtrlMod=False, inAltMod=False, code="print '
     pc.hotkey( keyShortcut=inShortCut, ctrlModifier=inCtrlMod, altModifier=inAltMod, name=inName)
 
 def setHotKeys():
+    #starting from maya 2016, we now have different "hotKey sets"
+    if pc.versions.current() >= 201600:
+        if pc.hotkeySet("Toonkit_KeySet", exists=True):
+            pc.hotkeySet("Toonkit_KeySet", edit=True, delete=True)
+        pc.hotkeySet( "Toonkit_KeySet", current=True )
+
     #Refer to HOTKEYS constant
     for hotKey in HOTKEYS:
         setHotKey(hotKey["name"], hotKey["key"], hotKey["ctrl"], hotKey["alt"], hotKey["code"], hotKey["desc"], hotKey["mel"])
-
-    if pc.popupMenu("tkRMBAdd", query=True, exists=True):
-        pc.deleteUI("tkRMBAdd")
-
-    pc.popupMenu("tkRMBAdd", button=3 ,parent="viewPanes",mm=True)
-    pc.menuItem("Select deformers", command="tkc.selectDeformers()")
 
 def hotKeyMap(*args):
     global UINAME
