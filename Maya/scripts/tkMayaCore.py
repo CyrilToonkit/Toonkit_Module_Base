@@ -2796,11 +2796,13 @@ def setCnsOffset(inCns, t = dt.Vector(0.0,0.0,0.0), r = dt.EulerRotation(0.0,0.0
 
 def freeze(inObject):
     storeSelection()
+    pc.select(inObject)
     pc.mel.eval("DeleteHistory")
     loadSelection()
 
 def freezeModeling(inObject):
     storeSelection()
+    pc.select(inObject)
     pc.mel.eval("BakeNonDefHistory")
     loadSelection()
 
