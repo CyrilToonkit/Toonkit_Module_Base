@@ -1148,6 +1148,8 @@ def cleanCurrent(in_nAsset, asBatch=False):
     if outfits != None:
         values = []
 
+        presets = getPresets(in_nAsset)
+
         for outfit in outfits.keys():
             current = getCurrent(in_nAsset, outfit)
             if current == "Debug":
@@ -1155,25 +1157,34 @@ def cleanCurrent(in_nAsset, asBatch=False):
             values.append(current)
 
         outfitsProperty = getProperty(in_nAsset, 'tk'+OUTFIT_TAG)
-        """ OLD WAY OF DELETING EXCLUDED OBJECTS
-        outfitsVis = tkc.getProperty(outfitsProperty, 'visibilities')
 
-        visAttrs = tkc.getParameters(outfitsVis, customOnly=True, keyableOnly=False)
-
-        for attr in visAttrs:
-            obj, attribute = attr.split("__")
-
-            if mc.objExists(ns + obj) and pc.attributeQuery("visibility",node=ns + obj, exists=True) and pc.getAttr(ns + obj + ".visibility") == 0:
-                if pc.attributeQuery("intermediateObject",node=ns + obj, exists=True) and pc.getAttr(ns + obj + ".intermediateObject"):
-                    continue
-                pc.delete(ns + obj)
-        """
         objects = getExcludedObjects(in_nAsset)
         for obj in objects:
             deletedObjs.append(obj)
             if pc.objExists(obj):
                 tkc.freeze(obj)
                 pc.delete(obj)
+
+        #rename objects in Geometries if they end with the variation name
+        toRename = {}
+        outfitsProperty = getProperty(in_nAsset, 'tk'+OUTFIT_TAG)
+        if outfitsProperty != None:
+            parent = outfitsProperty.getParent()
+            geoObjs = tkc.getChildren(parent, True)
+            for geoObj in geoObjs:
+                origName = geoObj.name()
+                for value in values:
+                    if "_"+value in origName:
+                        if not origName in toRename:
+                            toRename[origName] = geoObj
+                        presetKeys = sorted(presets.keys(), key=lambda v: -len(v))
+                        for preset in presetKeys:
+                            if "_"+preset in geoObj.name():
+                                geoObj.rename(geoObj.name().replace("_"+preset, ""))
+
+        if len(toRename) > 0:
+            renamedObjs = ["{0} => {1}".format(key, value) for key, value in toRename.iteritems()]
+            pc.warning("{0} objects were containing outift name and were renamed :\n{1}".format(len(toRename), "\n".join(renamedObjs)))
 
         #rename outfit specific materials if possible
         usedShaders = collectUsedShaders(in_nAsset)

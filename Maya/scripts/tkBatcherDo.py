@@ -1,7 +1,7 @@
 """
 ------------------------- LICENCE INFORMATION -------------------------------
     This file is part of Toonkit Module Lite, Python Maya library and module.
-    Author : Stephane Bonnot - Parallel Dev
+    Author : Cyril GIBAUD - Toonkit
     Copyright (C) 2014-2017 Toonkit
     http://toonkit-studio.com/
 
@@ -19,13 +19,14 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
-import os
 
-__author__ = "Stephane Bonnot - Parallel Dev"
+"""
+Maya scene batch script launcher
+"""
 
-#DEPRECATE
-def OscarModuleLocation():
-	return get()
+import tkBatcher
+from tkToolOptions.tkOptions import Options
 
-def get():
-    return os.path.dirname(os.path.realpath(__file__))
+def do(inDataPath):
+    data = Options(None, inDataPath)
+    return tkBatcher.doBatch(data['batchName'], data['node'], data['code'], inForce=data['force'], inSaveFile=data['saveFile'], inSavePath=data['savefilePath'], inVariables=data['variables'])

@@ -679,6 +679,22 @@ def getTolerance():
 
     return None
 
+def resetMapOnSelection():
+    selMesh, selIndices = getSelectedIndices()
+    selMesh = selMesh.getParent()
+    
+    symMap = tkc.getPerPointData(selMesh, inName=SYMMAP)
+    locMap = tkc.getPerPointData(selMesh, inName=LOCMAP)
+    for selIndex in selIndices:
+        symMap[selIndex] = -2
+        locMap[selIndex] = -2
+
+    prop = tkc.getProperty(selMesh, SYMMAP)
+    pc.setAttr(prop.name() + ".data", symMap)
+    
+    prop = tkc.getProperty(selMesh, LOCMAP)
+    pc.setAttr(prop.name() + ".data", locMap)
+
 def symCheckClick(*args):
     tkc.storeSelection()
 

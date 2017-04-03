@@ -22,7 +22,7 @@ Note that these products are not related with the core of the Toonkit Module Lit
 
 About the compiled versions of software or plug-ins in this package:
 --------------------------------------------------------------------
-The simple fact that a file lie in this folder does not mean it's under GPL, it's only true for files originally present in the git repository (...)
+The simple fact that a file lie in this folder does not mean it's under GPL, it's only true for files originally present in the public git repositories available here : (https://github.com/CyrilToonkit/)
 
 To fit Maya module mechanism this folder may contain additionnal files that are merged here as a distribution of a Toonkit Module, these tools may have their specific usage conditions.
 

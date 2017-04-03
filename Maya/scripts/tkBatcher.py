@@ -27,38 +27,44 @@ Maya scene batcher
 import subprocess
 import os
 import re
+import tempfile
 
 import pymel.core as pc
 import maya.cmds as mc
 
 import tkMayaCore as tkc
+import locationModule
 import tkProjects.tkContext as tkContext
+from tkToolOptions.tkOptions import Options
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
 RESULTS = {}
 
-def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSaveFile=False, inSavePath=""):
+def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSaveFile=False, inSavePath="", inVariables=None, inLogDirPath=None):
+    if inVariables is None:
+        inVariables = RESULTS[inPath]
+
     dirname, filename = os.path.split(os.path.abspath(inPath))
     rawFilename = os.path.splitext(filename)[0]
 
     lastStatus = None
-    logDir = os.path.join(dirname, rawFilename + "_Batches")
-    logFile = os.path.join(logDir, inBatchName + ".ko")
 
-    if not os.path.isdir(logDir) and not inSimulate:
-        os.mkdir(logDir)
+    logFilePath = os.path.join(inLogDirPath, inBatchName + ".ko")
+
+    if not os.path.isdir(inLogDirPath) and not inSimulate:
+        os.mkdir(inLogDirPath)
     else:
-        if os.path.isfile(os.path.join(logDir, inBatchName + ".ko")):
+        if os.path.isfile(os.path.join(inLogDirPath, inBatchName + ".ko")):
             lastStatus = False
-            os.remove(os.path.join(logDir, inBatchName + ".ko"))
-        if os.path.isfile(os.path.join(logDir, inBatchName + ".ok")):
+            os.remove(os.path.join(inLogDirPath, inBatchName + ".ko"))
+        if os.path.isfile(os.path.join(inLogDirPath, inBatchName + ".ok")):
             lastStatus = True
             if inForce:
-                os.remove(os.path.join(logDir, inBatchName + ".ok"))
+                os.remove(os.path.join(inLogDirPath, inBatchName + ".ok"))
 
     code = "import maya.cmds\r\n"
-    code += "def batcherDoBatch(fileName, filePath, saveFilePath=ur\""+inSavePath+"\", saveFile="+str(inSaveFile)+", success=True, pathVariables="+str(RESULTS[inPath])+"):\r\n"
+    code += "def batcherDoBatch(fileName, filePath, saveFilePath=r\""+inSavePath+"\", saveFile="+str(inSaveFile)+", success=True, pathVariables="+str(inVariables)+"):\r\n"
     code += "    print 'Batch "+inBatchName+" begins'\r\n"
     code += "    try:\r\n"
     code += "        maya.cmds.file(filePath, open=True, force=True)\r\n"
@@ -100,7 +106,7 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
     
         code += "def printBatch(*arguments):\r\n"
         code += "    print(','.join([str(s) for s in arguments]))\r\n"
-        code += "    fo = open('"+logFile.replace("\\", "\\\\")+"', 'a')\r\n"
+        code += "    fo = open('"+logFilePath.replace("\\", "\\\\")+"', 'a')\r\n"
         code += "    for argument in arguments:\r\n"
         code += "        fo.write(argument + '\\r\\n')\r\n"
         code += "    fo.close()\r\n"
@@ -123,7 +129,7 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
     result = tkc.executeCode(code, strlng=1, functionName="batcherDoBatch", args=[rawFilename, inPath])
 
     if not inSimulate and result:
-        os.rename(logFile, logFile.replace(".ko", ".ok"))
+        os.rename(logFilePath, logFilePath.replace(".ko", ".ok"))
 
     print " --- END {3} '{0}' on {1} ({2})---".format(inBatchName, filename, "SUCCESS" if result else "FAILURE", "Batch" if not inSimulate else "Simulation")
 
@@ -142,7 +148,14 @@ def collectNodes():
     return [n.split("(")[1][:-1] for n in nodesText]
 
 def getSavePath(inPattern, filePath, fileName, pathVariables):
-    code = "def batcherGetPath(BATCHERVARfilePath, BATCHERVARfileName, BATCHERVARpathVariables):"
+    code = "import os\r\n"
+    code += "def batcherGetPath(BATCHERVARfilePath, BATCHERVARfileName, BATCHERVARpathVariables):\r\n"
+    code +="    return " + inPattern.replace("#","BATCHERVAR")
+    return tkc.executeCode(code, strlng=1, functionName="batcherGetPath", args=[filePath, fileName, pathVariables])
+
+def getLogPath(inPattern, filePath, fileName, pathVariables):
+    code = "import os\r\n"
+    code += "def batcherGetPath(BATCHERVARfilePath, BATCHERVARfileName, BATCHERVARpathVariables):\r\n"
     code +="    return " + inPattern.replace("#","BATCHERVAR")
     return tkc.executeCode(code, strlng=1, functionName="batcherGetPath", args=[filePath, fileName, pathVariables])
 
@@ -166,8 +179,9 @@ def batcherSimClick(*args):
         variables = RESULTS[node]
         dirname, filename = os.path.split(os.path.abspath(node))
         savefilePath = getSavePath(mc.textField("batcherSavepathLE", query=True, text=True), node, filename.split(".")[0], variables)
+        logFilePath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), node, filename.split(".")[0], variables)
 
-        doBatch(batchName, node, code, True, force, savefile, savefilePath)
+        doBatch(batchName, node, code, True, force, savefile, savefilePath, variables, logFilePath)
         pc.progressBar("batcherProgressBar", edit=True, step=1)
 
     mc.progressBar("batcherProgressBar", edit=True, endProgress=True)
@@ -179,26 +193,82 @@ def batcherDoBatchClick(*args):
     code = mc.textField("batcherCodeLE", query=True, text=True)
     force = not mc.checkBox("batcherSkipCB", query=True, value=True)
     savefile = mc.checkBox("batcherSaveByDefaultCB", query=True, value=True)
+    savePath = mc.textField("batcherSavepathLE", query=True, text=True)
+    logPath = mc.textField("batcherLogSavepathLE", query=True, text=True)
 
-    mc.control("batcherProgressBar", edit=True, visible=True)
+    batcherDoBatches(nodes, RESULTS, batchName, code, force, savefile, savePath, logPath, "batcherProgressBar", 0)
 
-    mc.progressBar( "batcherProgressBar",
-    edit=True,
-    beginProgress=True,
-    isInterruptable=True,
-    status="Executing " + batchName,
-    maxValue=len(nodes))
+def batcherDoMayaBatchClick(*args):
+    batchName = mc.textField("batcherNameLE", query=True, text=True)
+    nodes = collectNodes()
+    code = mc.textField("batcherCodeLE", query=True, text=True)
+    force = not mc.checkBox("batcherSkipCB", query=True, value=True)
+    savefile = mc.checkBox("batcherSaveByDefaultCB", query=True, value=True)
+    savePath = mc.textField("batcherSavepathLE", query=True, text=True)
+    logPath = mc.textField("batcherLogSavepathLE", query=True, text=True)
+
+    batcherDoBatches(nodes, RESULTS, batchName, code, force, savefile, savePath, logPath, "batcherProgressBar", 1)
+
+def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePath, logPath, inProgressBar=None, inMode=0):
+    if inProgressBar is not None:
+        mc.control(inProgressBar, edit=True, visible=True)
+
+        mc.progressBar( inProgressBar,
+        edit=True,
+        beginProgress=True,
+        isInterruptable=True,
+        status="Executing " + batchName,
+        maxValue=len(nodes))
 
     successes = []
     failures = []
     skips = []
 
     for node in nodes:
-        variables = RESULTS[node]
+        thisVariables = variables[node]
         dirname, filename = os.path.split(os.path.abspath(node))
-        savefilePath = getSavePath(mc.textField("batcherSavepathLE", query=True, text=True), node, filename.split(".")[0], variables)
+        savefilePath = getSavePath(savePath, node, filename.split(".")[0], thisVariables)
+        logFilePath = getLogPath(logPath, node, filename.split(".")[0], thisVariables)
+        result = None
 
-        result = doBatch(batchName, node, code, False, force, savefile, savefilePath)
+        if inMode == 0:
+            result = doBatch(batchName, node, code, False, force, savefile, savefilePath, thisVariables, logFilePath)
+        else:
+            #Save the variables we need to options
+            optionsDic = {
+                "batchName":batchName,
+                "node":node,
+                "code":code,
+                "simulate":False,
+                "force":force,
+                "saveFile":savefile,
+                "savefilePath":savefilePath,
+                "variables":thisVariables,
+                "logpath":logPath
+                }
+
+            tmpFile = tempfile.NamedTemporaryFile(prefix='tkBatcher',suffix='.json', delete=False)
+            tmpFileName = tmpFile.name
+            try:
+                Options(optionsDic).save(tmpFile)
+
+                coreOptions = tkc.getOptions()
+
+                #Call mayabatch tkBatcherDo.py tmpFile.name
+                scriptPath = os.path.join(locationModule.OscarModuleLocation(), "tkBatcherDo.py")
+
+                cmdLine = "\"{0}\" {1} {2}".format(coreOptions["mayabatchpath"], scriptPath, tmpFile.name)
+                p = subprocess.Popen(cmdLine, shell=True, stdout = subprocess.PIPE)
+                stdout, stderr = p.communicate()
+                result = "Toonkit mayabatcher : result True" in stdout
+                #print "p.returncode",p.returncode
+                #print "stdout",stdout
+                #print "stderr",stderr
+            except Exception, e:
+                print "Error : Can't execute batch : {0} ({1})".format(batchName, e) 
+            finally:
+                os.remove(tmpFileName)
+
         if result == None:
             skips.append(node)
         elif result:
@@ -206,10 +276,12 @@ def batcherDoBatchClick(*args):
         else:
             failures.append(node)
 
-        pc.progressBar("batcherProgressBar", edit=True, step=1)
+        if inProgressBar is not None:
+            pc.progressBar(inProgressBar, edit=True, step=1)
 
-    mc.progressBar("batcherProgressBar", edit=True, endProgress=True)
-    mc.control("batcherProgressBar", edit=True, visible=False)
+    if inProgressBar is not None:
+        mc.progressBar(inProgressBar, edit=True, endProgress=True)
+        mc.control(inProgressBar, edit=True, visible=False)
 
     print "{0} failed, {1} succeeded, {2} skipped".format(len(failures), len(successes), len(skips))
     if len(failures) > 0:
@@ -219,13 +291,40 @@ def batcherDoBatchClick(*args):
     if len(skips) > 0:
         print "skipped : " + ",".join(skips)
 
+def batcherSaveClick(*args):
+    oldPath = mc.textField("batcherFilePathLE", query=True, text=True)
+    dirname, filename = os.path.split(oldPath)
+
+    startingDirectory = dirname
+
+    pyFilePath = mc.fileDialog2(caption="Save a .py batch file", fileFilter="Python (*.py)(*.py)", startingDirectory=oldPath, dialogStyle=1, fileMode=0)
+    if pyFilePath == None:
+        return
+
+    with open(pyFilePath[0], "w") as pyFile:
+        pyFile.write(mc.textField("batcherCodeInputLE", query=True, text=True))
+    
+    optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
+
+    options = Options()
+    options["path"] = mc.textField("batcherPathLE", query=True, text=True)
+    options["selection"] = mc.checkBox("batcherSelectionCB", query=True, value=True)
+    options["saveByDefault"] = mc.checkBox("batcherSaveByDefaultCB", query=True, value=True)
+    options["savePath"] = mc.textField("batcherSavepathLE", query=True, text=True)
+    options["skip"] = mc.checkBox("batcherSkipCB", query=True, value=True)
+    options["logSavePath"] = mc.textField("batcherLogSavepathLE", query=True, text=True)
+
+    options.save(optionsPath)
+
+    mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
+
 def batcherOpenClick(*args):
-    dirname, filename = os.path.split(os.path.abspath(__file__))
-    rawFilename = os.path.splitext(filename)[0]
+    oldPath = mc.textField("batcherFilePathLE", query=True, text=True)
+    dirname, filename = os.path.split(oldPath)
 
-    startingDirectory = os.path.join(dirname, rawFilename + "_Batches")
+    startingDirectory = dirname
 
-    pyFilePath = mc.fileDialog2(caption="Select a .py batch file", fileFilter="Python (*.py)(*.py)", startingDirectory=startingDirectory, dialogStyle=2, fileMode=1)
+    pyFilePath = mc.fileDialog2(caption="Select a .py batch file", fileFilter="Python (*.py)(*.py)", startingDirectory=startingDirectory, dialogStyle=1, fileMode=1)
     if pyFilePath == None:
         return
 
@@ -236,8 +335,21 @@ def batcherOpenClick(*args):
 
     dirname, filename = os.path.split(os.path.abspath(pyFilePath[0]))
 
-    mc.textField("batcherNameLE", edit=True, text=filename.split(".")[0])
+    mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
     mc.textField("batcherCodeInputLE", edit=True, text=content)
+    mc.textField("batcherFilePathLE", edit=True, text=pyFilePath[0])
+
+    optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
+    if os.path.isfile(optionsPath):
+        options = Options(inPath=optionsPath)
+        mc.textField("batcherPathLE", edit=True, text=options["path"])
+        mc.checkBox("batcherSelectionCB", edit=True, value=options["selection"])
+        mc.checkBox("batcherSaveByDefaultCB", edit=True, value=options["saveByDefault"])
+        mc.textField("batcherSavepathLE", edit=True, text=options["savePath"])
+        mc.checkBox("batcherSkipCB", edit=True, value=options["skip"])
+        mc.textField("batcherLogSavepathLE", edit=True, text=options["logSavePath"])
+
+    mc.button("batcherSaveBT", edit=True, enable=True)
 
 def batcherSelectSuccessClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)
@@ -248,9 +360,10 @@ def batcherSelectSuccessClick(*args):
     for nodeText in nodesText:
         path = nodeText.split("(")[1][:-1]
         dirname, filename = os.path.split(path)
-        rawFilename = os.path.splitext(filename)[0]
+        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, filename.split(".")[0], RESULTS[path])
+        logFilePath = os.path.join(logDirPath, mc.textField("batcherNameLE", query=True, text=True) + ".ok")
 
-        if os.path.isfile(os.path.join(dirname, rawFilename + "_Batches", batchName + ".ok")):
+        if os.path.isfile(logFilePath):
             success.append(nodeText)
 
     mc.textScrollList("batcherNodesLB", edit=True, deselectAll=True)
@@ -267,9 +380,10 @@ def batcherSelectFailureClick(*args):
     for nodeText in nodesText:
         path = nodeText.split("(")[1][:-1]
         dirname, filename = os.path.split(path)
-        rawFilename = os.path.splitext(filename)[0]
+        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, filename.split(".")[0], RESULTS[path])
+        logFilePath = os.path.join(logDirPath, mc.textField("batcherNameLE", query=True, text=True) + ".ko")
 
-        if os.path.isfile(os.path.join(dirname, rawFilename + "_Batches", batchName + ".ko")):
+        if os.path.isfile(logFilePath):
             failure.append(nodeText)
 
     mc.textScrollList("batcherNodesLB", edit=True, deselectAll=True)
@@ -286,9 +400,12 @@ def batcherSelectNoneClick(*args):
     for nodeText in nodesText:
         path = nodeText.split("(")[1][:-1]
         dirname, filename = os.path.split(path)
-        rawFilename = os.path.splitext(filename)[0]
+        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, filename.split(".")[0], RESULTS[path])
+        logFilePathRoot = os.path.join(logDirPath, mc.textField("batcherNameLE", query=True, text=True))
+        logFilePath = logFilePathRoot + ".ok"
+        logFilePath2 = logFilePathRoot + ".ko"
 
-        if not os.path.isfile(os.path.join(dirname, rawFilename + "_Batches", batchName + ".ok")) and not os.path.isfile(os.path.join(dirname, rawFilename + "_Batches", batchName + ".ko")):
+        if not os.path.isfile(logFilePath) and not os.path.isfile(logFilePath2):
             none.append(nodeText)
 
     mc.textScrollList("batcherNodesLB", edit=True, deselectAll=True)
@@ -314,8 +431,9 @@ def connectControls():
     
     mc.button("batcherSimBT", edit=True, c=batcherSimClick)
     mc.button("batcherDoBatchBT", edit=True, c=batcherDoBatchClick)
+    mc.button("batcherDoMayaBatchBT", edit=True, c=batcherDoMayaBatchClick)
     mc.button("batcherOpenBT", edit=True, c=batcherOpenClick)
-
+    mc.button("batcherSaveBT", edit=True, c=batcherSaveClick)
     mc.button("batcherSelectSuccessBT", edit=True, c=batcherSelectSuccessClick)
     mc.button("batcherSelectFailureBT", edit=True, c=batcherSelectFailureClick)
     mc.button("batcherSelectNoneBT", edit=True, c=batcherSelectNoneClick)

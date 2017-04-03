@@ -2899,11 +2899,15 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
         connection = attr.get()
         nodeName, attrName = connection.split(".")
         if swapNamespace != None:
-            if ":" in nodeName:
-                nodeName = nodeName.replace(nodeName.split(":")[0], swapNamespace)
+            if len(swapNamespace) > 0:
+                if ":" in nodeName:
+                    nodeName = nodeName.replace(nodeName.split(":")[0], swapNamespace)
+                else:
+                    nodeName = swapNamespace + ":" + nodeName
             else:
-                nodeName = swapNamespace + ":" + nodeName
-        
+                if ":" in nodeName:
+                    nodeName = nodeName.split(":")[-1]             
+
         if not nodeName in notFoundNodes:
             if not nodeName in foundNodes:
                 if pc.objExists(nodeName):

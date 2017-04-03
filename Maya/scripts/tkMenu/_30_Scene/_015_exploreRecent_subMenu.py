@@ -8,10 +8,8 @@ def get():
     files = pc.optionVar(query="RecentFilesList")
     if isinstance(files, list):
         for item in files:
-            baseName = os.path.dirname(item)
-            if not baseName in items:
-                items.append(baseName)
-                subMenuItems.append((baseName, baseName))
+            items.append(item)
+            subMenuItems.append((item, item))
 
     return subMenuItems
 

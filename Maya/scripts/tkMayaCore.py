@@ -128,7 +128,7 @@ import pymel.core.datatypes as dt
 from pymel import versions
 
 import locationModule
-
+from tkToolOptions.tkOptions import Options
 import OscarZmqString as ozs
 import PAlt as palt
 
@@ -144,6 +144,8 @@ __author__ = "Cyril GIBAUD - Toonkit"
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 VERSIONINFO = "RC 1.56"
+
+CORE_OPTIONS = None
 
 WORLDSPACE = "world"
 OBJECTSPACE = "object"
@@ -249,10 +251,10 @@ CONST_EPSILON = 0.0001
 
 oscarmodulepath = locationModule.OscarModuleLocation()
 #we arrived in "Scripts" folder, go up one step
-oscarmodulepath = os.path.join(os.path.split(oscarmodulepath)[:-1])[0]
+oscarmodulepath = os.path.abspath(os.path.join(oscarmodulepath, os.pardir))
 
-SYNOPTIKPATH = oscarmodulepath + "\\Standalones\\SynopTiK\\SynopTiK.exe"
-MIMETIKPATH = oscarmodulepath + "\\Standalones\\MimeTiK\\MimeTiK.exe"
+SYNOPTIKPATH = os.path.join(oscarmodulepath, "Standalones", "SynopTiK", "SynopTiK.exe")
+MIMETIKPATH = os.path.join(oscarmodulepath, "Standalones", "MimeTiK", "MimeTiK.exe")
 
 UNITS_RATIO = { "mm":0.1,
                 "millimeter":0.1,
@@ -287,6 +289,33 @@ PROJECT_INFO = None
               |_|                  
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+def getOptions():
+    global CORE_OPTIONS
+
+    if CORE_OPTIONS is None:
+        optionsPath = os.path.abspath(os.path.join(oscarmodulepath, os.pardir, "Preferences", "core.json"))
+
+        if os.path.isfile(optionsPath):
+            CORE_OPTIONS = Options(None, optionsPath)
+            CORE_OPTIONS.load()
+        else:
+            defaultOptions = Options.OrderedDict()
+
+            defaultOptions["mayaroot"] = os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin")
+            defaultOptions["mayapath"] = os.path.join(defaultOptions["mayaroot"], "maya.exe")
+            defaultOptions["mayabatchpath"] = os.path.join(defaultOptions["mayaroot"], "mayabatch.exe")
+            defaultOptions["hidemenu"] = False
+            defaultOptions["hookmayabatch"] = True
+
+            CORE_OPTIONS = Options(defaultOptions, optionsPath)
+            CORE_OPTIONS.save()
+
+    return CORE_OPTIONS
+
+def saveOptions():
+    if not CORE_OPTIONS is None:
+        CORE_OPTIONS.save()
 
 def haveVariables(inPath, inCustomVariables=None):
     if inCustomVariables != None:
@@ -4707,6 +4736,22 @@ def executeCode(strcode, strlng=1, functionName="", args=[]):
 
     return rslt
     """
+
+def executeFile(path, strlng=1, functionName="", args=[]):
+    code = None
+    try:
+        #print "executeFile(path={0}, strlng={1}, functionName={2}, args={3})".format(path, strlng, functionName, args)
+        with open(path, 'r') as content_file:
+            code = content_file.read()
+            #print "executeFile code :\n{0}".format(code)
+    except:
+        return None
+
+    if len(functionName) > 0 and not "def do(" in code:
+        functionName = ""
+
+    return executeCode(code, strlng, functionName, args)
+
 def executeCode2(strcode, strlng=1, functionName="", args=[]):
     rslt = []
     if strlng == 0:#Auto-detect

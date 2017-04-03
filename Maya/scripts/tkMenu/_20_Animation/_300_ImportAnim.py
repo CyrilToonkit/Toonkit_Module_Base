@@ -13,5 +13,9 @@ if result == 'OK' or result == 'Remove old':
     namespace = None
     if result == 'OK':
         namespace = pc.promptDialog(query=True, text=True)
+        if len(namespace) == 0:
+            namespace = None
+    else:
+        namespace = ""
 
     tkRig.importAnim(swapNamespace=namespace)

@@ -96,6 +96,40 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_8">
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>File path :</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="batcherFilePathLE"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="batcherOpenBT">
+          <property name="text">
+           <string>Open...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="batcherSaveBT">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Save...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <property name="topMargin">
          <number>0</number>
@@ -111,13 +145,6 @@
          <widget class="QLineEdit" name="batcherNameLE">
           <property name="text">
            <string>LogName</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="batcherOpenBT">
-          <property name="text">
-           <string>Open...</string>
           </property>
          </widget>
         </item>
@@ -166,7 +193,8 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;#saveFilePath : (string) the path to save the file to&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;#saveFile : (bool) tells if we have to save the file in the end (default can change, see UI)&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;#success : (bool) tells if the batch is a success (default True, always False if script failed)&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt;&quot;&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;print fileName&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;saveFile = False&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
@@ -189,7 +217,7 @@ p, li { white-space: pre-wrap; }
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_5">
         <property name="topMargin">
-         <number>10</number>
+         <number>0</number>
         </property>
         <item>
          <widget class="QCheckBox" name="batcherSaveByDefaultCB">
@@ -260,6 +288,27 @@ p, li { white-space: pre-wrap; }
        </layout>
       </item>
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_9">
+        <property name="topMargin">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Log files output</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="batcherLogSavepathLE">
+          <property name="text">
+           <string>os.path.join(os.path.split(#filePath)[0], #fileName + &quot;_Batches&quot;)</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <property name="topMargin">
          <number>0</number>
@@ -275,6 +324,13 @@ p, li { white-space: pre-wrap; }
          <widget class="QPushButton" name="batcherDoBatchBT">
           <property name="text">
            <string>DO BATCH</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="batcherDoMayaBatchBT">
+          <property name="text">
+           <string>DO WITH MAYABATCH</string>
           </property>
          </widget>
         </item>
@@ -479,6 +535,70 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>101</x>
      <y>195</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoMayaBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>595</x>
+     <y>789</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>51</x>
+     <y>436</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoMayaBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>selectAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>595</x>
+     <y>789</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>361</x>
+     <y>620</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoMayaBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>copy()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>595</x>
+     <y>789</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>361</x>
+     <y>620</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherDoMayaBatchBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>paste()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>595</x>
+     <y>789</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>51</x>
+     <y>436</y>
     </hint>
    </hints>
   </connection>

@@ -1,7 +1,7 @@
 """
 ------------------------- LICENCE INFORMATION -------------------------------
     This file is part of Toonkit Module Lite, Python Maya library and module.
-    Author : Stephane Bonnot - Parallel Dev
+    Author : Cyril GIBAUD - Toonkit
     Copyright (C) 2014-2017 Toonkit
     http://toonkit-studio.com/
 
@@ -19,13 +19,4 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
-import os
-
-__author__ = "Stephane Bonnot - Parallel Dev"
-
-#DEPRECATE
-def OscarModuleLocation():
-	return get()
-
-def get():
-    return os.path.dirname(os.path.realpath(__file__))
+__author__ = "Cyril GIBAUD - Toonkit"

@@ -54,18 +54,19 @@ import TKuserSetup
 pc.mel.eval("source abSymMesh")
 pc.mel.eval("source qa_skinPasterUI")
 
-#if mayabatch and supplied arguments contains a script, execute items
-app = sys.executable
-if ("mayabatch.exe" in app and len(sys.argv) > 1):
-    fileName, fileExtension = os.path.splitext(sys.argv[1])
-    if ".py" in fileExtension and os.path.isfile(sys.argv[1]):
-        import mayaexecpythonfile
-        print "Environment loaded from Maya batch, try to execute script from arguments (%s)" % str(sys.argv)
-        try:
-            mayaexecpythonfile.execpythonfile(sys.argv[1])
-        except:
-            pass
-    else:
-        pc.warning("Incorrect python script file argument (%s). File cannot be found or have incorrect extension (.py, .pyw) !" % sys.argv[1])
+coreOptions = tkc.getOptions()
 
-cmds.evalDeferred(TKuserSetup.menu)
+#if mayabatch and supplied arguments contains a script, execute, else show menu
+app = sys.executable
+if "mayabatch" in app:
+    if len(sys.argv) > 1:
+        args = sys.argv[1:]
+        fileName, fileExtension = os.path.splitext(args[0])
+        if coreOptions["hookmayabatch"] and ".py" in fileExtension and os.path.isfile(args[0]):
+            result = None
+            print "Toonkit mayabatcher : environment loaded from Maya batch, execute script from arguments (%s)" % str(args)
+            result = tkc.executeFile(args[0], strlng=1, functionName="do", args=[] if len(args) == 0 else args[1:])
+            print "Toonkit mayabatcher : result {0}".format(result)
+else:
+    if not coreOptions["hidemenu"]:
+        cmds.evalDeferred(TKuserSetup.menu)
