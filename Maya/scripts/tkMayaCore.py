@@ -1665,12 +1665,38 @@ def setLimits(inNode,   inMinTx=1, inMaxTx=-1, inMinTy=1, inMaxTy=-1, inMinTz=1,
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-def getChildren(node, recursive, filterNeutrals=True, filterProps=True):
-    childrenNodes = pc.listRelatives(node,children= not recursive, allDescendents=recursive)
+def getChildrenRecursively(node, filterNeutrals=True, filterProps=True, useIgnoreTags=False):
+    childrenNodes = pc.listRelatives(node,children=True)
     childrenFilteredNodes = []
+
     for child in childrenNodes:
         if (child.type() == "transform" or child.type() == "joint") and (not filterProps or not isProperty(child)):
             curChild = child
+
+            if useIgnoreTags and len(getParameters(curChild, containerName="OscarAttributes")) > 0:
+                continue
+
+            if not isNeutralPose(curChild):
+                childrenFilteredNodes.append(curChild)
+
+            childrenFilteredNodes.extend(getChildrenRecursively(curChild, filterNeutrals=filterNeutrals, filterProps=filterProps, useIgnoreTags=useIgnoreTags))
+
+    return childrenFilteredNodes
+
+def getChildren(node, recursive, filterNeutrals=True, filterProps=True, useIgnoreTags=False):
+    if recursive and useIgnoreTags:
+        return getChildrenRecursively(node, filterNeutrals, filterProps, useIgnoreTags)
+
+    childrenNodes = pc.listRelatives(node,children= not recursive, allDescendents=recursive)
+    childrenFilteredNodes = []
+
+    for child in childrenNodes:
+        if (child.type() == "transform" or child.type() == "joint") and (not filterProps or not isProperty(child)):
+            curChild = child
+
+            if useIgnoreTags and len(getParameters(curChild, containerName="OscarAttributes")) > 0:
+                continue
+
             if not recursive:
                 while(isNeutralPose(curChild)):
                     neutralChildren = pc.listRelatives(curChild,children=True)
