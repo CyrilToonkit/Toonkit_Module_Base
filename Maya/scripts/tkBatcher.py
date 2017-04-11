@@ -178,8 +178,8 @@ def batcherSimClick(*args):
     for node in nodes:
         variables = RESULTS[node]
         dirname, filename = os.path.split(os.path.abspath(node))
-        savefilePath = getSavePath(mc.textField("batcherSavepathLE", query=True, text=True), node, filename.split(".")[0], variables)
-        logFilePath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), node, filename.split(".")[0], variables)
+        savefilePath = getSavePath(mc.textField("batcherSavepathLE", query=True, text=True), node, os.path.splitext(filename)[0], variables)
+        logFilePath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), node, os.path.splitext(filename)[0], variables)
 
         doBatch(batchName, node, code, True, force, savefile, savefilePath, variables, logFilePath)
         pc.progressBar("batcherProgressBar", edit=True, step=1)
@@ -227,8 +227,8 @@ def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePat
     for node in nodes:
         thisVariables = variables[node]
         dirname, filename = os.path.split(os.path.abspath(node))
-        savefilePath = getSavePath(savePath, node, filename.split(".")[0], thisVariables)
-        logFilePath = getLogPath(logPath, node, filename.split(".")[0], thisVariables)
+        savefilePath = getSavePath(savePath, node, os.path.splitext(filename)[0], thisVariables)
+        logFilePath = getLogPath(logPath, node, os.path.splitext(filename)[0], thisVariables)
         result = None
 
         if inMode == 0:
@@ -360,7 +360,7 @@ def batcherSelectSuccessClick(*args):
     for nodeText in nodesText:
         path = nodeText.split("(")[1][:-1]
         dirname, filename = os.path.split(path)
-        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, filename.split(".")[0], RESULTS[path])
+        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, os.path.splitext(filename)[0], RESULTS[path])
         logFilePath = os.path.join(logDirPath, mc.textField("batcherNameLE", query=True, text=True) + ".ok")
 
         if os.path.isfile(logFilePath):
@@ -380,7 +380,7 @@ def batcherSelectFailureClick(*args):
     for nodeText in nodesText:
         path = nodeText.split("(")[1][:-1]
         dirname, filename = os.path.split(path)
-        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, filename.split(".")[0], RESULTS[path])
+        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, os.path.splitext(filename)[0], RESULTS[path])
         logFilePath = os.path.join(logDirPath, mc.textField("batcherNameLE", query=True, text=True) + ".ko")
 
         if os.path.isfile(logFilePath):
@@ -400,7 +400,7 @@ def batcherSelectNoneClick(*args):
     for nodeText in nodesText:
         path = nodeText.split("(")[1][:-1]
         dirname, filename = os.path.split(path)
-        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, filename.split(".")[0], RESULTS[path])
+        logDirPath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), path, os.path.splitext(filename)[0], RESULTS[path])
         logFilePathRoot = os.path.join(logDirPath, mc.textField("batcherNameLE", query=True, text=True))
         logFilePath = logFilePathRoot + ".ok"
         logFilePath2 = logFilePathRoot + ".ko"
