@@ -158,7 +158,7 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
         pc.warning("External menu {0} returned invalid value '{1}', must be a string representing a folder absolute path ' !".format(in_scriptPath, folderPath))
         return
 
-    if not os.path.isdir(folderPath):
+    if not os.path.isdir(folderPath) and (not inServer or not os.path.isdir(folderPath.replace(SERVER_PATH_SUBST[0], SERVER_PATH_SUBST[1]))):
         pc.warning("External menu {0}, folder not found '{1}' !".format(in_scriptPath, folderPath))
         return
 
