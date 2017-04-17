@@ -1131,7 +1131,7 @@ def applyPreset(in_nAsset, preset, asOverrides=False):
 
     refreshOverrides(in_nAsset, asOverrides)
 
-def cleanCurrent(in_nAsset, asBatch=False):
+def cleanCurrent(in_nAsset, asBatch=False, alternateRoots=None):
     if in_nAsset == None:
         sel = pc.selected()
         if len(sel) > 0:
@@ -1165,12 +1165,18 @@ def cleanCurrent(in_nAsset, asBatch=False):
                 tkc.freeze(obj)
                 pc.delete(obj)
 
-        #rename objects in Geometries if they end with the variation name
+        #rename objects in Geometries if they end with the variation name      
         toRename = {}
         outfitsProperty = getProperty(in_nAsset, 'tk'+OUTFIT_TAG)
         if outfitsProperty != None:
             parent = outfitsProperty.getParent()
             geoObjs = tkc.getChildren(parent, True)
+
+            if alternateRoots:
+                for alternateRoot in alternateRoots:
+                    if pc.objExists(alternateRoot):
+                        geoObjs.extend(tkc.getChildren(pc.PyNode(alternateRoot), True))
+
             for geoObj in geoObjs:
                 origName = geoObj.name()
                 for value in values:
@@ -1292,7 +1298,7 @@ def replaceVariables(in_sPath, in_sPreset="", in_iDropFirst=0, in_iDropLast=0, i
 
     return replaced + postFix
 
-def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileName, in_iDropFirst=0, in_iDropLast=0, in_sDropSeparator="_", in_bSimulate=True):
+def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileName, in_iDropFirst=0, in_iDropLast=0, in_sDropSeparator="_", in_bSimulate=True, in_lAlternateRoots=None):
     print "exportVariations(in_nAsset={0}, in_sSourcePath={1}, in_sExportPath={2}, in_sExportFileName={3}, in_iDropFirst*={4}, in_iDropLast*={5}, in_sDropSeparator*={6}, in_bSimulate=*{7})".format(in_nAsset.name(),
                                                                             in_sSourcePath,
                                                                             in_sExportPath,
@@ -1330,7 +1336,7 @@ def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileNa
 
                 if not in_bSimulate:
                     exportPath = os.path.join(exportFolder, exportFileName)
-                    cleanCurrent(in_nAsset, True)
+                    cleanCurrent(in_nAsset, True, in_lAlternateRoots)
 
                     #Execute variation postscript
                     postScriptPath = os.path.join(exportFolder, preset + ".py")
