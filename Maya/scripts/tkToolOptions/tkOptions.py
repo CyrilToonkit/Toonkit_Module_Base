@@ -20,31 +20,41 @@
 -------------------------------------------------------------------------------
 """
 
-import json
+import simplejson as json
 import os
 import collections
-import ordereddict
+from simplejson import ordered_dict as ordereddict
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
 DEFAULT_DESC = "No description"
 
+TYPES_SIBLINGS =  { "unicode":"str"    
+}
+
 class Option(object):
     """
     Base class for simple option, with a name, description and default value
     """
-    def __init__(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False):
+    def __init__(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
         self.name = inName
-        self.niceName = inName if inNiceName is None else inNiceName
+        self.set(inValue, inDescription, inNiceName, inOptional, inCategory)
+        self._type = None
+
+
+    def set(self, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
+        self.niceName = self.name if inNiceName is None else inNiceName
         self.defaultValue = inValue
         self.description = inDescription
         self.optional = inOptional
-        self._type = None
+        self.category = inCategory
 
     @property
     def type(self):
         if self._type is None:
             self._type = type(self.defaultValue).__name__
+            if self._type in TYPES_SIBLINGS:
+                self._type = TYPES_SIBLINGS[self._type]
 
         return self._type
 
@@ -67,6 +77,16 @@ class Options(object):
             for key, value in self.__data.iteritems():
                 self.addOption(key, value)
 
+        self._changedCallbacks = []
+
+    def getOption(self, inName, inValue=None, inOptions=None):
+        options = inOptions or self.__options
+        for opt in options:
+            if opt.name == inName:
+                return opt
+
+        return self.addOption(inName, inValue)
+
     """
     brackets overload
     """
@@ -74,7 +94,10 @@ class Options(object):
         return None if not key in self.__data else self.__data[key]
 
     def __setitem__(self, key, value):
+        oldVal = self.__data.get(key)
         self.__data[key] = value
+        if oldVal != value:
+            self._optionChanged(option=self.getOption(key, value), old=oldVal, new=value)
 
     def __repr__(self):
         if not self:
@@ -86,6 +109,10 @@ class Options(object):
 
     def __len__(self):
         return len(self.__data)
+
+    def __str__(self):
+        return str(self.data)
+
     """
     data property
     """
@@ -95,7 +122,17 @@ class Options(object):
 
     @data.setter
     def data(self, value):
+        changingValues = []
+        for key, dataValue in value.iteritems():
+            oldVal = self.__data.get(key)
+            if oldVal != dataValue:
+                changingValues.append({"option":self.getOption(key, dataValue), "old":oldVal, "new":dataValue})
+
         self.__data = value
+
+        if len(changingValues) > 0:
+            for changingValue in changingValues:
+                self._optionChanged(**changingValue)
 
     """
     path property to ease the save/load process
@@ -113,12 +150,12 @@ class Options(object):
         return self.__options
 
     @staticmethod
-    def OrderedDict():
+    def OrderedDict(*args):
         orddict = None
         try:
-            orddict = collections.OrderedDict()
+            orddict = collections.OrderedDict(*args)
         except:
-            orddict = ordereddict.OrderedDict()
+            orddict = ordereddict.OrderedDict(*args)
 
         return orddict
 
@@ -134,22 +171,41 @@ class Options(object):
 
     @staticmethod
     def deserialize(strObj):
-        jsonObj = json.loads(strObj)
+        jsonObj = json.loads(strObj, object_pairs_hook=Options.OrderedDict)
         return jsonObj
 
-    def addOption(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False):
+    def addOption(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
         if self.__options is None:
             self.__options = []
 
-        self.__options.append(Option(inName, inValue, inDescription, inNiceName, inOptional))
+        optionExists = False
+        for opt in self.__options:
+            if opt.name == inName:
+                optionExists = True
+                opt.set(inValue, inDescription, inNiceName, inOptional, inCategory)
+                break
+
+        if not optionExists:
+            opt = Option(inName, inValue, inDescription, inNiceName, inOptional, inCategory)
+            self.__options.append(opt)
+
         if not inName in self.__data:
             self.__data[inName] = inValue
+
+        return opt
 
     def keys(self):
         return self.data.keys()
 
-    def __str__(self):
-        return str(self.data)
+    def isSaved(self):
+        return os.path.isfile(self.__path)
+
+    def addCallback(self, callback):
+        self._changedCallbacks.append(callback)
+
+    def _optionChanged(self, *args, **kwargs):
+        for f in self._changedCallbacks:
+            f(*args, **kwargs)
 
     def save(self, inPath=None):
         isString = isinstance(inPath, basestring)

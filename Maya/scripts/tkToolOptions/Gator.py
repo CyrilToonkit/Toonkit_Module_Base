@@ -20,28 +20,29 @@
 -------------------------------------------------------------------------------
 """
 from tkOptions import Options
-from tkTool import Tool
+from tkMayaTool import MayaTool as Tool
 
 import pymel.core as pc
 import tkMayaCore as tkc
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-class gatorTool(Tool):
-    def __init__(self):
-        self.name = "Gator"
-        self.description = "Copy skinning across geometries (creating the skinCluster with appropriate influences, using Maya copy skin or direct weights table copy)"
-        self.usage = "Select any number of meshes to match first, then the ref mesh"
-        self.version = "1.0.0.0"
-        self.context = None
-        self.debug = False
+VERSIONINFO = "1.0.0.0"
 
-        self.opts = Options(inPath=self.getOptionsPath())
-        self.opts.addOption("CopyMatrices", False, "Match the influences bind poses", "Match bind poses")
-        self.opts.addOption("DirectCopy", False, "Copy the weights table (or use Maya copy skin)", "Strict copy (weights array)")
+class Gator(Tool):
+    def __init__(self, inContext=None, inDebug=False):
+        super(Gator, self).__init__(inName="Gator (copy skin)", inDescription="Copy skinning across geometries (creating the skinCluster with appropriate influences, using Maya copy skin or direct weights table copy)",
+            inUsage="Select any number of meshes to match first, then the ref mesh", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
+
+        self.options = Options(inPath=self.getOptionsPath())
+        self.options.addOption("CopyMatrices", False, "Match the influences bind poses", "Match bind poses")
+        self.options.addOption("DirectCopy", False, "Copy the weights table (or use Maya copy skin)", "Strict copy (weights array)")
+
+        if not self.options.isSaved():
+            self.saveOptions()
 
     def execute(self, *args, **kwargs):
-        super(gatorTool, self).execute(*args, **kwargs)
+        super(Gator, self).execute(*args, **kwargs)
 
         sel = pc.ls(sl=True)
         if len(sel) > 1:

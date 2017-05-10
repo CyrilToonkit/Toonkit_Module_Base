@@ -315,16 +315,18 @@ def toggleUI():
 def showUI():
 	global G_QTNAME 
 	cleanUI()
+
+	mainWindow = pc.mel.eval("$tmp = $gMainPane")
+	dockLayout = pc.paneLayout(configuration='single', parent=mainWindow)
+	dockName = pc.dockControl(allowedArea='all', area='right', floating=False, content=dockLayout, label='TK SI ToolBar', vcc=UIVisChanged)
+
 	G_QTNAME = createUI()
 	pc.showWindow(G_QTNAME)
-	pc.setParent(u=1)
-	dockLayout = pc.paneLayout(configuration='single')
 
 	#Initialization
 	showHide("Selection", True)
 	updateSelectionSets()
 
-	dockName = pc.dockControl(allowedArea='all', area='right', floating=False, content=dockLayout, label='TK SI ToolBar', vcc=UIVisChanged)
 	pc.control(G_QTNAME, e=True, parent=dockLayout)
 
 	pc.optionVar(stringValue=(G_OPT_DOCK, dockName)) 

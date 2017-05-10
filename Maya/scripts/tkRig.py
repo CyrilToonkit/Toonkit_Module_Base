@@ -1359,7 +1359,8 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
         joints.append(curJoint)
         
     #Effector
-    curJoint = pc.joint(p=crvShape.getPointAtParam(spans), name=namePrefix+"bone_eff", radius=jointSize)
+    param = crvShape.findParamFromLength(perc * inNbJoints)
+    curJoint = pc.joint(p=crvShape.getPointAtParam(param), name=namePrefix+"bone_eff", radius=jointSize)
     if oldJoint != None:
         pc.joint(oldJoint, edit=True, oj="xyz", sao="yup")
             
@@ -1387,9 +1388,17 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
                 pc.connectAttr(crvShape.name() + ".worldSpace[0]", crvInfo.name() + ".inputCurve")
                 
             length = pc.getAttr(crvInfo.name() + ".arcLength")
+            #restlength stores the default curve length
             if not pc.attributeQuery("restLength", node=crvInfo, exists=True):
                 pc.addAttr(crvInfo, sn="restLength")
             pc.setAttr(crvInfo.name() + ".restLength", length)
+
+            #stretch attr indicates if we scale with the curve or not
+            if not pc.attributeQuery("stretch", node=crvInfo, exists=True):
+                pc.addAttr(crvInfo, sn="stretch", dv=1.0)
+            pc.setAttr(crvInfo.name() + ".restLength", length)
+
+            #factoir returns the current length in regard to rest length
             if not pc.attributeQuery("factor", node=crvInfo, exists=True):
                 pc.addAttr(crvInfo, sn="factor")
                 mulDiv = pc.shadingNode("multiplyDivide", asUtility=True, name=crvInfoName + "_MulDiv")
@@ -1398,15 +1407,36 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
                 pc.connectAttr(crvInfo.name() + ".restLength", mulDiv.name() + ".input2X")
                 pc.connectAttr(mulDiv.name() + ".outputX", crvInfo.name() + ".factor")
             
+            #scale attr outputs final scaling
+            if not pc.attributeQuery("scale", node=crvInfo, exists=True):
+                pc.addAttr(crvInfo, sn="scale")
+                globScaleMul = pc.shadingNode("multDoubleLinear", asUtility=True, name=crvInfoName + "_GlobalScale_Mul")
+                crvInfo.stretch >> globScaleMul.input1
+                crvInfo.factor >> globScaleMul.input2
+
+                globScaleReverse = pc.shadingNode("reverse", asUtility=True, name=crvInfoName + "_GlobalScale_Reverse")
+                crvInfo.stretch >> globScaleReverse.inputX
+
+                globScaleAdd = pc.shadingNode("addDoubleLinear", asUtility=True, name=crvInfoName + "_GlobalScale_Add")
+                globScaleMul.output >> globScaleAdd.input1
+                globScaleReverse.outputX >> globScaleAdd.input2
+
+                globScaleAdd.output >> crvInfo.scale
+
             for curJoint in joints[1:]:
                 sclMul = pc.shadingNode("multDoubleLinear", asUtility=True, name=curJoint.name() + "_Scale_Mul")
-                pc.setAttr(sclMul.name() + ".input2", pc.getAttr(curJoint.name() + ".tx"))
-                pc.connectAttr(crvInfo.name() + ".factor", sclMul.name() + ".input1")
-                pc.connectAttr(sclMul.name() + ".output", curJoint.name() + ".tx")
+                sclMul.input2.set(curJoint.tx.get())
+                crvInfo.scale >> sclMul.input1
+
+                sclMul.output >> curJoint.tx
                     
             if inSquash:
+                if len(joints) - 2 <= 0:
+                    pc.warning("Too few joints to create squash rig, more than 2 expected !")
+                    return joints
+
                 clampScale = pc.shadingNode("clamp", asUtility=True, name=namePrefix +"Scale_Clamp")
-                pc.connectAttr(crvInfo.name() + ".factor", clampScale.name() + ".inputR")
+                crvInfo.scale >> clampScale.inputR
                 pc.setAttr(clampScale.name() + ".minR", 0.001)
                 pc.setAttr(clampScale.name() + ".maxR", 1000)
                 
@@ -1415,24 +1445,24 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
                 pc.setAttr(invertScale.name() + ".input1X", 1)
                 pc.connectAttr(clampScale.name() + ".outputR", invertScale.name() + ".input2X")
                 
-                if len(joints) - 2 <= 0:
-                    pc.warning("Too few joints to create squash rig, more than 2 expected !")
-                    return joints
+                if not pc.attributeQuery("bulge_factor", node=crvInfo, exists=True):
+                    pc.addAttr(crvInfo, sn="bulge_factor", dv=1.0)
 
                 for i in range(len(joints)):
                     perc = i / (len(joints) - 1.0)
 
                     if perc > 0.0 and perc < 1.0:
                         sclMul = pc.shadingNode("multDoubleLinear", asUtility=True, name=joints[i].name() + "_Squash_Mul")
-                        sclMul2 = pc.shadingNode("multDoubleLinear", asUtility=True, name=joints[i].name() + "_Squash2_Mul")
-                        pc.setAttr(sclMul.name() + ".input2", -math.pow((perc - 0.5) * 2,2)+1)
-                        pc.connectAttr(sclMul2.name() + ".output", sclMul.name() + ".input1")
-                        pc.setAttr(sclMul2.name() + ".input2", 1.0)
-                        
-                        pc.connectAttr(invertScale.name() + ".outputX", sclMul2.name() + ".input1")
-                        
-                        pc.connectAttr(sclMul.name() + ".output", joints[i].name() + ".sy")
-                        pc.connectAttr(sclMul.name() + ".output", joints[i].name() + ".sz")
+                        crvInfo.bulge_factor >> sclMul.input1
+                        sclMul.input2.set(-math.pow((perc - 0.5) * 2,2)+1)
+
+                        sclPow = pc.shadingNode("multiplyDivide", asUtility=True, name=joints[i].name() + "_Squash_Pow")
+                        sclPow.operation.set(3)#Power
+                        invertScale.outputX >> sclPow.input1X
+                        sclMul.output >> sclPow.input2X
+
+                        sclPow.outputX >> joints[i].sy
+                        sclPow.outputX >> joints[i].sz
     return joints
 
 def importRig(path, newName="", newRootName=""):

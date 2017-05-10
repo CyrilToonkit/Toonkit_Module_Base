@@ -226,23 +226,23 @@ def UIVisChanged(args):
     pc.evalDeferred("tkDevHelpers.cleanIfHidden()")
 
 def cleanIfHidden():
-    if pc.window('devMateUI', q=True, exists=True):
-       if not pc.control("devMateDockControl", query=True, visible=True):
+   if not pc.control("devMateDockControl", query=True, visible=True):
+        if pc.window('devMateUI', q=True, exists=True):
             pc.deleteUI('devMateUI')
-            pc.deleteUI('devMateDockControl')
+        pc.deleteUI('devMateDockControl')
 
 def devMateUI(*inArgs):
     if (pc.window('devMateUI', q=True, exists=True)):
         pc.deleteUI('devMateUI')
 
+    mainWindow = pc.mel.eval("$tmp = $gMainPane")
+    dockLayout = pc.paneLayout(configuration='single', parent=mainWindow)
+    dockName = pc.dockControl("devMateDockControl", allowedArea='all', area='top', floating=False, content=dockLayout, label="Dev' Mate", vcc=UIVisChanged)
+ 
     dirname, filename = os.path.split(os.path.abspath(__file__))
     ui = pc.loadUI(uiFile=dirname + "\\UI\\tkDevMate.ui")
     pc.showWindow(ui)
 
-    pc.setParent(u=1)
-    dockLayout = pc.paneLayout(configuration='single')
-
-    dockName = pc.dockControl("devMateDockControl", allowedArea='all', area='top', floating=False, content=dockLayout, label="Dev' Mate", vcc=UIVisChanged)
     pc.control(ui, e=True, parent=dockLayout)
 
     filtersChanged()

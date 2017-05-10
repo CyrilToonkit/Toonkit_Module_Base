@@ -33,6 +33,7 @@ __author__ = "Cyril GIBAUD - Toonkit"
 SEP = False#Indicates if last item was a separator
 
 SUFFIX_OPTIONBOX = "_optionBox"
+SUFFIX_TOOL = "_tkTool"
 SUFFIX_SUBMENU = "_subMenu"
 SUFFIX_EXTERNALMENU = "_externalMenu"
 
@@ -50,7 +51,7 @@ MENUFORMAT_REPLACE = {
 #Todo : implement this at Oscar project level
 SERVER_PATH_SUBST = ("Z:\\Toonkit\\","\\\\NHAMDS\\Toonkit\\ToonKit\\")
 
-def menuFormat(in_rawName, inLocal=False, inServer=False):
+def menuFormat(in_rawName, inLocal=False, inServer=False, inMakeNice=True):
     formattedName = in_rawName
 
     if '.' in formattedName:
@@ -76,17 +77,18 @@ def menuFormat(in_rawName, inLocal=False, inServer=False):
     seps = ["-","_"," "]
     formattedName = formattedName.strip("".join(seps))
 
-    #Un-camelCase
-    formattedName = MENUFORMAT_REG.sub(r" \1", formattedName).lower()
-    
-    #Remove underscores
-    formattedName = formattedName.replace("_", " ")
+    if inMakeNice:
+        #Un-camelCase
+        formattedName = MENUFORMAT_REG.sub(r" \1", formattedName).lower()
+        
+        #Remove underscores
+        formattedName = formattedName.replace("_", " ")
 
-    #Upper first letter
-    formattedName = formattedName[0].upper() + formattedName[1:]
+        #Upper first letter
+        formattedName = formattedName[0].upper() + formattedName[1:]
 
-    if inLocal:
-        formattedName += (" (local override)" if inServer else " (local only)")
+        if inLocal:
+            formattedName += (" (local override)" if inServer else " (local only)")
 
     return formattedName
 
@@ -219,6 +221,26 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                     else:
                         pc.menuItem(divider=True, parent=in_parentMenuItem)
                 SEP=True
+
+            elif element.endswith(SUFFIX_TOOL+elementExt):#tool subMenu (ends with SUFFIX_TOOL)
+                toolName = menuFormat(element, inMakeNice=False)[:-len(SUFFIX_TOOL)]
+                CORETOOL = tkc.getTool()
+                tool = CORETOOL.getChildTool(toolName)
+
+                if tool:
+                    elementName = tool.name
+                    if pc.menuItem(elementName + SUFFIX_OPTIONBOX, exists=True):
+                        pc.deleteUI(elementName + SUFFIX_OPTIONBOX)
+                    if pc.menuItem(elementName + "Item", exists=True):
+                        pc.deleteUI(elementName + "Item")
+
+                    if tool.hasUI:
+                        pc.menuItem(elementName + "Item", label=elementName, parent=in_parentMenuItem, aob=True, command=tool.showUI)
+                    else:
+                        pc.menuItem(elementName + "Item", label=elementName, parent=in_parentMenuItem, aob=True, command=tool.executeUI)
+                        pc.menuItem(elementName + "OptionBox", optionBox=True, command=tool.showUI)
+                else:
+                    pc.warning("Can't retrieve instance of tool {0} !".format(toolName))
 
             elif element.endswith(SUFFIX_SUBMENU+elementExt):#dynamic subMenu (ends with SUFFIX_SUBMENU)
                 generateDynamicItems(in_parentMenuItem, fullpath, local, server)

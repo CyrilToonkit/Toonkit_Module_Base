@@ -131,6 +131,7 @@ import locationModule
 from tkToolOptions.tkOptions import Options
 import OscarZmqString as ozs
 import PAlt as palt
+import tkToolOptions.ToonkitMayaCore as ToonkitMayaCore
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -142,10 +143,6 @@ __author__ = "Cyril GIBAUD - Toonkit"
   \____\___/|_| |_|___/\__\__,_|_| |_|\__|___/
                                              
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-VERSIONINFO = "RC 1.56"
-
-CORE_OPTIONS = None
 
 WORLDSPACE = "world"
 OBJECTSPACE = "object"
@@ -280,6 +277,8 @@ OLD_PARENT_SUFFIX = "_OLDPARENT"
 
 PROJECT_INFO = None
 
+TOOL = None
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _   _      _                     
  | | | | ___| |_ __   ___ _ __ ___ 
@@ -289,33 +288,18 @@ PROJECT_INFO = None
               |_|                  
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def getTool():
+    global TOOL
+    if not TOOL:#Try to get core tool instance from interperter level
+        try:
+            TOOL = eval("tkc.TOOL")
+        except:
+            pass
+    
+    if not TOOL:
+        TOOL = ToonkitMayaCore.ToonkitMayaCore()
 
-def getOptions():
-    global CORE_OPTIONS
-
-    if CORE_OPTIONS is None:
-        optionsPath = os.path.abspath(os.path.join(oscarmodulepath, os.pardir, "Preferences", "core.json"))
-
-        if os.path.isfile(optionsPath):
-            CORE_OPTIONS = Options(None, optionsPath)
-            CORE_OPTIONS.load()
-        else:
-            defaultOptions = Options.OrderedDict()
-
-            defaultOptions["mayaroot"] = os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin")
-            defaultOptions["mayapath"] = os.path.join(defaultOptions["mayaroot"], "maya.exe")
-            defaultOptions["mayabatchpath"] = os.path.join(defaultOptions["mayaroot"], "mayabatch.exe")
-            defaultOptions["hidemenu"] = False
-            defaultOptions["hookmayabatch"] = True
-
-            CORE_OPTIONS = Options(defaultOptions, optionsPath)
-            CORE_OPTIONS.save()
-
-    return CORE_OPTIONS
-
-def saveOptions():
-    if not CORE_OPTIONS is None:
-        CORE_OPTIONS.save()
+    return TOOL
 
 def haveVariables(inPath, inCustomVariables=None):
     if inCustomVariables != None:

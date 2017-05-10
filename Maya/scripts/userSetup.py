@@ -48,13 +48,13 @@ if os.path.isdir(commonPythonPath):
 import tkMayaCore as tkc
 import tkMayaSIBar as tksi
 import tkSIGroups
-import TKuserSetup
+import tkDevHelpers
 
 #Import specific scripts/menus
 pc.mel.eval("source abSymMesh")
 pc.mel.eval("source qa_skinPasterUI")
 
-coreOptions = tkc.getOptions()
+CORETOOL = tkc.getTool()
 
 #if mayabatch and supplied arguments contains a script, execute, else show menu
 app = sys.executable
@@ -62,11 +62,10 @@ if "mayabatch" in app:
     if len(sys.argv) > 1:
         args = sys.argv[1:]
         fileName, fileExtension = os.path.splitext(args[0])
-        if coreOptions["hookmayabatch"] and ".py" in fileExtension and os.path.isfile(args[0]):
+        if CORETOOL.options["hookmayabatch"] and ".py" in fileExtension and os.path.isfile(args[0]):
             result = None
             print "Toonkit mayabatcher : environment loaded from Maya batch, execute script from arguments (%s)" % str(args)
             result = tkc.executeFile(args[0], strlng=1, functionName="do", args=[] if len(args) == 0 else args[1:])
             print "Toonkit mayabatcher : result {0}".format(result)
 else:
-    if not coreOptions["hidemenu"]:
-        cmds.evalDeferred(TKuserSetup.menu)
+    cmds.evalDeferred(CORETOOL.reload)
