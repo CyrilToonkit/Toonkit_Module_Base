@@ -20,6 +20,7 @@
 -------------------------------------------------------------------------------
 """
 import os
+import re
 
 import maya.cmds as mc
 import pymel.core as pc
@@ -866,10 +867,31 @@ def removeOutfits(in_nAsset):
     if outfits != None:
         outfitsProperty = getProperty(in_nAsset, 'tk'+OUTFIT_TAG)
 
+        #Store value of attributes linked to "tk_.+_is_.+" to reset the values after deletion
+        storedValues = {}
+        attrs = tkc.getParameters(outfitsProperty)
+        filteredCons = []
+        for attr in attrs:
+            if re.match("tk_.+_is_.+", attr):
+                cons = pc.listConnections("{0}.{1}".format(outfitsProperty, attr), plugs=True, source=False, destination=True)
+                for con in cons:
+                    if not re.match(".+_casesChain.*\.input", con.name()) and not re.match(".*tkOutfits_visibilities\.", con.name()):
+                        filteredCons.append(con)
+
+        for con in filteredCons:
+            storedValues[con] = con.get()
+
         for outfitKey in outfits.keys():
             mc.setAttr("{0}.{1}".format(outfitsProperty, OUTFIT_TAG+"_"+outfitKey), 0)
 
         pc.delete(outfitsProperty)
+
+        for attr, attrValue in storedValues.iteritems():
+            try:
+                attr.set(attrValue)
+                attr.lock()
+            except:
+                pass
 
     return None
 
