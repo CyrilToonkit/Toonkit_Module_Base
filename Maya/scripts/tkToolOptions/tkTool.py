@@ -20,6 +20,7 @@
 -------------------------------------------------------------------------------
 """
 import os
+import sys
 from functools import partial
 
 import pymel.core as pc
@@ -75,7 +76,16 @@ class Tool(object):
         if inToolName in self.children:
             return self.children[inToolName]
 
-        toolClass = getattr(__import__(inToolName),inToolName)
+        mod = None
+
+        if sys.version_info >= (2,5):
+            import importlib
+            mod = importlib.import_module("tkToolOptions."+inToolName)
+        else:
+            mod = __import__(inToolName)
+
+        toolClass = getattr(mod, inToolName)
+
         return self.setChildTool(toolClass(inDebug=self.debug))
 
         #return None
