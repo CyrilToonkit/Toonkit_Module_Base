@@ -10,6 +10,7 @@ def matchPointPositions(*args):#I'll take scope:string(All, LeftOnly, RightOnly)
         sided = False
         rightToLeft=False
         treshold=2.0
+        offset=0.0
 
         if len(args) > 1:
             if args[1] == "Right only":
@@ -21,8 +22,11 @@ def matchPointPositions(*args):#I'll take scope:string(All, LeftOnly, RightOnly)
         if len(args) > 2:
             treshold = args[2]
 
+        if len(args) > 3:
+            offset = args[3]
+ 
         for selObj in sel[:-1]:
-            tkBlendShapes.matchPointPositions(sel[-1], selObj, sided, rightToLeft, treshold)
+            tkBlendShapes.matchPointPositions(sel[-1], selObj, sided, rightToLeft, treshold, offset)
 
     else:
         pc.error("Please select at least two objects (any number of meshes to receive point positions, then a \"Reference\" mesh) !")
@@ -31,7 +35,7 @@ def matchPointPositionsClick(*args):
     if not pc.control(UINAME, query=True, exists=True):
         return
 
-    matchPointPositions(True, pc.optionMenu("matchOptionScope",query=True, value=True), pc.floatSliderGrp("matchOptionTreshold",query=True, value=True))
+    matchPointPositions(True, pc.optionMenu("matchOptionScope",query=True, value=True), pc.floatSliderGrp("matchOptionTreshold",query=True, value=True), pc.floatSliderGrp("matchOptionOffset",query=True, value=True))
 
 def matchPointPositionsOption(*args):
     global UINAME
@@ -49,6 +53,7 @@ def matchPointPositionsOption(*args):
     pc.menuItem("LeftOnly", label="Left only")
     pc.menuItem("RightOnly", label="Right only")
     pc.floatSliderGrp("matchOptionTreshold", label='Center treshold', field=True,pre=2, minValue=0.0, maxValue=5.0, fieldMinValue=0.0, fieldMaxValue=1000000, value=2.0)
+    pc.floatSliderGrp("matchOptionOffset", label='Center offset', field=True,pre=2, minValue=-50.0, maxValue=50.0, fieldMinValue=-1000000, fieldMaxValue=1000000, value=0.0)
 
     pc.button(label='Apply', c=matchPointPositionsClick, width=177)
 
