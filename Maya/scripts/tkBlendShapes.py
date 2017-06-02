@@ -201,7 +201,7 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
 
     return dupe
 
-def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshold=2.0):
+def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshold=2.0, offset=0.0):
     refShape = None
 
     if inRef.type() == "mesh":
@@ -244,7 +244,7 @@ def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshol
         if not sided:
             targetPoints[i] = refPoints[i]
         else:
-            xValue = refPoints[i][0]
+            xValue = refPoints[i][0] - offset
             if rightToLeft:
                 if xValue < -treshold:
                     targetPoints[i] = refPoints[i]
