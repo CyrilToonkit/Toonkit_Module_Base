@@ -304,6 +304,8 @@ def batcherSaveClick(*args):
     with open(pyFilePath[0], "w") as pyFile:
         pyFile.write(mc.textField("batcherCodeInputLE", query=True, text=True))
     
+    dirname, filename = os.path.split(pyFilePath[0])
+
     optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
 
     options = Options()
@@ -317,6 +319,7 @@ def batcherSaveClick(*args):
     options.save(optionsPath)
 
     mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
+    mc.textField("batcherFilePathLE", edit=True, text=pyFilePath[0])
 
 def batcherOpenClick(*args):
     oldPath = mc.textField("batcherFilePathLE", query=True, text=True)
@@ -348,8 +351,6 @@ def batcherOpenClick(*args):
         mc.textField("batcherSavepathLE", edit=True, text=options["savePath"])
         mc.checkBox("batcherSkipCB", edit=True, value=options["skip"])
         mc.textField("batcherLogSavepathLE", edit=True, text=options["logSavePath"])
-
-    mc.button("batcherSaveBT", edit=True, enable=True)
 
 def batcherSelectSuccessClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)

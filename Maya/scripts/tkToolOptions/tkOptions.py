@@ -19,7 +19,7 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
-
+import errno
 import simplejson as json
 import os
 import collections
@@ -73,7 +73,8 @@ class Options(object):
             if self.__path is None or not self.load():
                 self.__data = Options.OrderedDict()
 
-        if self.options is None:
+        if self.__options is None:
+            self.__options = []
             for key, value in self.__data.iteritems():
                 self.addOption(key, value)
 
@@ -175,9 +176,6 @@ class Options(object):
         return jsonObj
 
     def addOption(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
-        if self.__options is None:
-            self.__options = []
-
         optionExists = False
         for opt in self.__options:
             if opt.name == inName:
@@ -263,7 +261,7 @@ class Options(object):
 
             assert self.__data is not None, "Can't load data from {0}".format(inPath)
         except Exception, e:
-            print "Error loading options : {0}".format(e)
+            print "Can't load options : {0}".format(e)
             return False
 
         return True

@@ -78,7 +78,7 @@ class Tool(object):
 
         mod = None
 
-        if sys.version_info >= (2,5):
+        if sys.version_info >= (2,7):
             import importlib
             mod = importlib.import_module("tkToolOptions."+inToolName)
         else:
