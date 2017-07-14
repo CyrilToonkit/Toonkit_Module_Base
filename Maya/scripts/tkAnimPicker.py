@@ -50,7 +50,12 @@ from anim_picker import handlers
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-PROJECT = "wf"
+ROOTVAR = "$ROOT"
+PROJECTVAR = "$PROJECT"
+PROJECTPATHVAR = "$PROJECTPATH"
+
+CORETOOL = tkc.getTool()
+
 DEBUG=False
 
 DEBUGPATH = "\\\\NHAMDS\\ToonKit\\ToonKit\\Rnd\\Picker\\Picker_Files"
@@ -68,7 +73,7 @@ def resolvePath(inPath):
     ROOT = DEBUGPATH
     replacements.append((ROOTVAR, ROOT))
 
-    PROJECTPATH = os.path.join(ROOT, PROJECT)
+    PROJECTPATH = os.path.join(ROOT, CORETOOL.options["project"])
     replacements.append((PROJECTPATHVAR, PROJECTPATH))
 
     #Perform paths replacements
@@ -136,19 +141,15 @@ def resolveReferences(inPicker, inNs):
         if needResolve:
             tab["data"]["items"] = newItems
 
-def load(edit=False, multi=False, path=None, debug=False, project=None, forceRebuild=False):
+def load(edit=False, multi=False, path=None, debug=False, forceRebuild=False):
     '''Toonkit-friendly load method
     '''
     #Initialize
     global DEBUG
-    global PROJECT
     global PRODPATH
 
     if debug:
         DEBUG=True
-
-    if project != None:
-        PROJECT=project
 
     PRODPATH=os.path.join(tkc.oscarmodulepath, PICKERFILESCHUNK)
     pickers = {}
@@ -177,8 +178,8 @@ def load(edit=False, multi=False, path=None, debug=False, project=None, forceReb
             pickerNode.picker_datas_file.set(path)
 
     if DEBUG:
-        print "Root Path", resolvePath("$ROOT")
-        print "Project Path", resolvePath("$PROJECTPATH")
+        print "Root Path", resolvePath(ROOTVAR)
+        print "Project Path", resolvePath(PROJECTPATHVAR)
 
     for pickerNs, pickerPaths in pickers.iteritems():
         if isinstance(pickerPaths, basestring):
@@ -209,16 +210,13 @@ def load(edit=False, multi=False, path=None, debug=False, project=None, forceReb
 def show(*args):
     rebuild=False
 
-    proj = PROJECT
-    if len(args) > 0:
+    if len(args) > 0 and isinstance(args[0], bool):
         if isinstance(args[0], basestring):
-            proj = args[0]
-        elif isinstance(args[0], bool):
             rebuild = args[0]
-        if len(args) > 1:
-            if isinstance(args[1], bool):
-                rebuild = args[1]
 
     mods = pc.getModifiers()
 
-    load(mods & 8, project=proj, forceRebuild=rebuild)
+    print "modifiers",mods
+    print "mods & 8",mods & 8
+
+    load(mods & 8, forceRebuild=rebuild)
