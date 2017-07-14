@@ -129,7 +129,7 @@ def generateDynamicItems(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
     tkSubMenu = pc.menuItem(elementName + "Menu", label=menuFormat(elementName, inLocal, inServer), parent=in_parentMenuItem, subMenu=True, tearOff=True)
     for item in items:
         subElementName, subElementExt = os.path.splitext(item[0])
-        subElementName = subElementName.replace("/", "\\").replace("\\", "_")
+        subElementName = subElementName.replace("/", "\\").replace("\\", "_") + subElementExt
         pc.menuItem(subElementName + "Item", label=item[0], parent=tkSubMenu, aob=True, command=partial(executeSubScriptClick,code, item[1]))
 
 def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServer=False):
