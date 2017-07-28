@@ -31,7 +31,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.7.12"
+VERSIONINFO = "1.5.9.6"
 
 MENU_NAME = "tkMainMenu"
 
@@ -178,6 +178,18 @@ class ToonkitMayaCore(Tool):
             self.saveOptions()
 
         self.options.addCallback(self.optionChanged)
+
+        #Pre-load needed plug-ins first, as it's a pre-requisite
+        NEEDEDPLUGINS = {"extractDeltas.py":False, "tkResPlaneNode.mll":False, "tkSoftIKNode.mll":False, "tkSpreadDeformNode.mll":False, "tkSpringNode.mll":False, "tkWheelNode.mll":False, "ngSkinTools.mll":False, "radialBlendShape.mll":False}
+
+        for k in NEEDEDPLUGINS:
+            try:
+                pc.loadPlugin( k, quiet=True )
+                NEEDEDPLUGINS[k] = True
+                #print "Toonkit plugin %s loaded" % k
+            except:
+                pass
+                #print("Can't load Toonkit plugin %s, this could be by design..." % k)
 
     def optionChanged(self, *args, **kwargs):
         self.logDebug("{0} changed ({1} => {2})".format(kwargs["option"].name, kwargs["old"], kwargs["new"]))
