@@ -4239,16 +4239,18 @@ def getDefinition(inParam):
 
     pcParam = pc.Attribute(inParam)
 
-    stype = pcParam.get(type=True);
+    stype = pcParam.get(type=True)
     default = None if stype== "string" else pc.addAttr(inParam, query=True, defaultValue=True)
     hardmin = None if stype== "string" else pcParam.getMin();
     hardmax = None if stype== "string" else pcParam.getMax();
     softmin = None if stype== "string" else pcParam.getSoftMin();
     softmax = None if stype== "string" else pcParam.getSoftMax();
 
-    if stype == "enum" and hardmin == 0 and hardmax == 1:
-        stype = "bool"
-        hardmin = hardmax = softmin = softmax = None
+    if stype == "enum":
+        enums = pcParam.getEnums()
+        if enums[0] == "False" and enums[1] == "True":
+            stype = "bool"
+            hardmin = hardmax = softmin = softmax = None
     elif stype == "doubleAngle":
         stype = "double"
 
