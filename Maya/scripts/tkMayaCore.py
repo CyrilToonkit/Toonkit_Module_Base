@@ -4330,7 +4330,7 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers):
         pc.connectAttr(condition.outColor.outColorR, constraint.name() + "." + objectNames[counter] + "W" + str(counter), force=True)
         counter += 1
 
-    if inputCons != None and len(outputCons) > 0:
+    if outputCons != None and len(outputCons) > 0:
         print "SWITCHSPACE Index Outputs : ", outputCons, " !!!!!!"
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
