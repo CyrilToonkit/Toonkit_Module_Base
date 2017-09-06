@@ -187,6 +187,7 @@ CONST_NEUTRALSUFFIX = "_NeutralPose"
 CONST_LAYERSUFFIX = "CtrlLayer"
 CONST_EXTRARIGSSUFFIX = "_ExtraRigs"
 CONST_KEYSETSPROP = "TK_KeySets"
+CONST_KEYSETSTREEPROP = "TK_KeySetsTree"
 CONST_ATTRIBUTES = "OSCAR_Attributes"
 
 CONST_SKINNABLES = ['mesh', 'lattice', 'nurbsSurface', 'nurbsCurve']
@@ -4239,18 +4240,16 @@ def getDefinition(inParam):
 
     pcParam = pc.Attribute(inParam)
 
-    stype = pcParam.get(type=True)
+    stype = pcParam.get(type=True);
     default = None if stype== "string" else pc.addAttr(inParam, query=True, defaultValue=True)
     hardmin = None if stype== "string" else pcParam.getMin();
     hardmax = None if stype== "string" else pcParam.getMax();
     softmin = None if stype== "string" else pcParam.getSoftMin();
     softmax = None if stype== "string" else pcParam.getSoftMax();
 
-    if stype == "enum":
-        enums = pcParam.getEnums()
-        if enums[0] == "False" and enums[1] == "True":
-            stype = "bool"
-            hardmin = hardmax = softmin = softmax = None
+    if stype == "enum" and hardmin == 0 and hardmax == 1:
+        stype = "bool"
+        hardmin = hardmax = softmin = softmax = None
     elif stype == "doubleAngle":
         stype = "double"
 
@@ -4996,8 +4995,7 @@ def getCharacterName(inNameSpace=""):
         return assetProp[0].stripNamespace()[:-(len(CONST_KEYSETSPROP) + 1)]
     return ""
 
-def getKeyables(inCategory="All", inCharacters=[], ordered=False):
-    keyables=[]
+def getCharacters(inCharacters=[]):
     if len(inCharacters) == 0:
         char = getFirstSelectedCharacter()
         if char != None:
@@ -5017,6 +5015,12 @@ def getKeyables(inCategory="All", inCharacters=[], ordered=False):
                 newChars.append(char)
         inCharacters = newChars
 
+    return inCharacters
+
+def getKeyables(inCategory="All", inCharacters=[], ordered=False):
+    keyables=[]
+    inCharacters = getCharacters(inCharacters)
+
     for char in inCharacters:
         prop = getProperty(char, CONST_KEYSETSPROP)
         if prop != None:
@@ -5031,6 +5035,42 @@ def getKeyables(inCategory="All", inCharacters=[], ordered=False):
         keyables = orderControls(keyables)
 
     return keyables
+
+def getKeySets(inCharacter=None):
+    chars = [] if inCharacter is None else [inCharacter]
+    chars = getCharacters(chars)
+
+    if len(chars) > 0:
+        prop = getProperty(chars[0], CONST_KEYSETSPROP)
+        return getParameters(prop)
+
+def getKeySetParent(inNamespace, inKeySet, inProp=None):
+    if inProp is None:
+        prop = getProperty(char, CONST_KEYSETSTREEPROP)
+    else:
+        prop = inProp
+
+    if not prop is None:
+        if cmds.objExists(prop.name() + "." + inKeySet):
+            return pc.getAttr(prop.name() + "." + inKeySet)
+
+    return None
+
+def getKeySetParents(inNamespace, inKeySet, inProp=None):
+    if inProp is None:
+        prop = getProperty(char, CONST_KEYSETSTREEPROP)
+    else:
+        prop = inProp
+
+    parents = []
+
+    parent = getKeySetParent(inNamespace, inKeySet, prop)
+    while not parent is None:
+        parents.insert(0, parent)
+
+        parent = getKeySetParent(inNamespace, parent, prop)
+
+    return parents
 
 def orderControls(inControls):
     orderedControls = []
