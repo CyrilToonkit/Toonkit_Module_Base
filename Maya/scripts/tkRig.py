@@ -1465,6 +1465,139 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
                         sclPow.outputX >> joints[i].sz
     return joints
 
+"""
+import motionPathRig as mp
+reload(mp)
+
+inCurve = None
+
+sel = pc.selected()
+
+if len(sel) > 0:
+    inCurve = sel[0]
+
+mp.motionPathRig(inCurve, inNb=10, inLength=10)
+"""
+def motionPathRig(inCurve, inNb=10, inLength=10, inName="motionPathRig"):
+    """
+    print "inCurve",inCurve
+    print "inNb", inNb
+    print "inLength",inLength
+    """
+    #Create the poleVector curve
+    upVCurve = pc.duplicate(inCurve, name=inCurve.name() + "_UPV")[0]
+    upVCurve.ty.set(2.0)
+    tkc.freezeTransform(upVCurve)
+
+    #upVCurveRebuilt = pc.rebuildCurve(upVCurve, ch=True, rpo=0, rt=0, end=1, kr=0, kcp=0, kep=1, kt=0, s=300, d=2, tol=0.01)[0]
+
+    #Create the base spline rig (arbitrarily towards +Z)
+    clusters = clusterize(inCurve)
+    upVClusters = clusterize(upVCurve)
+
+    container = pc.group(empty=True, world=True, name=inCurve.name() + "_Root")
+
+    i = 0
+    for cluster in clusters:
+        ctrl = tkc.createRigObject(refObject=container, name=inCurve.name() + "_Ctrl1", type="Null", mode="child", match=False)
+
+        ctrl.tx.set(cluster.rotatePivotX.get())
+        ctrl.ty.set(cluster.rotatePivotY.get())
+        ctrl.tz.set(cluster.rotatePivotZ.get())
+
+        ctrl.ry.set(-90)
+
+        ctrl.addChild(cluster)
+        ctrl.addChild(upVClusters[i])
+
+        i += 1
+
+    #Create main control and attributes
+    mainCtrl = tkc.createRigObject(refObject=None, name="Main_Ctrl", type="Null", mode="child", match=False)
+
+    tkc.addParameter(inobject=mainCtrl, name="Follow", inType="int", default=0, min=0, max=1, softmin=0, softmax=1, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="Locomotion", inType="double", default=0, min=-1000000, max=1000000, softmin=-100, softmax=100, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="FromEnd", inType="int", default=0, min=0, max=1, softmin=0, softmax=1, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="Scale", inType="double", default=1.0, min=0.001, max=1000, softmin=.1, softmax=10, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    
+    tkc.addParameter(inobject=mainCtrl, name="U", inType="double", default=0, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="Length", inType="double", default=inLength, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="Number", inType="int", default=inNb, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    
+    mainCtrl.ty.set(5)
+
+    #Extract curve Info and calculate U in "Follow" or "Locomotion" modes
+    curveShape = inCurve.getShape()
+    upVCurveShape = upVCurve.getShape()
+
+    curveInfo = pc.createNode("curveInfo", name=inCurve.name() + "_info")
+    curveShape.worldSpace[0] >> curveInfo.inputCurve
+
+    #Prepare 'from end' condition
+    fromEndCond = pc.createNode("condition", name=inCurve.name() + "_fromEnd_cond")
+    fromEndCond.secondTerm.set(1)
+    mainCtrl.FromEnd >> fromEndCond.firstTerm
+
+    fromEnd_minus = pc.createNode("plusMinusAverage", name=inCurve.name() + "_fromEnd_minus")
+    fromEnd_minus.operation.set(2)#substract
+    curveInfo.arcLength >> fromEnd_minus.input1D[0]
+    mainCtrl.Locomotion >> fromEnd_minus.input1D[1]
+
+    fromEnd_minus.output1D >> fromEndCond.colorIfTrueR
+    mainCtrl.Locomotion >> fromEndCond.colorIfFalseR
+
+    scaleMul = pc.createNode("multDoubleLinear", name=mainCtrl.name() + "_scale_mul")
+    mainCtrl.Scale >> scaleMul.input1
+    fromEndCond.outColorR >> scaleMul.input2
+
+    lengthDivide = pc.createNode("multiplyDivide", name=mainCtrl.name() + "_length_divide")
+    lengthDivide.operation.set(2)
+    scaleMul.output >> lengthDivide.input1X
+    curveInfo.arcLength >> lengthDivide.input2X
+
+    lengthDivide.outputX >> mainCtrl.U
+
+    #sectionLength
+    mainCtrl.Length >> lengthDivide.input1Y
+    mainCtrl.Number >> lengthDivide.input2Y
+    
+    sectionDivide = pc.createNode("multiplyDivide", name=mainCtrl.name() + "_section_divide")
+    sectionDivide.operation.set(2)
+    lengthDivide.outputY >> sectionDivide.input1X
+    curveInfo.arcLength >> sectionDivide.input2X
+
+    #Create motion rig
+    for i in range(inNb):
+
+        up = pc.spaceLocator(name="{0}_Up_{1:02d}".format(inName, i))
+
+        upCns = tkc.pathConstrain(up, upVCurve, tangent=True, parametric=False, addPercent=False)
+
+        loc = pc.spaceLocator(name="{0}_Loc_{1:02d}".format(inName, i))
+
+        locCns = tkc.pathConstrain(loc, inCurve, tangent=True, parametric=False, addPercent=False)
+        locCns.frontAxis.set(0)#X
+        locCns.upAxis.set(1)#Y
+
+        locCns.worldUpType.set(1)#Object Up
+        up.worldMatrix[0] >> locCns.worldUpMatrix
+
+        #U value
+        if i > 0:
+            sectionMul = pc.createNode("multDoubleLinear", name=loc.name() + "_section_mul")
+            sectionDivide.outputX >> sectionMul.input1
+            sectionMul.input2.set(i)
+
+            sectionAdd = pc.createNode("addDoubleLinear", name=loc.name() + "_section_add")
+            mainCtrl.U >> sectionAdd.input1
+            sectionMul.output >> sectionAdd.input2
+
+            sectionAdd.output >> upCns.uValue
+            sectionAdd.output >> locCns.uValue
+        else:
+            mainCtrl.U >> upCns.uValue
+            mainCtrl.U >> locCns.uValue
+
 def importRig(path, newName="", newRootName=""):
     pc.undoInfo(openChunk=True)
     objects = tkc.importFile(path, newName)
@@ -3064,6 +3197,43 @@ def selectSet(inModel, inSet="All"):
     else:
         pc.error("No character selected or key set don't exists ("+ inSet  +") !")
     pc.undoInfo(closeChunk=True)
+
+def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
+    inCharacters = tkc.getCharacters(inCharacters)
+
+    createdSets = []
+
+    for char in inCharacters:
+        prop = tkc.getProperty(char, tkc.CONST_KEYSETSTREEPROP)
+
+        keySets = tkc.getKeySets(char)
+
+        keySetsHierachy = []
+
+        for keySet in keySets:
+            keySetsHierachy.append((keySet,tkc.getKeySetParents(char, keySet, prop)))
+            
+        keySetsHierachy = sorted(keySetsHierachy, key=lambda x: len(x[1]))
+
+        rootSets = []
+
+        for hKeySey in keySetsHierachy:
+            selectSet(char, inSet=hKeySey[0])
+            createdSets.append(pc.sets(name=prefix + hKeySey[0] + suffix))
+
+            if len(hKeySey[1]) > 0:
+                for parentKeySet in hKeySey[1]:
+                    pc.sets(prefix + parentKeySet.replace("$", "") + suffix, rm=pc.selected())
+
+                pc.sets(prefix + hKeySey[1][-1].replace("$", "") + suffix, fe=createdSets[-1])
+            else:
+                rootSets.append(createdSets[-1])
+
+        for rootSet in rootSets:
+            if not rootSet.name() == prefix + "All" + suffix:
+                pc.sets(prefix + "All" + suffix, fe=rootSet)
+
+        pc.rename(prefix + "All" + suffix, "ctrls_set")
 
 def symSel(mode=0):
     pc.undoInfo(openChunk=True)
