@@ -180,7 +180,7 @@ class ToonkitMayaCore(Tool):
         self.options.addCallback(self.optionChanged)
 
         #Pre-load needed plug-ins first, as it's a pre-requisite
-        NEEDEDPLUGINS = {"extractDeltas.py":False, "tkResPlaneNode.mll":False, "tkSoftIKNode.mll":False, "tkSpreadDeformNode.mll":False, "tkSpringNode.mll":False, "tkWheelNode.mll":False, "ngSkinTools.mll":False, "radialBlendShape.mll":False}
+        NEEDEDPLUGINS = {"extractDeltas.py":False, "tkResPlaneNode.mll":False, "tkSoftIKNode.mll":False, "tkSpreadDeformNode.mll":False, "tkSpringNode.mll":False, "tkWheelNode.mll":False, "ngSkinTools.mll":False, "radialBlendShape.mll":False, "fStretch.mll":False}
 
         for k in NEEDEDPLUGINS:
             try:
