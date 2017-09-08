@@ -826,6 +826,24 @@ def storeSelection(inName=OPT_SEL):
 
     return sel
 
+def skipSelected(inNumber=1):
+    sel = pc.selected()
+    if len(sel) == 0:
+        return
+
+    filteredSel = [sel[0]]
+
+    skip = inNumber + 1
+    for obj in sel:
+        if skip == 0:
+            filteredSel.append(obj)
+            skip = inNumber + 1
+
+        skip += -1
+
+    pc.select(filteredSel)
+
+
 def cleanPreset(inName=OPT_SEL, presetHolderName=OPT_SELSETS):
     if pc.optionVar(exists=inName):
         pc.optionVar(remove=inName)

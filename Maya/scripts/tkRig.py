@@ -1598,6 +1598,109 @@ def motionPathRig(inCurve, inNb=10, inLength=10, inName="motionPathRig"):
             mainCtrl.U >> upCns.uValue
             mainCtrl.U >> locCns.uValue
 
+"""
+import SuperIK
+reload(SuperIK)
+SuperIK.createSuperIK(pc.selected()[0], pc.selected()[1], pc.selected()[2], pc.selected()[3])
+"""
+
+def createSuperIK(inCtrl, inCenter, inCtrl1, inCtrl2):
+    createSuperIKLink(inCtrl, inCenter, inValue=1.0)
+    createSuperIKLink(inCtrl, inCtrl1, inValue=.8)
+    createSuperIKLink(inCtrl, inCtrl2, inValue=.2)
+
+def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0):
+    neutral = inCtrl.getParent()
+    root = inCtrl.getParent().getParent()
+
+    orienterName = "{0}_{1}_Orienter".format(inSuperIK.name(), inCtrl.name())
+
+    if pc.objExists(orienterName):
+        return
+
+    orienter = pc.group(empty=True, world=True, name=orienterName)
+    root.addChild(orienter)
+    orienter.t.set([0,0,0])
+    orienter.r.set([0,0,0])
+    tkc.constrain(orienter, inSuperIK, "Orient")
+
+    linkLocal = pc.group(empty=True, world=True, name="{0}_{1}_LinkLocal".format(inSuperIK.name(), inCtrl.name()))
+    orienter.addChild(linkLocal)
+    inSuperIK.t >> linkLocal.t
+
+    sensor = pc.group(empty=True, world=True, name="{0}_{1}_Sensor".format(inSuperIK.name(), inCtrl.name()))
+    root.addChild(sensor)
+    sensor.t.set([0,0,0])
+    tkc.constrain(sensor, linkLocal)
+
+    output = sensor.t
+
+    if inValue != 1.0:
+        attenuate = pc.createNode("multiplyDivide", name="{0}_{1}_Attenuate".format(inSuperIK.name(), inCtrl.name()))
+        sensor.t >> attenuate.input1
+
+        attenuate.input2X.set(inValue)
+        attenuate.input2Y.set(inValue)
+        attenuate.input2Z.set(inValue)
+
+        output = attenuate.output
+
+    neutralCons = pc.listConnections(neutral.t, source=True, destination=False)
+
+    neutralInput = neutral.t
+
+    print neutralCons
+    if len(neutralCons) == 1:
+        add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.name()))
+        neutralCons[0].output >> add.input3D[0]
+        output >> add.input3D[1]
+
+        add.output3D >> neutralInput
+    else:
+       
+        output >> neutralInput
+
+"""
+import SnakeWaveLoc as sw
+sw.createSnakeWaveLoc(pc.selected(), "Global_SRT.WaveFrequency", "Global_SRT.WaveLength", "Global_SRT.mod_Locomotion")
+"""
+
+def createSnakeWaveLoc(inObjects, inFrequencyAttr, inLengthAttr, inLocomotionAttr, inBaseOffset=10, inCurvePath=os.path.join(os.path.dirname(__file__),"WaveCycle.ma"), inBaseName="SnakeWave"):
+    baseOffset = 0
+    counter = 1
+
+    frequencyAttr = pc.PyNode(inFrequencyAttr)
+    lengthAttr = pc.PyNode(inLengthAttr)
+    locomotionAttr = pc.PyNode(inLocomotionAttr)
+
+    for obj in inObjects:
+        offsetmul = pc.createNode("multDoubleLinear", name="{0}_OffsetMul_{1}".format(inBaseName, counter))
+        lengthAttr >> offsetmul.input1
+        offsetmul.input2.set(baseOffset)
+
+        offsetadd = pc.createNode("addDoubleLinear", name="{0}_OffsetAdd_{1}".format(inBaseName, counter))
+        locomotionAttr >> offsetadd.input1
+        offsetmul.output >> offsetadd.input2
+
+        freqmul = pc.createNode("multDoubleLinear", name="{0}_FreqMul_{1}".format(inBaseName, counter))
+        offsetadd.output >> freqmul.input1
+        frequencyAttr >> freqmul.input2
+
+        animCurve = pc.system.importFile(inCurvePath, returnNewNodes=True)[0]
+        animCurve.rename("{0}_animCurve_{1}".format(inBaseName, counter))
+        freqmul.output >> animCurve.input
+
+        finalmul = pc.createNode("multDoubleLinear", name="{0}_FinalMul_{1}".format(inBaseName, counter))
+        animCurve.output >> finalmul.input1
+
+        exprString = "{0} = ({1} -(1/{2})) % (4*(1/{2}))".format(finalmul.input2.name(), offsetadd.output.name(), frequencyAttr.name())
+        expr = pc.expression( s=exprString , name="{0}_Expr_{1}".format(inBaseName, counter))
+
+        finalmul.output >> obj.tx
+
+        baseOffset += inBaseOffset
+        counter += 1
+
 def importRig(path, newName="", newRootName=""):
     pc.undoInfo(openChunk=True)
     objects = tkc.importFile(path, newName)
