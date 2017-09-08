@@ -4335,7 +4335,8 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers):
     param = addParameter(pc.PyNode(splitAttr[0]), splitAttr[1], "enum;"+":".join(objectNames))
 
     if inputCons != None and len(inputCons) > 0:
-        print "SWITCHSPACE Index Inputs : ", inputCons, " !!!!!!"
+        for inputC in inputCons:
+            pc.connectAttr(inputC, strIndexAttr, force=True)
     else:
         cmds.setAttr(param, min(oldValue, len(objectNames)))
 
@@ -4349,8 +4350,9 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers):
         pc.connectAttr(condition.outColor.outColorR, constraint.name() + "." + objectNames[counter] + "W" + str(counter), force=True)
         counter += 1
 
-    if inputCons != None and len(outputCons) > 0:
-        print "SWITCHSPACE Index Outputs : ", outputCons, " !!!!!!"
+    if outputCons != None and len(outputCons) > 0:
+        for outputC in outputCons:
+            pc.connectAttr(strIndexAttr, outputC, force=True)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ___       _                      _   _             
