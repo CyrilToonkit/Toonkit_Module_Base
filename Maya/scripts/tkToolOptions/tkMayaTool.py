@@ -20,6 +20,7 @@
 -------------------------------------------------------------------------------
 """
 from tkOptions import Options
+import tkTool
 from tkTool import Tool
 import pymel.core as pc
 

@@ -31,7 +31,7 @@ VERSIONINFO = "1.0.0.0"
 
 class SkipSelected(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        super(SkipSelected, self).__init__(inName="SkipSelected", inDescription="Skip objects from curret selection",
+        super(SkipSelected, self).__init__(inName="Skip selected", inDescription="Skip objects from current selection",
             inUsage="Select some objects then execute script", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())

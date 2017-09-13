@@ -3999,8 +3999,8 @@ def addParameter(inobject=None, name="NewParam", inType="double", default=None, 
         default = 0 if default == None else default
         min = -1000000 if min == None else min
         max = 1000000 if max == None else max
-        softmin = -100 if softmin == None else softmin
-        softmax = 100 if softmax == None else softmax
+        softmin = -6000 if softmin == None else softmin
+        softmax = 6000 if softmax == None else softmax
         if inType == "int":
             inType = "long"
     elif inType == "bool":
@@ -5023,7 +5023,7 @@ def getCharacters(inCharacters=[]):
     else:
         newChars = []
         for char in inCharacters:
-            if isinstance(char, str):
+            if isinstance(char, basestring):
                 if pc.objExists(char):
                     newChars.append(pc.PyNode(char))
                 else:

@@ -32,7 +32,7 @@ VERSIONINFO = "1.0.0.0"
 
 class MotionPathRig(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        super(MotionPathRig, self).__init__(inName="MotionPathRig", inDescription="Create a rig based on motionPaths, suitable for snakes",
+        super(MotionPathRig, self).__init__(inName="MotionPath rig", inDescription="Create a rig based on motionPaths, suitable for snakes",
             inUsage="Select a nurbsCurve to use as path", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())

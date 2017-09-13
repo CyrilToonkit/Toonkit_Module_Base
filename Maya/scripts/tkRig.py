@@ -1604,12 +1604,18 @@ reload(SuperIK)
 SuperIK.createSuperIK(pc.selected()[0], pc.selected()[1], pc.selected()[2], pc.selected()[3])
 """
 
-def createSuperIK(inCtrl, inCenter, inCtrl1, inCtrl2):
-    createSuperIKLink(inCtrl, inCenter, inValue=1.0)
-    createSuperIKLink(inCtrl, inCtrl1, inValue=.8)
-    createSuperIKLink(inCtrl, inCtrl2, inValue=.2)
+def createSuperIK(inCtrl, *args):
+    if len(args) == 3:
+        createSuperIKLink(inCtrl, args[0], inValue=1.0)
+        createSuperIKLink(inCtrl, args[1], inValue=.75)
+        createSuperIKLink(inCtrl, args[2], inValue=.25)
+    elif len(args) == 4:
+        createSuperIKLink(inCtrl, args[0], inValue=1.0)
+        createSuperIKLink(inCtrl, args[1], inValue=.8)
+        createSuperIKLink(inCtrl, args[2], inValue=.5)
+        createSuperIKLink(inCtrl, args[3], inValue=.2)
 
-def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0):
+def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=False):
     neutral = inCtrl.getParent()
     root = inCtrl.getParent().getParent()
 
@@ -1649,7 +1655,6 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0):
 
     neutralInput = neutral.t
 
-    print neutralCons
     if len(neutralCons) == 1:
         add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.name()))
         neutralCons[0].output >> add.input3D[0]
@@ -3310,7 +3315,6 @@ def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
         prop = tkc.getProperty(char, tkc.CONST_KEYSETSTREEPROP)
 
         keySets = tkc.getKeySets(char)
-
         keySetsHierachy = []
 
         for keySet in keySets:
@@ -3323,7 +3327,6 @@ def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
         for hKeySey in keySetsHierachy:
             selectSet(char, inSet=hKeySey[0])
             createdSets.append(pc.sets(name=prefix + hKeySey[0] + suffix))
-
             if len(hKeySey[1]) > 0:
                 for parentKeySet in hKeySey[1]:
                     pc.sets(prefix + parentKeySet.replace("$", "") + suffix, rm=pc.selected())

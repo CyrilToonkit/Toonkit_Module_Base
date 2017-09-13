@@ -238,7 +238,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                         pc.menuItem(elementName + "Item", label=elementName, parent=in_parentMenuItem, aob=True, command=tool.showUI)
                     else:
                         pc.menuItem(elementName + "Item", label=elementName, parent=in_parentMenuItem, aob=True, command=tool.executeUI)
-                        pc.menuItem(elementName + "OptionBox", optionBox=True, command=tool.showUI)
+                        pc.menuItem(elementName + SUFFIX_OPTIONBOX, optionBox=True, parent=in_parentMenuItem, command=tool.showUI)
                 else:
                     pc.warning("Can't retrieve instance of tool {0} !".format(toolName))
 
@@ -266,5 +266,5 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 pc.menuItem(elementName + "Item", label=menuFormat(element, local, server), parent=in_parentMenuItem, aob=True, command=partial(executeScriptClick, fullpath))
                 optionBox = elementName + SUFFIX_OPTIONBOX+elementExt
                 if optionBox in elements:#optionBox (file)
-                    pc.menuItem(elementName + "OptionBox", optionBox=True, command=partial(executeScriptClick, elementsDic[optionBox][0]))
+                    pc.menuItem(elementName + SUFFIX_OPTIONBOX, optionBox=True, parent=in_parentMenuItem, command=partial(executeScriptClick, elementsDic[optionBox][0]))
                 SEP=False
