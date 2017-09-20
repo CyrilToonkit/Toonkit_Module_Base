@@ -1653,7 +1653,11 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
 
     neutralCons = pc.listConnections(neutral.t, source=True, destination=False)
 
-    neutralInput = neutral.t
+    neutralMul = pc.createNode("multiplyDivide",  name="{0}_{1}_Active".format(inSuperIK.name(), inCtrl.name()))
+
+    neutralMul.output >> neutral.t
+
+    neutralInput = neutralMul.input1
 
     if len(neutralCons) == 1:
         add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.name()))
@@ -1662,8 +1666,30 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
 
         add.output3D >> neutralInput
     else:
-       
-        output >> neutralInput
+        neutralConsX = pc.listConnections(neutral.tx, source=True, destination=False)
+        neutralConsY = pc.listConnections(neutral.ty, source=True, destination=False)
+        neutralConsZ = pc.listConnections(neutral.tz, source=True, destination=False)
+
+        if len(neutralConsX) == 1 or len(neutralConsY) == 1 or len(neutralConsZ) == 1:
+            add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.name()))
+
+            if len(neutralConsX) == 1:
+                neutralConsX[0].output >> add.input3D[0].input3Dx
+                neutral.tx.disconnect()
+
+            if len(neutralConsY) == 1:
+                neutralConsY[0].output >> add.input3D[0].input3Dy
+                neutral.ty.disconnect()
+
+            if len(neutralConsZ) == 1:
+                neutralConsZ[0].output >> add.input3D[0].input3Dz
+                neutral.tz.disconnect()
+
+            output >> add.input3D[1]
+
+            add.output3D >> neutralInput
+        else:
+            output >> neutralInput
 
 """
 import SnakeWaveLoc as sw
@@ -1962,6 +1988,10 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
     if not isinstance(inRefValues, list):
         inRefValues = [inRefValues]
 
+    pyAttr = pc.PyNode(inAttr)
+    attrMax = pyAttr.getMax()
+    attrMin = pyAttr.getMin()
+
     maxIter = inIterations
     #pc.mel.eval("paneLayout -e -manage true $gMainPane")
     attrValue = pc.getAttr(inAttr)
@@ -1992,6 +2022,11 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
             return
 
         value = attrValue + amount * direction
+        if not attrMax is None and value > attrMax:
+            value = attrMax
+        if not attrMin is None and value < attrMin:
+            value = attrMin
+
         pc.setAttr(inAttr, value)
 
         #pc.setAttr("IK3_SoftChain_TestGeneration:IK3_SoftChain_TestGeneration_IK_Ctrl.ty", pc.getAttr("IK3_SoftChain_TestGeneration:IK3_SoftChain_TestGeneration_IK_Ctrl.ty"))
@@ -2033,6 +2068,11 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
             if not first:
                 amount *= .5
         else:
+            if stepDelta == 0:
+                direction *= -1
+                amount *= .5
+
+                stepDelta = 1
             amount *= delta / stepDelta
 
         first = False
