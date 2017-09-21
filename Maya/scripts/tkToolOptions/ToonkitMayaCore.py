@@ -31,7 +31,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.10.24"
+VERSIONINFO = "1.5.11.3"
 
 MENU_NAME = "tkMainMenu"
 
@@ -100,6 +100,16 @@ HOTKEYS =   {
                     {"key":"E" , "ctrl":True , "alt":False, "mel":False,
                         "desc":"Show Principal Skinner",
                         "code":"import tkSkinner;tkSkinner.showUI()"
+                    },
+                "selectConstraining":
+                    {"key":">" , "ctrl":True , "alt":False, "mel":False,
+                        "desc":"Select objects constraing selection",
+                        "code":"import pymel.core as pc;import tkMayaCore as tkc;tkc.selectConstraining(pc.selected()[0]) if len(pc.selected()) > 0 else False"
+                    },
+                "selectConstrained":
+                    {"key":"<" , "ctrl":True , "alt":False, "mel":False,
+                        "desc":"Select objects constrained to selection",
+                        "code":"import pymel.core as pc;import tkMayaCore as tkc;tkc.selectConstrained(pc.selected()[0]) if len(pc.selected()) > 0 else False"
                     }
             }
 
@@ -173,6 +183,14 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("showSkinnerKey", "E", None, "Key", False, "HotKeys.showSkinner")
         self.options.addOption("showSkinnerCtrl", True, None, "Ctrl", False, "HotKeys.showSkinner")
         self.options.addOption("showSkinnerAlt", False, None, "Alt", False, "HotKeys.showSkinner")
+
+        self.options.addOption("selectConstrainingKey", ">", None, "Key", False, "HotKeys.selectConstraining")
+        self.options.addOption("selectConstrainingCtrl", True, None, "Ctrl", False, "HotKeys.selectConstraining")
+        self.options.addOption("selectConstrainingAlt", False, None, "Alt", False, "HotKeys.selectConstraining")
+
+        self.options.addOption("selectConstrainedKey", "<", None, "Key", False, "HotKeys.selectConstrained")
+        self.options.addOption("selectConstrainedCtrl", True, None, "Ctrl", False, "HotKeys.selectConstrained")
+        self.options.addOption("selectConstrainedAlt", False, None, "Alt", False, "HotKeys.selectConstrained")
 
         if not self.options.isSaved():
             self.saveOptions()
@@ -257,6 +275,7 @@ class ToonkitMayaCore(Tool):
                 hotkeyName = categ.split(".")[-1]
                 if hotkeyName in HOTKEYS:
                     hotKey=HOTKEYS[hotkeyName]
+
                     setHotKey(COMMAND_FORMAT.format(hotkeyName),
                         self.options[hotkeyName+"Key"],
                         self.options[hotkeyName+"Ctrl"],

@@ -1104,7 +1104,7 @@ def bake(inGeoNullName="Geometries", inJointsFilters=None, inToPreserve=None, in
         return None
 
     root = tkc.getParent(allInfs[0], model=True)
-    skins = storeSkins(geosT)
+    skins = tkc.storeSkins(geosT)
 
     pc.select(clear=True)
     createdJoints = []
@@ -1139,7 +1139,7 @@ def bake(inGeoNullName="Geometries", inJointsFilters=None, inToPreserve=None, in
 
     pc.currentTime(inStart)
     for skin in skins:
-        loadSkin(skin)
+        tkc.loadSkin(skin)
 
     if inJointPrefix != "":
         for createdJoint in createdJoints:

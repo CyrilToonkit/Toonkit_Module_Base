@@ -1,2 +1,2 @@
 import pymel.core as pc
-pc.select(list(reversed(pc.selected)))
+pc.select(list(reversed(pc.selected())))

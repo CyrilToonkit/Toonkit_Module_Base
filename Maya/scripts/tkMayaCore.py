@@ -123,6 +123,7 @@ from timeit import default_timer
 
 import maya.cmds as cmds
 import pymel.core as pc
+import pymel.core.general as pm
 import pymel.core.system as pmsys
 import pymel.core.datatypes as dt
 from pymel import versions
@@ -301,6 +302,28 @@ def getTool():
         TOOL = ToonkitMayaCore.ToonkitMayaCore()
 
     return TOOL
+
+def getType(inPyNode):
+    if isinstance(inPyNode, pm.Component):
+        if isinstance(inPyNode, pm.MeshVertex):
+            return "MeshVertex"
+        if isinstance(inPyNode, pm.MeshEdge):
+            return "MeshEdge"
+        if isinstance(inPyNode, pm.MeshFace):
+            return "MeshFace"
+    
+    try:
+        return inPyNode.type()
+    except Exception, e:
+        pass
+    
+    return None
+
+def getNode(inObjName):
+    if isinstance(inObj, basestring):
+        return pc.PyNode(inObj)
+    
+    return inObj
 
 def haveVariables(inPath, inCustomVariables=None):
     if inCustomVariables != None:
@@ -2852,6 +2875,108 @@ def setCnsOffset(inCns, t = dt.Vector(0.0,0.0,0.0), r = dt.EulerRotation(0.0,0.0
         pc.setAttr(cnsName + ".offsetY", s[1])
         pc.setAttr(cnsName + ".offsetZ", s[2])
 
+def storeConstraints(inObjects, inRemove=False, inPath=None):
+    constraints = []
+
+    for obj in inObjects:
+        cons = getConstraints(obj)
+        for con in cons:
+            offset = getCnsOffset(con)
+            offset = [[offset[0][0], offset[0][1], offset[0][2]],[offset[1][0], offset[1][1], offset[1][2]],[offset[2][0], offset[2][1], offset[2][2]]]
+            constraints.append({"source":str(obj.stripNamespace()),
+                                "target":str(getConstraintTargets(con)[0].stripNamespace()),
+                                "type":con.type(),
+                                "offset":offset})
+            if inRemove:
+                pc.delete(con)
+
+    if len(constraints) > 0 and inPath != None:
+        f = None
+        try:
+            f = open(inPath, 'w')
+            f.write(str(constraints))
+        except Exception as e:
+            pc.warning("Cannot save constraints file to " + inPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    return constraints
+
+def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintainOffset=False):
+    if isinstance(inConstraints, basestring):
+        cnsPath = inConstraints
+        inConstraints = None
+
+        f = None
+        try:
+            f = open(cnsPath, 'r')
+            inConstraints = eval(f.read())
+
+        except Exception as e:
+            pc.warning("Cannot load constraints file from " + cnsPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    if inConstraints is None:
+        pc.warning("No constraints given !")
+        return
+
+    sources = {}
+    nodes = []
+
+    for con in inConstraints:
+        sourceName = con["source"]
+        node = sources.get(sourceName)
+
+        if node is None:
+            if not pc.objExists(sourceName):
+                matches = pc.ls("*:{0}".format(sourceName))
+                if matches > 0:
+                    node = matches[0]
+            else:
+                node = pc.PyNode(sourceName)
+            
+            if node is None:
+                pc.warning("Can't find source object {0}".format(sourceName))
+                continue
+
+            if inObjects is None or node in inObjects:
+                sources[sourceName] = node
+
+                if not node in nodes:
+                    nodes.append(node)
+
+    if inRemoveOld:
+        for node in nodes:
+            removeAllCns(node)
+
+    for con in inConstraints:
+        node = sources.get(sourceName)
+        
+        if node is None:
+            continue
+
+        targetName = con["target"]
+        target = None
+        if not pc.objExists(targetName):
+            matches = pc.ls("*:{0}".format(targetName))
+            if matches > 0:
+                target = matches[0]
+        else:
+            target = pc.PyNode(targetName)
+
+        if target is None:
+            pc.warning("Can't find target object {0}".format(targetName))
+            continue
+
+        newCns = constrain(node, target, con["type"])
+        if not inMaintainOffset:
+            setCnsOffset(newCns,    t = dt.Vector(con["offset"][0][0],con["offset"][0][1],con["offset"][0][2]),
+                                    r = dt.EulerRotation(con["offset"][1][0],con["offset"][1][1],con["offset"][1][2]),
+                                    s = (con["offset"][2][0],con["offset"][2][1],con["offset"][2][2]))
+
 def freeze(inObject):
     storeSelection()
     pc.select(inObject)
@@ -3727,19 +3852,24 @@ type_priority = {
     "ffd":30
 }
 
-def getSelectedIndices():
-    node = None
+def getSelectedIndices(node=None):
+    vertSel = pc.ls(orderedSelection=True)
+    
+    if len(vertSel) == 0:
+        return (None, None)
+    
+    if node == None:
+        node = vertSel[0].node()
+    else:
+        if node.type() == "transform":
+            node = node.getShape()
+
     selIndices = []
-    
-    vertSel = pc.selected()
-    
-    if len(vertSel) > 0:
-        if isinstance(vertSel[0], pc.general.MeshVertex):
-            node = vertSel[0].node()
-    
-            for curVertSel in vertSel:
-                for curIdx in curVertSel.indices():
-                    selIndices.append(curIdx)
+
+    for curVertSel in vertSel:
+        if curVertSel.node() == node:
+            for curIdx in curVertSel.indices():
+                selIndices.append(curIdx)
 
     return (node, selIndices)
 
@@ -3752,6 +3882,71 @@ def expandCompIndices(inComps):
                 comps.append(comp.node().vtx[curIdx])
                 
     return comps
+
+COMPS_SHORTCUTS = {
+    "MeshVertex":"vtx",
+    "MeshFace":"f",
+    "MeshEdge":"e"
+}
+
+def selectComponents(node, indices, inType):
+    compShortcut = COMPS_SHORTCUTS[inType]
+    
+    strSel = ["{0}.{1}[{2}]".format(node.name(), COMPS_SHORTCUTS[inType], index) for index in indices]
+    pc.select(strSel)
+
+def selectLoops(skip=1, showWaves=False):
+    node, indices = getSelectedIndices()
+    
+    if node is None:
+        pc.warning("Nothing selected !")
+        return
+    
+    compType = getType(pc.selected()[0])
+    
+    if compType is None:
+        pc.warning("Unknown component type selected !")
+        return
+    
+    managed = indices
+    
+    finallySelected = managed[:]
+    
+    counter = 0
+    skipper = skip
+    while True and counter < 1000:
+        pc.mel.eval("GrowPolygonSelectionRegion")
+        node, selected = getSelectedIndices()
+        filtered=[]
+        
+        for comp in selected:
+            if comp in managed:
+                continue
+            
+            managed.append(comp)
+            filtered.append(comp)
+        
+        if len(filtered) > 0:
+            selectComponents(node, filtered, compType)
+            if skipper == 0:
+                skipper = skip
+                
+                finallySelected.extend(filtered)
+            else:
+                skipper -= 1
+        else:
+            break
+                
+        counter += 1
+        
+        if showWaves:
+            pc.refresh()
+            time.sleep(0.1)
+
+    if counter >= 1000:
+        pc.warning("BROKEN LOOP !")
+        
+    selectComponents(node, finallySelected, compType)
 
 def equilibratePointWeight(inPoint, inRightToLeft = False, inPrefixes = None, inSkin = None, inInfs = None):
     if inPrefixes == None:
