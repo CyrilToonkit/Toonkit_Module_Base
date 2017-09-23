@@ -2977,6 +2977,78 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
                                     r = dt.EulerRotation(con["offset"][1][0],con["offset"][1][1],con["offset"][1][2]),
                                     s = (con["offset"][2][0],con["offset"][2][1],con["offset"][2][2]))
 
+def storePoses(inObjects, customOnly=False, containerName="", keyableOnly=True, inPath=None):
+    poses = []
+
+    for obj in inObjects:
+        attrs = getParameters(obj, customOnly=customOnly, containerName=containerName, keyableOnly=keyableOnly)
+        for attr in attrs:
+            poses.append({"source":str(obj.stripNamespace()),
+                                "attr":attr,
+                                "value":obj.attr(attr).get()})
+
+    if len(poses) > 0 and inPath != None:
+        f = None
+        try:
+            f = open(inPath, 'w')
+            f.write(str(poses))
+        except Exception as e:
+            pc.warning("Cannot save poses file to " + inPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    return poses
+
+def loadPoses(inPoses, inObjects=None):
+    if isinstance(inPoses, basestring):
+        posesPath = inPoses
+        inPoses = None
+
+        f = None
+        try:
+            f = open(posesPath, 'r')
+            inPoses = eval(f.read())
+
+        except Exception as e:
+            pc.warning("Cannot load poses file from " + posesPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    if inPoses is None:
+        pc.warning("No poses given !")
+        return
+
+    sources = {}
+
+    for pose in inPoses:
+        sourceName = pose["source"]
+        node = sources.get(sourceName)
+
+        if node is None:
+            if not pc.objExists(sourceName):
+                matches = pc.ls("*:{0}".format(sourceName))
+                if matches > 0:
+                    node = matches[0]
+            else:
+                node = pc.PyNode(sourceName)
+            
+            if node is None:
+                pc.warning("Can't find source object {0}".format(sourceName))
+                continue
+
+            if inObjects is None or node in inObjects:
+                sources[sourceName] = node
+
+    for pose in inPoses:
+        node = sources.get(pose["source"])
+        
+        if node is None:
+            continue
+
+        node.attr(pose["attr"]).set(pose["value"])
+
 def freeze(inObject):
     storeSelection()
     pc.select(inObject)
@@ -3060,6 +3132,7 @@ def substShapes(inObject, inRef):
         counter += 1
     
     pc.delete(inRef)
+
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ____                           _              
