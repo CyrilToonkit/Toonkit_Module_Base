@@ -1619,7 +1619,7 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
     neutral = inCtrl.getParent()
     root = inCtrl.getParent().getParent()
 
-    orienterName = "{0}_{1}_Orienter".format(inSuperIK.name(), inCtrl.name())
+    orienterName = "{0}_{1}_Orienter".format(inSuperIK.name(), inCtrl.stripNamespace())
 
     if pc.objExists(orienterName):
         return
@@ -1628,13 +1628,13 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
     root.addChild(orienter)
     orienter.t.set([0,0,0])
     orienter.r.set([0,0,0])
-    tkc.constrain(orienter, inSuperIK, "Orient")
+    tkc.constrain(orienter, inSuperIK.getParent(), "Orientation")
 
-    linkLocal = pc.group(empty=True, world=True, name="{0}_{1}_LinkLocal".format(inSuperIK.name(), inCtrl.name()))
+    linkLocal = pc.group(empty=True, world=True, name="{0}_{1}_LinkLocal".format(inSuperIK.name(), inCtrl.stripNamespace()))
     orienter.addChild(linkLocal)
     inSuperIK.t >> linkLocal.t
 
-    sensor = pc.group(empty=True, world=True, name="{0}_{1}_Sensor".format(inSuperIK.name(), inCtrl.name()))
+    sensor = pc.group(empty=True, world=True, name="{0}_{1}_Sensor".format(inSuperIK.name(), inCtrl.stripNamespace()))
     root.addChild(sensor)
     sensor.t.set([0,0,0])
     tkc.constrain(sensor, linkLocal)
@@ -1642,7 +1642,7 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
     output = sensor.t
 
     if inValue != 1.0:
-        attenuate = pc.createNode("multiplyDivide", name="{0}_{1}_Attenuate".format(inSuperIK.name(), inCtrl.name()))
+        attenuate = pc.createNode("multiplyDivide", name="{0}_{1}_Attenuate".format(inSuperIK.name(), inCtrl.stripNamespace()))
         sensor.t >> attenuate.input1
 
         attenuate.input2X.set(inValue)
@@ -1653,14 +1653,14 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
 
     neutralCons = pc.listConnections(neutral.t, source=True, destination=False)
 
-    neutralMul = pc.createNode("multiplyDivide",  name="{0}_{1}_Active".format(inSuperIK.name(), inCtrl.name()))
+    neutralMul = pc.createNode("multiplyDivide",  name="{0}_{1}_Active".format(inSuperIK.name(), inCtrl.stripNamespace()))
 
     neutralMul.output >> neutral.t
 
     neutralInput = neutralMul.input1
 
     if len(neutralCons) == 1:
-        add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.name()))
+        add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.stripNamespace()))
         neutralCons[0].output >> add.input3D[0]
         output >> add.input3D[1]
 
@@ -1671,7 +1671,7 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
         neutralConsZ = pc.listConnections(neutral.tz, source=True, destination=False)
 
         if len(neutralConsX) == 1 or len(neutralConsY) == 1 or len(neutralConsZ) == 1:
-            add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.name()))
+            add = pc.createNode("plusMinusAverage", name="{0}_{1}_Add".format(inSuperIK.name(), inCtrl.stripNamespace()))
 
             if len(neutralConsX) == 1:
                 neutralConsX[0].output >> add.input3D[0].input3Dx
@@ -1691,13 +1691,42 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
         else:
             output >> neutralInput
 
+#Frequency = 0.075
+#Length = 0.5
+
 """
 import SnakeWaveLoc as sw
-sw.createSnakeWaveLoc(pc.selected(), "Global_SRT.WaveFrequency", "Global_SRT.WaveLength", "Global_SRT.mod_Locomotion")
+reload(sw)
+
+import tkMayaCore as tkc
+reload(tkc)
+
+bottoms = [n for n in pc.ls("Bottom_*", type="transform") if not "NeutralPose" in n.name()]
+ups = [n for n in pc.ls("Loc_*", type="transform") if not "NeutralPose" in n.name()]
+
+actives = [n.active for n in ups]
+
+crushPose = [ {'attr': u'ty', 'source': 'Loc_0', 'value': -0.5},
+         {'attr': u'ty', 'source': 'Bottom_0', 'value': 0.5},
+         {'attr': u'sx', 'source': 'Bottom_0', 'value': 1.5}]
+
+crushPoses = []
+
+for i in range(len(bottoms)):
+    newPose = []
+    for poseItem in crushPose:
+        newPoseItem = poseItem.copy()
+        newPoseItem["source"] = newPoseItem["source"].replace("Loc_0", ups[i].name()).replace("Bottom_0", bottoms[i].name())
+        newPose.append(newPoseItem)
+    
+    crushPoses.append(newPose)
+
+sw.createSnakeWaveLoc(bottoms, pc.PyNode("Global_SRT.WaveFrequency"), pc.PyNode("Global_SRT.WaveLength"),
+    pc.PyNode("Global_SRT.Locomotion"), pc.PyNode("Global_SRT.WaveActive"), actives, crushPoses, pc.PyNode("Global_SRT.WaveUp"), pc.PyNode("Global_SRT.CrushOnGround"))
 """
 
-def createSnakeWaveLoc(inObjects, inFrequencyAttr, inLengthAttr, inLocomotionAttr, inBaseOffset=10, inCurvePath=os.path.join(os.path.dirname(__file__),"WaveCycle.ma"), inBaseName="SnakeWave"):
-    baseOffset = 0
+def createSnakeWaveLoc(inObjects, inFrequencyAttr, inLengthAttr, inLocomotionAttr, inActiveAttr, inActiveAttrs=None, inCrushPoses=None, inUpAttr=None, inCrushAttr=None, inBaseOffset=10, inDestattr="tx", inCurvePath=os.path.join(os.path.dirname(__file__),"WaveCycle.ma"), inCurveUpPath=os.path.join(os.path.dirname(__file__),"UpCycle.ma"), inBaseName="SnakeWave"):
+    baseOffset = 10000
     counter = 1
 
     frequencyAttr = pc.PyNode(inFrequencyAttr)
@@ -1721,13 +1750,78 @@ def createSnakeWaveLoc(inObjects, inFrequencyAttr, inLengthAttr, inLocomotionAtt
         animCurve.rename("{0}_animCurve_{1}".format(inBaseName, counter))
         freqmul.output >> animCurve.input
 
+        upCurve = pc.system.importFile(inCurveUpPath, returnNewNodes=True)[0]
+        upCurve.rename("{0}_upCurve_{1}".format(inBaseName, counter))
+        freqmul.output >> upCurve.input
+
         finalmul = pc.createNode("multDoubleLinear", name="{0}_FinalMul_{1}".format(inBaseName, counter))
         animCurve.output >> finalmul.input1
 
-        exprString = "{0} = ({1} -(1/{2})) % (4*(1/{2}))".format(finalmul.input2.name(), offsetadd.output.name(), frequencyAttr.name())
+        exprString = "{0} = ((({1} -(1/{2}))*1000000) % (3000000*(1/{2}))/1000000)".format(finalmul.input2.name(), offsetadd.output.name(), frequencyAttr.name())
         expr = pc.expression( s=exprString , name="{0}_Expr_{1}".format(inBaseName, counter))
+        
+        activeMul = pc.createNode("multDoubleLinear", name="{0}_GlobalActiveMul_{1}".format(inBaseName, counter))
+        finalmul.output >> activeMul.input1
+        inActiveAttr >> activeMul.input2
 
-        finalmul.output >> obj.tx
+        output = activeMul.output
+        crushAttr = inCrushAttr
+        
+        globalActiveUp = pc.createNode("multDoubleLinear", name="{0}_GlobalActiveUp_{1}".format(inBaseName, counter))
+        upCurve.output >> globalActiveUp.input1
+        inActiveAttr >> globalActiveUp.input2
+
+        upAttr = globalActiveUp.output
+
+        if not inActiveAttrs is None:
+            activeAttr = inActiveAttrs[counter-1]
+            activeNode = pc.createNode("multDoubleLinear", name="{0}_ActiveMul_{1}".format(inBaseName, counter))
+            activeMul.output >> activeNode.input1
+            activeAttr >> activeNode.input2
+
+            output = activeNode.output
+
+            crushActiveNode = pc.createNode("multDoubleLinear", name="{0}_CrushActiveMul_{1}".format(inBaseName, counter))
+            crushAttr >> crushActiveNode.input1
+            activeAttr >> crushActiveNode.input2
+
+            crushAttr = crushActiveNode.output
+
+        if not inUpAttr is None:
+            upMul = pc.createNode("multDoubleLinear", name="{0}_UpMul_{1}".format(inBaseName, counter))
+            inUpAttr >> upMul.input1
+            upAttr >> upMul.input2
+            upAttr = upMul.output
+
+        reverseUp = pc.createNode("reverse", name="{0}_ReverseUp_{1}".format(inBaseName, counter))
+        upAttr >> reverseUp.inputX
+        upAttr = reverseUp.outputX
+
+        crushMul = pc.createNode("multDoubleLinear", name="{0}_CrushMul_{1}".format(inBaseName, counter))
+        crushAttr >> crushMul.input1
+        upAttr >> crushMul.input2
+
+        tkc.loadPoses(inCrushPoses[counter-1], inActivationAttr=crushMul.output)
+
+        thisInput = None
+
+        if obj.type() == "transform":
+            layerName = obj.name() + "_poseLayer"
+            layerNode = obj.getParent()
+            if not layerNode.name() == layerName:
+                layerObj = pc.group(empty=True, name=layerName)
+                layerNode.addChild(layerObj)
+                layerObj.t.set([0,0,0])
+                layerObj.r.set([0,0,0])
+                layerObj.s.set([1,1,1])
+                layerNode = layerObj
+                layerNode.addChild(obj)
+
+                thisInput = layerNode.attr(inDestattr)
+        else:
+            thisInput = obj
+
+        output >> thisInput
 
         baseOffset += inBaseOffset
         counter += 1
@@ -1981,7 +2075,7 @@ def safeByPassNode(ns, objStr, ancestorStr="", removeNode=False):
     pc.warning("Can't find object to bypass node (%s, %s)" % (ns, objStr))
     return None
 
-def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilon=0.001, debug=False):
+def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilon=0.001, debug=False, inKnownMin=None, inKnownMax=None, inKnownRatio=None):
     if not isinstance(inRefAttrs, list):
         inRefAttrs = [inRefAttrs]
 
@@ -1989,8 +2083,8 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
         inRefValues = [inRefValues]
 
     pyAttr = pc.PyNode(inAttr)
-    attrMax = pyAttr.getMax()
-    attrMin = pyAttr.getMin()
+    attrMax = inKnownMax if inKnownMax is not None else pyAttr.getMax()
+    attrMin = inKnownMin if inKnownMax is not None else  pyAttr.getMin()
 
     maxIter = inIterations
     #pc.mel.eval("paneLayout -e -manage true $gMainPane")
@@ -2012,13 +2106,15 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
     
     first = True
     direction = 1 if delta > 0 else -1
-    amount = delta
+    baseratio = 1.0 if inKnownRatio is None else inKnownRatio
+    amount = delta * inKnownRatio
     
     minDelta = 180
     closestValue = 0
     while maxIter > 0:
         if math.fabs(delta) <= inEpsilon:
-            #print "returned {0} with delta {1}".format(math.fabs(inRefValue - curValues[0]), delta)
+            if debug:
+                print "returned {0} with delta {1}".format(math.fabs(inRefValue - oldValues[0]), delta)
             return
 
         value = attrValue + amount * direction
@@ -2086,7 +2182,6 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
         if debug:
             print "value : %s, oldValue : %s, oldDelta : %s, curValue : %s, curDelta : %s (amount : %s, stepDelta ! %s)" % (str(value), str(oldValues[0]), str(oldDeltas[0]), str(curValues[0]), str(delta), str(amount), str(stepDelta))
 
-    print minDelta, closestValue
     pc.setAttr(inAttr, closestValue)
     if debug:
         print "exited after %i iterations" % (inIterations - maxIter)
@@ -3343,7 +3438,8 @@ def selectSet(inModel, inSet="All"):
     if len(ctrls)>0:
         pc.select(ctrls, replace=True)
     else:
-        pc.error("No character selected or key set don't exists ("+ inSet  +") !")
+        pc.select(clear=True)
+        #pc.error("No character selected or key set don't exists ("+ inSet  +") !")
     pc.undoInfo(closeChunk=True)
 
 def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
