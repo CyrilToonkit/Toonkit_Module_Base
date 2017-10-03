@@ -319,11 +319,20 @@ def getType(inPyNode):
     
     return None
 
-def getNode(inObjName):
+def getNode(inObj):
     if isinstance(inObj, basestring):
         return pc.PyNode(inObj)
     
     return inObj
+
+def getNodes(inStringList):
+    nodesList =[]
+
+    for objName in inStringList:
+        if pc.objExists(objName):
+            nodesList.append(pc.PyNode(objName))
+
+    return nodesList
 
 def haveVariables(inPath, inCustomVariables=None):
     if inCustomVariables != None:
@@ -1471,6 +1480,12 @@ def getLocalScale(inObj, inGlobalScale):
     
     return scl
 
+def getDistance(inObj1, inObj2):
+    glob1 = inObj1.getTranslation(space="world")
+    glob2 = inObj2.getTranslation(space="world")
+    
+    return math.sqrt(math.pow(glob1[0] - glob2[0], 2) + math.pow(glob1[1] - glob2[1], 2) + math.pow(glob1[2] - glob2[2], 2))
+
 def addBuffer(inTarget, inSuffix=CONST_BUFFERSUFFIX):
     parents = pc.listRelatives(inTarget, parent=True)
     myBuffer = None
@@ -1502,14 +1517,14 @@ def addBuffer(inTarget, inSuffix=CONST_BUFFERSUFFIX):
 
     return myBuffer
 
-def getNeutralPose(inTarget):
+def getNeutralPose(inTarget, inSuffix=None):
     parents = pc.listRelatives(inTarget, parent=True)
-    if len(parents) != 0 and parents[0].name() == inTarget.name() + CONST_NEUTRALSUFFIX:#todo objectType group
+    if len(parents) != 0 and parents[0].name() == inTarget.name() + (inSuffix or CONST_NEUTRALSUFFIX):#todo objectType group
         return parents[0]
     return None
 
-def setNeutralPose(inTarget, globalScalingFix=True):
-    oldNeutral = getNeutralPose(inTarget)
+def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
+    oldNeutral = getNeutralPose(inTarget, inSuffix)
 
     if oldNeutral != None:
         if len(pc.listConnections(oldNeutral, destination=False)) != 0:
@@ -1539,7 +1554,7 @@ def setNeutralPose(inTarget, globalScalingFix=True):
                     '''
                     matchers.append([target.getTranslation(space=WORLDSPACE), target.getRotation(space=WORLDSPACE), target.getScale()])
 
-    neutral = addBuffer(inTarget, CONST_NEUTRALSUFFIX)
+    neutral = addBuffer(inTarget, inSuffix or CONST_NEUTRALSUFFIX)
 
     for i in range(len(cnsTargets)):
         '''
@@ -1562,9 +1577,12 @@ def setNeutralPose(inTarget, globalScalingFix=True):
         neutralName=neutral.name()
         pc.delete(neutral)
         oldNeutral.rename(neutralName)
+        neutral = oldNeutral
 
-def removeNeutralPose(inTarget, globalScalingFix=True):
-    neutral = getNeutralPose(inTarget)
+    return neutral
+
+def removeNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
+    neutral = getNeutralPose(inTarget, inSuffix)
 
     if neutral != None:
         cnsTargets = []
@@ -3000,7 +3018,7 @@ def storePoses(inObjects, customOnly=False, containerName="", keyableOnly=True, 
 
     return poses
 
-def loadPoses(inPoses, inObjects=None):
+def loadPoses(inPoses, inObjects=None, inApply=True, inActivationAttr=None):
     if isinstance(inPoses, basestring):
         posesPath = inPoses
         inPoses = None
@@ -3019,6 +3037,9 @@ def loadPoses(inPoses, inObjects=None):
     if inPoses is None:
         pc.warning("No poses given !")
         return
+
+    if not inApply:
+        return inPoses
 
     sources = {}
 
@@ -3047,7 +3068,39 @@ def loadPoses(inPoses, inObjects=None):
         if node is None:
             continue
 
-        node.attr(pose["attr"]).set(pose["value"])
+        if node.attr(pose["attr"]).get() == pose["value"]:
+            continue
+
+        if not inActivationAttr is None:
+            layerName = node.name() + "_poseLayer"
+            layerNode = node.getParent()
+            if not layerNode.name() == layerName:
+                layerObj = pc.group(empty=True, name=layerName)
+                layerNode.addChild(layerObj)
+                layerObj.t.set([0,0,0])
+                layerObj.r.set([0,0,0])
+                layerObj.s.set([1,1,1])
+                layerNode = layerObj
+                layerNode.addChild(node)
+
+            activeMul = pc.createNode("multDoubleLinear", name="{0}_poseLayer_{1}_active".format(node.name(), pose["attr"]))
+            activeMul.input1.set(pose["value"])
+            inActivationAttr >> activeMul.input2
+
+            output = activeMul.output
+
+            if pose["attr"].startswith("s"):#scaling
+                activeMul.input1.set(pose["value"] - 1)
+                plusOne = pc.createNode("addDoubleLinear", name="{0}_poseLayer_{1}_scaleAdd_active".format(node.name(), pose["attr"]))
+                activeMul.output >> plusOne.input1
+                plusOne.input2.set(1)
+                output = plusOne.output
+
+            output >> layerNode.attr(pose["attr"])
+        else:
+            node.attr(pose["attr"]).set(pose["value"])
+
+    return inPoses
 
 def freeze(inObject):
     storeSelection()
@@ -5243,15 +5296,6 @@ def showSynopTiK():
         cmdLine.append(synPaths)
         #print str(cmdLine)
         subprocess.Popen(SYNOPTIKPATH + " " + " ".join(cmdLine))
-
-def getNodes(inStringList):
-    nodesList =[]
-
-    for objName in inStringList:
-        if pc.objExists(objName):
-            nodesList.append(pc.PyNode(objName))
-
-    return nodesList
 
 def getAssets(inCategory=""):
     assets=[]
