@@ -596,87 +596,89 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
     sourceJointMapping = {}
     destJointMapping = {}
 
-    for key, value in inSourceJointsMapping.iteritems():
-        if key == "":
-            key = None
-        else:
-            if key in SourceInfsDict:
-                key = SourceInfsDict[key]
-            else:
-                if inDebug:
-                    print " - Source key {0} not found !".format(key)
+    if not inSourceJointsMapping is None:
+        for key, value in inSourceJointsMapping.iteritems():
+            if key == "":
                 key = None
-        if value == "":
-            value = None
-        else:
-            if isinstance(value, list):
-                realValue = []
-                for valueItem in value:
-                    if valueItem == "*":
-                        realValue.append(valueItem)
+            else:
+                if key in SourceInfsDict:
+                    key = SourceInfsDict[key]
+                else:
+                    if inDebug:
+                        print " - Source key {0} not found !".format(key)
+                    key = None
+            if value == "":
+                value = None
+            else:
+                if isinstance(value, list):
+                    realValue = []
+                    for valueItem in value:
+                        if valueItem == "*":
+                            realValue.append(valueItem)
+                        else:
+                            if valueItem in DestinationInfsDict:
+                                realValue.append(DestinationInfsDict[valueItem])
+                            else:
+                                if inDebug:
+                                    print " - Source value {0} not found !".format(valueItem)
+                    if len(realValue) > 0:
+                        value = realValue
                     else:
-                        if valueItem in DestinationInfsDict:
-                            realValue.append(DestinationInfsDict[valueItem])
+                        value = None
+                else:
+                    if value == "*":
+                        value = [value]
+                    else:
+                        if value in DestinationInfsDict:
+                            value = [DestinationInfsDict[value]]
                         else:
                             if inDebug:
-                                print " - Source value {0} not found !".format(valueItem)
-                if len(realValue) > 0:
-                    value = realValue
-                else:
-                    value = None
-            else:
-                if value == "*":
-                    value = [value]
-                else:
-                    if value in DestinationInfsDict:
-                        value = [DestinationInfsDict[value]]
-                    else:
-                        if inDebug:
-                            print " - Source value {0} not found !".format(destinationNs+value)
-                        value = None
-        if key != None or value != None:
-            sourceJointMapping[key] = value
+                                print " - Source value {0} not found !".format(destinationNs+value)
+                            value = None
+            if key != None or value != None:
+                sourceJointMapping[key] = value
 
-    for key, value in inDestinationJointsMapping.iteritems():
-        if key == "":
-            key = None
-        else:
-            if key in DestinationInfsDict:
-                key = DestinationInfsDict[key]
-            else:
-                if inDebug:
-                    print " - Destination key {0} not found !".format(key)
+    if not inDestinationJointsMapping is None:
+        for key, value in inDestinationJointsMapping.iteritems():
+            if key == "":
                 key = None
-        if value == "":
-            value = None
-        else:
-            if isinstance(value, list):
-                realValue = []
-                for valueItem in value:
-                    if valueItem == "*":
-                        realValue.append(valueItem)
+            else:
+                if key in DestinationInfsDict:
+                    key = DestinationInfsDict[key]
+                else:
+                    if inDebug:
+                        print " - Destination key {0} not found !".format(key)
+                    key = None
+            if value == "":
+                value = None
+            else:
+                if isinstance(value, list):
+                    realValue = []
+                    for valueItem in value:
+                        if valueItem == "*":
+                            realValue.append(valueItem)
+                        else:
+                            if valueItem in SourceInfsDict:
+                                realValue.append(SourceInfsDict[valueItem])
+                            else:
+                                if inDebug:
+                                    print " - Destination value {0} not found !".format(valueItem)
+                    if len(realValue) > 0:
+                        value = realValue
                     else:
-                        if valueItem in SourceInfsDict:
-                            realValue.append(SourceInfsDict[valueItem])
+                        value = None
+                else:
+                    if value == "*":
+                        value = [value]
+                    else:
+                        if value in SourceInfsDict:
+                            value = [SourceInfsDict[value]]
                         else:
                             if inDebug:
-                                print " - Destination value {0} not found !".format(valueItem)
-                if len(realValue) > 0:
-                    value = realValue
-                else:
-                    value = None
-            else:
-                if value == "*":
-                    value = [value]
-                else:
-                    if value in SourceInfsDict:
-                        value = [SourceInfsDict[value]]
-                    else:
-                        if inDebug:
-                            print " - Destination value {0} not found !".format(value)
-                        value = None
-        if key != None or value != None:
-            destJointMapping[key] = value
+                                print " - Destination value {0} not found !".format(value)
+                            value = None
+            if key != None or value != None:
+                destJointMapping[key] = value
 
     if inDebug:
         print "destJointMapping",destJointMapping
@@ -807,59 +809,60 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
     destinationExceptions = []
 
     #reConstraints
-    for source, target in inSourceReConstraints.iteritems():
-        if pc.objExists(sourceNs+source) and pc.objExists(destinationNs+target):
-            sourceNode = pc.PyNode(sourceNs+source)
-            targetNode = pc.PyNode(destinationNs+target)
-            tkc.removeAllCns(sourceNode)
-            try:
-                tkc.constrain(sourceNode, targetNode)
-            except:
-                pass
-            try:
-                tkc.constrain(sourceNode, targetNode, "Scaling")
-            except:
-                pass
-            if tkc.isElement(sourceNode):
-                shapes = sourceNode.getShapes()
-                for shape in shapes:
-                    if rigStuffAttr != None:
-                        rigStuffAttr >> shape.overrideVisibility
-                    else:
-                        shape.overrideVisibility = 0
-                sourceExceptions.append(source)
-                if inCtrlSet != None and pc.objExists(sourceNs+inCtrlSet):
-                    if pc.sets(sourceNs+inCtrlSet,im=sourceNode):
-                        pc.sets(sourceNs+inCtrlSet,rm=sourceNode)
-        else:
-            pc.warning("Some objects can't be found for source constraints : {0} => {1}".format(sourceNs+source, destinationNs+target))
-
-    for source, target in inDestinationReConstraints.iteritems():
-        if pc.objExists(destinationNs+source) and pc.objExists(sourceNs+target):
-            sourceNode = pc.PyNode(destinationNs+source)
-            targetNode = pc.PyNode(sourceNs+target)
-            tkc.removeAllCns(sourceNode)
-            try:
-                tkc.constrain(sourceNode, targetNode)
-            except:
-                pass
-            try:
-                tkc.constrain(sourceNode, targetNode, "Scaling")
-            except:
-                pass
-            if tkc.isElement(sourceNode):
-                shapes = sourceNode.getShapes()
-                for shape in shapes:
-                    if rigStuffAttr != None:
-                        rigStuffAttr >> shape.overrideVisibility
-                    else:
-                        shape.overrideVisibility = 0
-                destinationExceptions.append(source)
-                if inCtrlSet != None and pc.objExists(destinationNs+inCtrlSet):
-                    if pc.sets(destinationNs+inCtrlSet,im=sourceNode):
-                        pc.sets(destinationNs+inCtrlSet,rm=sourceNode)
-        else:
-            pc.warning("Some objects can't be found for destination constraints : {0} => {1}".format(sourceNs+source, destinationNs+target))
+    if not inSourceReConstraints is None:
+        for source, target in inSourceReConstraints.iteritems():
+            if pc.objExists(sourceNs+source) and pc.objExists(destinationNs+target):
+                sourceNode = pc.PyNode(sourceNs+source)
+                targetNode = pc.PyNode(destinationNs+target)
+                tkc.removeAllCns(sourceNode)
+                try:
+                    tkc.constrain(sourceNode, targetNode)
+                except:
+                    pass
+                try:
+                    tkc.constrain(sourceNode, targetNode, "Scaling")
+                except:
+                    pass
+                if tkc.isElement(sourceNode):
+                    shapes = sourceNode.getShapes()
+                    for shape in shapes:
+                        if rigStuffAttr != None:
+                            rigStuffAttr >> shape.overrideVisibility
+                        else:
+                            shape.overrideVisibility = 0
+                    sourceExceptions.append(source)
+                    if inCtrlSet != None and pc.objExists(sourceNs+inCtrlSet):
+                        if pc.sets(sourceNs+inCtrlSet,im=sourceNode):
+                            pc.sets(sourceNs+inCtrlSet,rm=sourceNode)
+            else:
+                pc.warning("Some objects can't be found for source constraints : {0} => {1}".format(sourceNs+source, destinationNs+target))
+    if not inDestinationReConstraints is None:
+        for source, target in inDestinationReConstraints.iteritems():
+            if pc.objExists(destinationNs+source) and pc.objExists(sourceNs+target):
+                sourceNode = pc.PyNode(destinationNs+source)
+                targetNode = pc.PyNode(sourceNs+target)
+                tkc.removeAllCns(sourceNode)
+                try:
+                    tkc.constrain(sourceNode, targetNode)
+                except:
+                    pass
+                try:
+                    tkc.constrain(sourceNode, targetNode, "Scaling")
+                except:
+                    pass
+                if tkc.isElement(sourceNode):
+                    shapes = sourceNode.getShapes()
+                    for shape in shapes:
+                        if rigStuffAttr != None:
+                            rigStuffAttr >> shape.overrideVisibility
+                        else:
+                            shape.overrideVisibility = 0
+                    destinationExceptions.append(source)
+                    if inCtrlSet != None and pc.objExists(destinationNs+inCtrlSet):
+                        if pc.sets(destinationNs+inCtrlSet,im=sourceNode):
+                            pc.sets(destinationNs+inCtrlSet,rm=sourceNode)
+            else:
+                pc.warning("Some objects can't be found for destination constraints : {0} => {1}".format(sourceNs+source, destinationNs+target))
 
     #Fuse Rig elements
     if inMoveNodes:
