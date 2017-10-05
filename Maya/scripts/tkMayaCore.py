@@ -2971,6 +2971,7 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
             removeAllCns(node)
 
     for con in inConstraints:
+        sourceName = con["source"]
         node = sources.get(sourceName)
         
         if node is None:
@@ -3483,7 +3484,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
 
     return skin
 
-def getWeights(inObject, inInfluences=[], old=False):
+def getWeights(inObject, inInfluence=None, old=False):
     skin = getSkinCluster(inObject)
     if skin == None:
         pc.warning("Can't get any skinCluster on given object ("+inObject.name()+") !")
@@ -3503,16 +3504,24 @@ def getWeights(inObject, inInfluences=[], old=False):
             break
 
     if not old:
-        rawWeights = list(skin.getWeights(skin.getGeometry()[-1]))
-        dim1 = len(rawWeights)
-        if dim1 > 0:
-            dim2 = len(rawWeights[0])
-            for dim2i in range(dim2):
-                for dim1i in range(dim1):
-                    infWeights.append(rawWeights[dim1i][dim2i] * 100.0)
+        if not inInfluence is None:
+            if not isinstance(inInfluence, int):
+                inInfluence = getNode(inInfluence)
+                #print "influence node",inInfluence,"..."
+                inInfluence = infObjs.index(inInfluence)
+                #print "is n",inInfluence,"in",skin
+            return [w * 100.0 for w in skin.getWeights(skin.getGeometry()[-1], influenceIndex=inInfluence)]
+        else:
+            rawWeights = list(skin.getWeights(skin.getGeometry()[-1]))
+            dim1 = len(rawWeights)
+            if dim1 > 0:
+                dim2 = len(rawWeights[0])
+                for dim2i in range(dim2):
+                    for dim1i in range(dim1):
+                        infWeights.append(rawWeights[dim1i][dim2i] * 100.0)
 
-        if nullInf != None:
-            pc.warning("Some deformers were missing, '"+ CONST_NULLINFNAME +"' joint is ignored")
+            if nullInf != None:
+                pc.warning("Some deformers were missing, '"+ CONST_NULLINFNAME +"' joint is ignored")
 
         return infWeights
 
