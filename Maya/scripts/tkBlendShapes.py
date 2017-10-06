@@ -202,6 +202,9 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
     return dupe
 
 def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshold=2.0, offset=0.0):
+    if not sided:
+        return _matchPointPositions(inRef, inTarget)
+        
     refShape = None
 
     if inRef.type() == "mesh":
@@ -213,7 +216,7 @@ def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshol
                 refShape = shape
                 break
                 
-        if refShape == None:
+        if refShape is None:
             pc.warning(inRef.name() + " is not a mesh !!")
             return False
 
@@ -228,43 +231,108 @@ def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshol
                 targetShape = shape
                 break
                 
-        if targetShape == None:
+        if targetShape is None:
             pc.warning(inTarget.name() + " is not a mesh !!")
             return False
 
     refPoints = refShape.getPoints()
     targetPoints = targetShape.getPoints()
-    
-    quantity=1.0
-    
+
+    weightMap = []
+
     for i in range(len(refPoints)):
         if i >= len(targetPoints):
             break
 
-        if not sided:
-            targetPoints[i] = refPoints[i]
-        else:
-            xValue = refPoints[i][0] - offset
-            if rightToLeft:
-                if xValue < -treshold:
-                    targetPoints[i] = refPoints[i]
-                elif xValue < treshold:#in treshold
-                    factor = 1 - ((xValue + treshold) / (2 * treshold))
-                    #linear blend
-                    targetPoints[i][0] = (1 - factor) * targetPoints[i][0] + factor * refPoints[i][0]
-                    targetPoints[i][1] = (1 - factor) * targetPoints[i][1] + factor * refPoints[i][1]
-                    targetPoints[i][2] = (1 - factor) * targetPoints[i][2] + factor * refPoints[i][2]
+        xValue = refPoints[i][0] - offset
+        if rightToLeft:
+            if xValue < -treshold:
+                weightMap.append(1.0)
+            elif xValue < treshold:#in treshold
+                weightMap.append(1 - ((xValue + treshold) / (2 * treshold)))
             else:
-                if xValue > treshold:
-                    targetPoints[i] = refPoints[i]
-                elif xValue > -treshold:#in treshold
-                    factor = (xValue + treshold) / (2 * treshold)
-                    #linear blend
-                    targetPoints[i][0] = (1 - factor) * targetPoints[i][0] + factor * refPoints[i][0]
-                    targetPoints[i][1] = (1 - factor) * targetPoints[i][1] + factor * refPoints[i][1]
-                    targetPoints[i][2] = (1 - factor) * targetPoints[i][2] + factor * refPoints[i][2]
+                weightMap.append(0.0)
+        else:
+            if xValue > treshold:
+                weightMap.append(1.0)
+            elif xValue > -treshold:#in treshold
+                weightMap.append((xValue + treshold) / (2 * treshold))
+            else:
+                weightMap.append(0.0)
+
+    _matchPointPositions(refShape, targetShape, weightMap, refPoints, targetPoints)
+
+def matchPointPositionsFromInfluences(inRef, inTarget, inInfluences, inSkinGeometry=None):
+    if inSkinGeometry is None:
+        inSkinGeometry = inTarget
+
+    if not isinstance(inInfluences, (list, tuple)):
+        print "inInfluences is not a list !"
+        inInfluences = (inInfluences,)
+
+    weightMap = []
+
+    for influence in inInfluences:
+        weights = tkc.getWeights(inSkinGeometry, influence)
+        i = 0
+        for weight in weights:
+            if len(weightMap) <= i:
+                weightMap.append(weight / 100.0)
+            else:
+                weightMap[i] += weight / 100.0
+            i += 1
+
+    _matchPointPositions(inRef, inTarget, weightMap)
+
+def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTargetPoints=None):
+    refShape = None
+
+    if inRef.type() == "mesh":
+        refShape = inRef
+    else:
+        refShapes = inRef.getShapes(noIntermediate=True)
+        for shape in refShapes:
+            if shape.type() == "mesh":
+                refShape = shape
+                break
+                
+        if refShape is None:
+            pc.warning(inRef.name() + " is not a mesh !!")
+            return False
+
+    targetShape = None
+
+    if inTarget.type() == "mesh":
+        targetShape = inTarget
+    else:
+        targetShapes = inTarget.getShapes(noIntermediate=True)
+        for shape in targetShapes:
+            if shape.type() == "mesh":
+                targetShape = shape
+                break
+                
+        if targetShape is None:
+            pc.warning(inTarget.name() + " is not a mesh !!")
+            return False
+
+    refPoints = inRefPoints or refShape.getPoints()
+    targetPoints = inTargetPoints or targetShape.getPoints()
+
+    for i in range(len(refPoints)):
+        if i >= len(targetPoints):
+            break
+
+        if inMap is None or i >= len(inMap):
+            targetPoints[i] = refPoints[i]
+        elif inMap[i] >= 0.9999:
+            targetPoints[i] = refPoints[i]
+        elif inMap[i] >= 0.0001:
+            targetPoints[i][0] = (1 - inMap[i]) * targetPoints[i][0] + inMap[i] * refPoints[i][0]
+            targetPoints[i][1] = (1 - inMap[i]) * targetPoints[i][1] + inMap[i] * refPoints[i][1]
+            targetPoints[i][2] = (1 - inMap[i]) * targetPoints[i][2] + inMap[i] * refPoints[i][2]
 
     targetShape.setPoints(targetPoints)
+    return True
 
 #cutLeftRight(pc.selected()[0], pc.selected()[1], 2.0)
 def cutLeftRight(inRef, inTarget, treshold=2.0):
