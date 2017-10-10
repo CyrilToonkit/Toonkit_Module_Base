@@ -1804,7 +1804,12 @@ def createSnakeWaveLoc(inObjects, inFrequencyAttr, inLengthAttr, inLocomotionAtt
         crushAttr >> crushMul.input1
         upAttr >> crushMul.input2
 
-        tkc.loadPoses(inCrushPoses[counter-1], inActivationAttr=crushMul.output)
+        if not inCrushPoses is None:
+            crushPose = inCrushPoses[counter-1]
+            if isinstance(crushPose, (list,tuple)):#pose
+                tkc.loadPoses(inCrushPoses[counter-1], inActivationAttr=crushMul.output)
+            else:#attr
+                crushMul.output >> crushPose
 
         thisInput = None
 
