@@ -131,6 +131,7 @@ from pymel import versions
 import locationModule
 from tkToolOptions.tkOptions import Options
 import OscarZmqString as ozs
+import OscarZmqMayaString as ozms
 import PAlt as palt
 import tkToolOptions.ToonkitMayaCore as ToonkitMayaCore
 
@@ -1359,7 +1360,7 @@ def matchTRS(inTarget, inRef, inTrans=True, inRot=True, inScl=True, inWorldSpace
         trans = inTarget.getTranslation(space=transSpace)
     rot = None
     if not inRot:
-        rot = inTarget.getRotation(space=transSpace)
+        rot = ozms.getPymelRotation(inTarget, space=transSpace)
     scl = None
     if not inScl:
         scl = inTarget.getScale()
@@ -1552,7 +1553,7 @@ def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
                     '''
                     matchers.append(createRigObject(target, target.name() + "_TKMatcher", "Transform", mode="sibling", match=True ))
                     '''
-                    matchers.append([target.getTranslation(space=WORLDSPACE), target.getRotation(space=WORLDSPACE), target.getScale()])
+                    matchers.append([target.getTranslation(space=WORLDSPACE), ozms.getPymelRotation(target, space=WORLDSPACE), target.getScale()])
 
     neutral = addBuffer(inTarget, inSuffix or CONST_NEUTRALSUFFIX)
 
@@ -1603,7 +1604,7 @@ def removeNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
                         '''
                         matchers.append(createRigObject(target, target.name() + "_TKMatcher", "Transform", mode="sibling", match=True ))
                         '''
-                        matchers.append([target.getTranslation(space=WORLDSPACE), target.getRotation(space=WORLDSPACE), target.getScale()])
+                        matchers.append([target.getTranslation(space=WORLDSPACE), ozms.getPymelRotation(target, space=WORLDSPACE), target.getScale()])
 
         neutralParents = pc.listRelatives(neutral, parent=True)
         if len(neutralParents) != 0:
@@ -2753,7 +2754,7 @@ def constrain(inObject, inSource, inType="Pose", inOffset=True, inAdditionnalArg
             refObj = inObject
         else:
             refObj = inSource
-        matcher = [refObj.getTranslation(space=WORLDSPACE), refObj.getRotation(space=WORLDSPACE), refObj.getScale()]
+        matcher = [refObj.getTranslation(space=WORLDSPACE), ozms.getPymelRotation(refObj, space=WORLDSPACE), refObj.getScale()]
 
     if inType == "Pin":
         pinName = inObject.name() + "_PinIntoPosition"

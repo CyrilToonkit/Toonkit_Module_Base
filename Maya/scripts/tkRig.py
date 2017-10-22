@@ -41,6 +41,7 @@ import pymel.core as pc
 import maya.cmds as mc
 import pymel.core.system as pmsys
 from maya.OpenMaya import MVector
+import OscarZmqMayaString as ozms
 
 import tkMayaCore as tkc
 import tkSIGroups
@@ -157,7 +158,7 @@ def OscarFilterPosed(inObjects):
         if not tkc.listsBarelyEquals(nControl.getTranslation(), [0.0,0.0,0.0]):
             movedControls.append(nControl)
             continue
-        if not tkc.listsBarelyEquals(nControl.getRotation(), [0.0,0.0,0.0]):
+        if not tkc.listsBarelyEquals(ozms.getPymelRotation(nControl), [0.0,0.0,0.0]):
             movedControls.append(nControl)
             continue
         if not tkc.listsBarelyEquals(nControl.getScale(), [1.0,1.0,1.0]):
@@ -3092,7 +3093,7 @@ def getPosedControls(inCharName, inCategory="All"):
         if not tkc.listsBarelyEquals(nControl.getTranslation(), [0.0,0.0,0.0]):
             movedControls.append(nControl.name())
             continue
-        if not tkc.listsBarelyEquals(nControl.getRotation(), [0.0,0.0,0.0]):
+        if not tkc.listsBarelyEquals(ozms.getPymelRotation(nControl), [0.0,0.0,0.0]):
             movedControls.append(nControl.name())
             continue
         if not tkc.listsBarelyEquals(nControl.getScale(), [1.0,1.0,1.0]):
@@ -3843,7 +3844,7 @@ def mirrorPose(inModel, symmetry=False, inAttrs=True):
                 oppositeName = regexRule[0].sub(regexRule[1], oppositeName)
 
             t = control.getTranslation(space="object")
-            r = control.getRotation(space="object")
+            r = ozms.getPymelRotation(control, space="object")
             s = control.getScale()
 
             transform = [t,r,s]
@@ -4172,7 +4173,7 @@ def switchIkToFk(inFKBone0,inFKBone1,inFKEff,inIKBone0,inIKBone1,inIKEff,inBlend
         pc.setAttr(inFKBone0 + ".sy", vBone0.length() / iKBone0_Init)
         pc.setAttr(inFKBone0 + ".sz", vBone0.length() / iKBone0_Init)
 
-        oIKBone0Rot = oIKBone0.getRotation(space="object")
+        oIKBone0Rot = ozms.getPymelRotation(oIKBone0, space="object")
         pc.setAttr(inFKBone0 + ".rx", -oIKBone0Rot[0])
         pc.setAttr(inFKBone0 + ".ry", -IKBone0Rot[1])
         pc.setAttr(inFKBone0 + ".rz", IKBone0Rot[2])
@@ -4185,7 +4186,7 @@ def switchIkToFk(inFKBone0,inFKBone1,inFKEff,inIKBone0,inIKBone1,inIKEff,inBlend
         pc.setAttr(inFKBone1 + ".sy", vBone1.length() / iKBone1_Init)
         pc.setAttr(inFKBone1 + ".sz", vBone1.length() / iKBone1_Init)
 
-        oIKBone1Rot = oIKBone1.getRotation(space="object")
+        oIKBone1Rot = ozms.getPymelRotation(oIKBone1, space="object")
         pc.setAttr(inFKBone1 + ".rx", -oIKBone1Rot[0])
         pc.setAttr(inFKBone1 + ".ry", 0)
         pc.setAttr(inFKBone1 + ".rz", IKBone1Rot[2])
