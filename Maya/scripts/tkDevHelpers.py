@@ -23,11 +23,13 @@
 """
 DevHelpers
 """
+import math
 import time
 import re
 import types
 import os
 import inspect
+from functools import partial
 
 import pymel.core as pc
 
@@ -292,3 +294,310 @@ def functionSelChanged():
 def docChanged():
     filtersChanged()
     functionSelChanged()
+
+class Tester(object):
+
+    def __init__(self, inName=None, inPath=None, inValues=None):
+        self.name = inName
+        self.path = inPath
+        self.values = inValues or {}
+
+        self.GETTERS = {
+            "Objects":partial(pc.ls),
+            "Transforms":partial(self.filter, inName="Objects", inType="transform"),
+            "Locators":partial(self.filter, inName="Objects", inType="locator"),
+            "Joints":partial(self.filter, inName="Objects", inType="joint"),
+            "Curves":partial(self.filter, inName="Objects", inType="nurbsCurve"),
+            "Expressions":partial(self.filter, inName="Objects", inType="expression"),
+            "Expressions Characters":partial(self.exprCharacters),
+            "Constraints":partial(pc.ls, type=["constraint","motionPath"]),
+            "parentConstraints":partial(self.filter, inName="Constraints", inType="parentConstraint"),
+            "aimConstraints":partial(self.filter, inName="Constraints", inType="aimConstraint"),
+            "orientConstraints":partial(self.filter, inName="Constraints", inType="orientConstraint"),
+            "scaleConstraints":partial(self.filter, inName="Constraints", inType="scaleConstraint"),
+            "pointConstraints":partial(self.filter, inName="Constraints", inType="pointConstraint"),
+            "poleVectorConstraints":partial(self.filter, inName="Constraints", inType="poleVectorConstraint"),
+            "motionPaths":partial(self.filter, inName="Constraints", inType="motionPath"),
+            "Utilities":partial(self.filter, inName="Objects", inType=["addDoubleLinear", "blendColors",
+                                                                "condition", "curveInfo", "multDoubleLinear", "multiplyDivide",
+                                                                "reverse", "clamp", "plusMinusAverage", "distanceBetween",
+                                                                "remapValue", "setRange"]),
+            "Opening":partial(openNode, inPath=self.path),
+            "Performance":partial(evaluateNode, inName=self.name, inPath=self.path)
+        }
+
+    def _get(self, inProperty):
+        getter = self.GETTERS.get(inProperty)
+        if not getter is None:
+            return getter()
+
+        return None
+
+    def get(self, inProperty):
+        prop = self.values.get(inProperty)
+        if prop is None:
+            self.values[inProperty] = self._get(inProperty)
+        else:
+            self.values[inProperty]
+
+        return self.values[inProperty]
+
+    def filter(self, inName="Objects", inType=None):
+        filtered = {}
+        objs = self.get(inName)
+        return [obj for obj in objs if obj.type() == inType or obj.type() in inType]
+
+    def getValue(self, inProperty):
+        return len(self.get(inProperty)) if isinstance(self.get(inProperty), (list, tuple)) else self.get(inProperty)
+
+    def getValues(self, *args):
+        return [str(self.getValue(arg)) for arg in args]
+
+    def exprCharacters(self, inName="Expressions"):
+        nChars = 0
+        exprs = self.get(inName)
+        for expr in exprs:
+            nChars += len(expr.getString())
+
+        return nChars
+
+# *** Objects
+def countObjectsOld():
+    trans = pc.ls(type="transform")
+    groups = []
+    for tran in trans:
+        if tran.getShape() == None:
+            groups.append(tran)
+    rslt = {
+        "Objects":len(pc.ls()) - 64,
+        "Transforms ":len(trans),
+        "Goups":len(groups),
+        "Locators":len(pc.ls(type="locator")),
+        "Joints":len(pc.ls(type="joint")),
+        "curves":len(pc.ls(type="nurbsCurve"))
+    }
+
+    print "Objects {0}".format(rslt["Objects"])
+    print " - transforms {0}".format(rslt["transforms"])
+    print " - groups {0}".format(rslt["groups"])
+    print " - locators {0}".format(rslt["locators"])
+    print " - joints {0}".format(rslt["joints"])
+    print " - curves {0}".format(rslt["curves"])
+
+    return rslt
+
+# *** Hierarchy
+def traceHierarchy():
+    trans = pc.ls(type="transform")
+    step = 1
+    if len(trans) > 100:
+        step = 100.0 / len(trans)
+    counter = 0
+    count = 0
+    depths = 0
+    biggestDepth = 0
+    for tran in trans:
+        counter += step
+        if counter >= 1:
+            d =  len(tran.getAllParents())
+            if d >  biggestDepth:
+                biggestDepth = d
+            depths += d
+            count += 1
+            counter = 0
+    
+    rslt = {
+        "Average depth":float(depths) / count,
+        "Biggest depth":biggestDepth
+    }
+    print "Average depth {0}".format(rslt["Average depth"])
+    print "Biggest depth {0}".format(rslt["Biggest depth"])
+
+    return rslt
+
+#Params
+def cntparams():
+    sel = pc.ls(sl=True)
+    nParams = 0
+    for selObj in sel:
+        nParams += len(tkc.getParameters(selObj, False, "", True))
+        
+    return nParams
+    
+#print cntparams()
+
+def cntExprCharacters():
+    nChars = 0
+    exprs = pc.ls(type="expression")
+    for expr in exprs:
+        nChars += len(pc.expression(expr, query=True, s=True))
+
+    rslt = {
+        "Expressions":len(exprs),
+        "Biggest depth":nChars
+    }
+
+    return rslt
+
+# *** Constraints (0 base)
+def countConstraints():
+    cons = pc.ls(type=["constraint","motionPath"])
+    #pc.select(pc.ls(type="constraint"))
+    
+    #pc.select(pc.ls(type="motionPath"))
+    specCns = 0
+    
+    parentConstraints = len(pc.ls(type="parentConstraint"))
+    specCns += parentConstraints
+    orientConstraints = len(pc.ls(type="orientConstraint"))
+    specCns += orientConstraints
+    aimConstraints = len(pc.ls(type="aimConstraint"))
+    specCns += aimConstraints
+    scaleConstraints = len(pc.ls(type="scaleConstraint"))
+    specCns += scaleConstraints
+    pointConstraints = len(pc.ls(type="pointConstraint"))
+    specCns += pointConstraints
+    poleVectorConstraints = len(pc.ls(type="poleVectorConstraint"))
+    specCns += poleVectorConstraints
+    motionPaths = len(pc.ls(type="motionPath"))
+    specCns += motionPaths
+    
+    rslt = {
+        "constraints":len(cons),
+        "parentConstraints":parentConstraints,
+        "aimConstraints":aimConstraints,
+        "orientConstraints":orientConstraints,
+        "scaleConstraints":scaleConstraints,
+        "pointConstraints":pointConstraints,
+        "poleVectorConstraints":poleVectorConstraints,
+        "motionPaths":motionPaths
+    }
+
+    print "constraints {0}".format(rslt["constraints"])
+    print " - parentConstraints {0}".format(rslt["parentConstraints"])
+    print " - orientConstraints {0}".format(rslt["orientConstraints"])
+    print " - aimConstraints {0}".format(rslt["aimConstraints"])
+    print " - scaleConstraints {0}".format(rslt["scaleConstraints"])
+    print " - pointConstraints {0}".format(rslt["pointConstraints"])
+    print " - poleVectorConstraints {0}".format(rslt["poleVectorConstraints"])
+    print " - motionPaths {0}".format(rslt["motionPaths"])
+
+    return rslt
+
+# *** Utilities (0 base)
+def countUtilities():
+    utilities = ["addDoubleLinear", "blendColors", "condition", "curveInfo", "multDoubleLinear", "multiplyDivide", "reverse", "clamp", "plusMinusAverage", "distanceBetween", "remapValue", "setRange"]
+    utils = pc.ls(type=utilities)
+
+    rslt = {"utility nodes":len(utils)}
+
+    print "utility nodes {0}".format(rslt["utils"])
+    for util in utilities:
+        print " - " + util + " " + str(len(pc.ls(type=util)))
+
+    return rslt
+
+#Deformers (0 base)
+def cntdeformers():
+    sel = pc.ls(sl=True)
+    defs = []
+    nDefs = 0
+    for selObj in sel:
+        skin = tkc.getSkinCluster(selObj)
+        if skin != None:
+            infs = pc.skinCluster(skin,query=True,inf=True)
+            nDefs += len(infs)
+            for inf in infs:
+                if not inf in defs:
+                    defs.append(inf)
+
+    return (nDefs, len(defs))
+
+#Evaluate
+def setAnim(inObj, attr="tx", nFrames=100):
+    pc.playbackOptions(min=1, max=nFrames)
+    cTime = 0
+    for f in range(nFrames):
+        cTime += 1
+        pc.setKeyframe( inObj, attribute=attr, value=math.cos(cTime) * 2, t=cTime)
+
+def evaluate(nFrames=100, refresh=False):
+    cTime = 0
+    for f in range(nFrames):
+        cTime += 1
+        pc.currentTime(cTime)
+        if refresh:
+            pc.refresh()
+
+def importFile(path):
+    pc.system.importFile(path)
+
+def openFile(path):
+    pc.system.openFile(path, force=True)
+
+def getNodes(nodesPath="Z:\\Toonkit\\RnD\\Src\\GitRepo\\oscar\\build\\OscarEditor\\release\\Data\\Rigs\\"):
+    nodes = []
+    dirContent = os.listdir(nodesPath)
+    for dirItem in dirContent:
+        path = os.path.join(nodesPath, dirItem)
+        if os.path.isdir(path):
+            nodeName = dirItem
+            nodePath = os.path.join(path, nodeName + ".ma")
+            if os.path.isfile(nodePath):
+                nodes.append([nodePath, nodeName])
+                
+    return nodes
+
+def openNode(inPath):
+    return tkc.benchIt(openFile, inPath)[0]
+
+def evaluateNode(inName, inPath):
+    if inName == "UnRoll":
+        inName = "Unroll"
+
+    modelName = inName + ":" + inName
+    rootName = modelName + "_Root"
+
+    #Evaluate with all visible
+    try:
+        pc.setAttr(inName + ":Hidden.visibility", 1)
+        tkSIGroups.refreshOverrides()
+    except:
+        pass
+
+    setAnim(rootName, nFrames=100)
+
+    return 100.0 / tkc.benchIt(evaluate, 100)[0]
+
+def testNode(inName, inPath):
+    if inName == "UnRoll":
+        inName = "Unroll"
+    pmsys.newFile(force=True)
+    print " *** " + inName + " ***"
+    print "size " + str(os.path.getsize(inPath) / 1000.0) + " Ko"
+    tkc.benchIt(importFile, inPath)
+    
+    modelName = inName + ":" + inName
+    rootName = modelName + "_Root"
+    
+    countObjects()
+    
+    exprs = cntExprCharacters()
+    print "expressions " + str(exprs[0])
+    print "expressions chars " + str(exprs[1])
+    
+    countConstraints()
+    
+    countUtilities()
+    
+    #Evaluate with all visible
+    try:
+        pc.setAttr(inName + ":Hidden.visibility", 1)
+        tkSIGroups.refreshOverrides()
+    except:
+        pass
+    
+    setAnim(rootName, nFrames=1000)
+    
+    print 100.0 / tkc.benchIt(evaluate, 10)[0]
+#testNode(nodes[nodeIndex][1],nodes[nodeIndex][0])
