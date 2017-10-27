@@ -19,10 +19,38 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 
-Todo reuse if possible for multi-attribute used as single (multiplyDivide, Reverse...)
+Used to parse arbitrary expression and consider each "term" as a class that overrides all operators and can execute custom code when evaluated.
+
+The base class "Term" is a kind of virtual class that can contain any value type (basically str, int or float), undestanding just numbers and doing nothing with strings
+by default. It overrides all operators and let derived class implement operators functions for string values (add, radd, sub, rsub...see https://docs.python.org/2/library/operator.html)
+
+Includes
+---------
+# Operators : +, -, *, /, **(=pow)
+# Functions : abs, min, max, clamp, pow, sin, cos, modulo
+# Conditions :
+    if/else is managed, but treated as a method : firstTerm.cond(criterion, secondTerm, ifTrue, ifFalse),
+
+    so cases like :
+
+    if(a)       | if(a)
+    {           | {
+        a = b   |     a = b
+    }           | }
+    else        |
+    {           |
+        b = a   |
+    }           |
+
+    cannot be managed correctly because these cases cannot be converted to a function call 
+
+Todo
+---------
+floor, ceil
 
 
-#Example usages :
+Example usages
+---------
 import tkExpressions as tke
 reload(tke)
 Expr = tke.Expr
@@ -32,7 +60,7 @@ expr = "(1 + 2) * 3.1416 + TOTO"
 print Expr().compile(expr)
 
 """
-
+import math
 import re
 import logging
 import sys
@@ -40,7 +68,16 @@ import sys
 __author__ = "Cyril GIBAUD - Toonkit"
 
 logger = logging.getLogger("tkExpressions")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
+
+# Values
+#################################################################################
+
+EPSILON = sys.float_info.epsilon * 10
+OMEGA = 1.0/EPSILON
+
+EPSILON_NAME = "eps"
+OMEGA_NAME = "omg"
 
 EMPTY = ""
 
@@ -169,6 +206,33 @@ class Term(object):
     def rdiv(self, other):
         return other.div(self)
 
+    @verbosed
+    def __pow__(self, other):
+        if Expr.objectIsNumber(self.value) and Expr.objectIsNumber(other.value):
+            return self.__class__(self.value ** other.value)
+
+        return self.__class__(self.pow(other))
+
+    def rpow(self, other):
+        return other.pow(self)
+
+    @verbosed
+    def __mod__(self, other):
+        if Expr.objectIsNumber(self.value) and Expr.objectIsNumber(other.value):
+            return self.__class__(self.value % other.value)
+
+        return self.__class__(self.mod(other))
+
+    @verbosed
+    def __rmod__(self, other):
+        if Expr.objectIsNumber(self.value) and Expr.objectIsNumber(other.value):
+            return self.__class__(other.value % self.value)
+
+        return self.__class__(self.rmod(other))
+
+    def rmod(self, other):
+        return other.mod(self)
+
     #Functions
     @staticmethod
     @verbosed
@@ -180,11 +244,43 @@ class Term(object):
 
     @staticmethod
     @verbosed
-    def _clamp(this, otherMin, otherMax):
+    def _cos(this):
+        if Expr.objectIsNumber(this.value):
+            return this.__class__( math.cos(this.value))
+
+        return this.__class__(this.cos())
+
+    @staticmethod
+    @verbosed
+    def _sin(this):
+        if Expr.objectIsNumber(this.value):
+            return this.__class__( math.sin(this.value))
+
+        return this.__class__(this.sin())
+
+    @staticmethod
+    @verbosed
+    def _clamp(otherMin, otherMax, this):
         if Expr.objectIsNumber(this.value) and Expr.objectIsNumber(otherMin.value) and Expr.objectIsNumber(otherMax.value):
             return this.__class__(min(max(this.value, otherMin.value), otherMax.value))
 
         return this.__class__(this.clamp(otherMin, otherMax))
+
+    @staticmethod
+    @verbosed
+    def _min(this, otherMin):
+        if Expr.objectIsNumber(this.value) and Expr.objectIsNumber(otherMin.value):
+            return this.__class__(min(this.value, otherMin.value))
+
+        return this.__class__(this.clamp(this.__class__(-OMEGA), otherMin))
+
+    @staticmethod
+    @verbosed
+    def _max(this, otherMax):
+        if Expr.objectIsNumber(this.value) and Expr.objectIsNumber(otherMax.value):
+            return this.__class__(max(this.value, otherMax.value))
+
+        return this.__class__(this.clamp(otherMax, this.__class__(OMEGA)))
 
     @staticmethod
     @verbosed
@@ -223,9 +319,21 @@ class Term(object):
     def div(self, other):
         return "{0} / {1}".format(Expr.getWord(self.value), Expr.getWord(other.value))
 
+    def pow(self, other):
+        return "{0} ** {1}".format(Expr.getWord(self.value), Expr.getWord(other.value))
+
+    def mod(self, other):
+        return "{0} % {1}".format(Expr.getWord(self.value), Expr.getWord(other.value))
+
     #Functions
     def reverse(self):
         return "reverse({0})".format(Expr.getWord(self.value))
+
+    def cos(self):
+        return "cos({0})".format(Expr.getWord(self.value))
+
+    def sin(self):
+        return "sin({0})".format(Expr.getWord(self.value))
 
     def clamp(self, otherMin, otherMax):
         return "clamp({0}, {1}, {2})".format(Expr.getWord(self.value), Expr.getWord(otherMin.value), Expr.getWord(otherMax.value))
@@ -236,11 +344,11 @@ class Term(object):
 
 class Expr(object):
     
-    OPERATORS = ["(", ")", "+", "\\-", "*", "/", ",", ">", "<", "=", "!"]
+    OPERATORS = ["(", ")", "+", "\\-", "*", "/", ",", ">", "<", "=", "!", "%"]
 
     SPLITTER = re.compile("[ " + "".join(OPERATORS) + "]+")
 
-    FUNCTIONS = ["abs"]
+    FUNCTIONS = ["abs", "pow"]
     TERMMETHODS = ["get"]
 
     #COND_RE = re.compile("cond\((\S+)\s*({0})\s*(\S+),\s*(\S+)\s*,\s*(\S+)\s*\)".format("|".join(CONDITION_NICECRITERIA)))
@@ -264,12 +372,19 @@ class Expr(object):
     def __init__(self, termClass=Term, termModule=None):
         self.termClass = termClass
         self.termModule = termModule
-        self.CUSTOMFUNCTIONS = ["clamp", "reverse", "cond"]
+        self.CUSTOMFUNCTIONS = ["clamp", "reverse", "cond", "min", "max", "cos", "sin"]
 
     @staticmethod
     def getWord(inNumberString):
         if not isinstance(inNumberString, basestring):
-            inNumberString = str(inNumberString)
+            absed = abs(inNumberString)
+            if absed <= EPSILON:
+                return EPSILON_NAME
+            elif absed >= OMEGA:
+                return OMEGA_NAME if inNumberString > 0 else "minus"+OMEGA_NAME
+            else:
+                inNumberString = str(inNumberString)
+
         word = ""
         for char in inNumberString:
             word += Expr.WORDS.get(char, char)
@@ -292,7 +407,7 @@ class Expr(object):
 
     @staticmethod
     def getTerms(inExpr):
-        return tuple(set([term for term in Expr.SPLITTER.split(inExpr) if not term == EMPTY and not term in Expr.OPERATORS]))
+        return list(set([term for term in Expr.SPLITTER.split(inExpr) if not term == EMPTY and not term in Expr.OPERATORS]))
 
     def getTermClassName(self):
         return self.termClass.__name__ if self.termModule is None else "{0}.{1}".format(self.termModule.__name__, self.termClass.__name__)
@@ -303,7 +418,7 @@ class Expr(object):
         global_vars = globals()
         local_vars = {}
 
-        terms = Expr.getTerms(inExpr)
+        terms = sorted(Expr.getTerms(inExpr), key=lambda x: len(x), reverse=True)
         logger.debug("terms:{0}".format(terms))
 
         for term in terms:

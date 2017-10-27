@@ -19,9 +19,13 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 
-Todo reuse if possible for multi-attribute used as single (multiplyDivide, Reverse...)
+Implements tkExpressions to create nodes from arbitrary expression string and convert Maya Expressions
 
-#Example usages (MACROS section is full of examples of the library part):
+Todo :
+Reuse if possible for multi-attribute used as single (multiplyDivide, Reverse...)
+Attributes types variations (typically scalars/vectors)
+
+Example usages (MACROS section is full of examples of the library part):
 
 #Proximities system
 import pymel.core as pc
@@ -44,11 +48,15 @@ reload(tkn)
 #expr = "locator3.tx = cond(locator1.tx > 0, 1, -1)"
 
 #Basic arithmetic
-expr = "locator3.tx = (-locator1.tx + locator2.tx) * 2.0"
+expr = "locator3.tx = (-locator1.tx + abs(locator2.tx)) * 2.0"
 
 print tkn.compileNodes(expr)
+
+#Expression conversion
+print tkn.convertExpression(pc.selected()[0])
 """
 
+import os
 import sys
 import re
 import logging
@@ -56,6 +64,8 @@ import logging
 import tkExpressions as tke
 
 import pymel.core as pc
+
+import tkMayaCore as tkc
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -87,6 +97,8 @@ NS_SEPARATOR = ":"
 # Nodes formattings
 #################################################################################
 
+DECMAT_FORMAT = "{0}_Dec"
+
 NEG_FORMAT = "{0}_Neg"
 ADD_FORMAT = "{0}_{1}_Add"
 SUBSTRACT_FORMAT = "{0}_{1}_Sub"
@@ -96,12 +108,19 @@ WORLD_MATRIX_FORMAT = "{0}_World"
 VECTOR_FORMAT = "{0}_TO_{1}_{2}_Vec"
 DISTANCE_FORMAT = "{0}_TO_{1}_{2}_Dist"
 MAGNITUDE_FORMAT = "{0}_Mag"
-POW_FORMAT = "{0}_Pow"
+POW_FORMAT = "{0}_{1}_Pow"
 DOT_FORMAT = "{0}_ON_{1}_Dot"
 CROSS_FORMAT = "{0}_ON_{1}_Cross"
 DIVIDE_FORMAT = "{0}_OVER_{1}_Div"
+
 CLAMP_FORMAT = "{0}_{1}_{2}_Clamp"
 REVERSE_FORMAT = "{0}_Rev"
+SIN_FORMAT = "{0}_Sin"
+COS_FORMAT = "{0}_Cos"
+MOD_FORMAT = "{0}_{1}_Mod"
+KEEP_FORMAT = "{0}_Keep"
+ACCU_FORMAT = "{0}_Accu"
+
 CURVEINFO_FORMAT = "{0}_Info"
 CLOSESTPOINT_FORMAT = "{0}_{1}_Close"
 CONDITION_FORMAT = "{0}_{1}_{2}_Cond"
@@ -138,19 +157,26 @@ def profiled(func):
             else:
                 CALLS[kwargs["func"]] += 1
 
-        rslt = func(*args, **kwargs)
         if VERBOSE:
             print "VERBOSE :: calling ",func.__name__,args,kwargs
+
+        rslt = func(*args, **kwargs)
+
+        if VERBOSE:
             print "VERBOSE :: returns ",rslt
             print ""
+
         return rslt
 
     return wrapper
 
 #Profiling functions
-def startProfiling():
+def startProfiling(inVerbose=False):
     global PROFILE
     PROFILE = True
+
+    global VERBOSE
+    VERBOSE = inVerbose
 
     global CREATED_NODES
     CREATED_NODES = {}
@@ -158,15 +184,19 @@ def startProfiling():
     global CALLS
     CALLS = {}
 
-def stopProfiling(inLog=True):
+def stopProfiling(inLog=False, inClearNodes=True):
     global PROFILE
     PROFILE = False
 
+    if inClearNodes:
+        global CREATED_NODES
+
+    nodes = []
+    for function, createdNodes in CREATED_NODES.iteritems():
+        nodes.extend(createdNodes)
+
     if inLog:
         print "-"*20
-        nodes = []
-        for function, createdNodes in CREATED_NODES.iteritems():
-            nodes.extend(createdNodes)
 
         print "{0} nodes created total".format(len(nodes))
         print ""
@@ -180,6 +210,11 @@ def stopProfiling(inLog=True):
 
         print "-"*20
 
+    if inClearNodes:
+        CREATED_NODES = {}
+
+    return nodes
+
 #################################################################################
 #                           HELPERS                                             #
 #################################################################################
@@ -191,6 +226,9 @@ def getNode(inObj):
     return inObj
 
 def reduceName(inName):
+    if inName[0] in tke.Expr.WORDS:
+        inName = tke.Expr.WORDS[inName[0]] + inName[1:]
+
     if not len(inName) > MAX_NAME_LEN:
         return inName
 
@@ -423,29 +461,63 @@ def sub(inAttr1, inAttr2, inName=None, **kwargs):
 
     nodeName = inName or ns + reduceName(SUBSTRACT_FORMAT.format(attr1Name, attr2Name))
     if pc.objExists(nodeName):
-        return pc.PyNode(nodeName).output
+        node = pc.PyNode(nodeName)
+        if node.type() == "plusMinusAverage":
+            return node.output3D
 
-    mulName = (inName + "_subsMul") if inName else None
-    invert2 = mul(inAttr2, -1.0, inName=mulName)
+        return node.output
 
-    return add(inAttr1, invert2, inName=nodeName)
+    if inAttr1.type() == "double3":
+        node = create("plusMinusAverage", nodeName, **kwargs)
+        node.operation.set(2)#Substract
+        inAttr1 >> node.input3D[0]
+        inAttr2 >> node.input3D[1]
+
+        return node.output3D
+    else:
+        mulName = (inName + "_subsMul") if inName else None
+        invert2 = mul(inAttr2, -1.0, inName=mulName)
+
+        return add(inAttr1, invert2, inName=nodeName)
 
 @profiled
-def npow(inAttr, inName=None, **kwargs):
-    inAttr = getNode(inAttr)
+def npow(inAttr1, inAttr2=2.0, inName=None, **kwargs):
+    inAttr1 = getNode(inAttr1)
+    inAttr2 = getNode(inAttr2)
 
-    nodeName = inName or reduceName(POW_FORMAT.format(formatAttr(inAttr)))
+    attr1Scalar = isinstance(inAttr1, (int,float))
+    attr2Scalar = isinstance(inAttr2, (int,float))
+
+    ns = ""
+    if not attr1Scalar:
+        ns = str(inAttr1.node().namespace())
+    elif not attr2Scalar:
+        ns = str(inAttr2.node().namespace())
+
+    attr1Name = formatScalar(inAttr1) if attr1Scalar else formatAttr(inAttr1, True)
+    attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
+
+    nodeName = inName or ns + reduceName(POW_FORMAT.format(attr1Name, attr2Name))
     if pc.objExists(nodeName):
-        return pc.PyNode(nodeName).output
+        return pc.PyNode(nodeName).outputX
 
-    node = create("multDoubleLinear", nodeName, **kwargs)
-    inAttr >> node.input1
-    inAttr >> node.input2
+    node = create("multiplyDivide", nodeName, **kwargs)
+    node.operation.set(3)#power
 
-    return node.output
+    if attr1Scalar:
+        node.input1X.set(inAttr1)
+    else:
+        inAttr1 >> node.input1X
+
+    if attr2Scalar:
+        node.input2X.set(inAttr2)
+    else:
+        inAttr2 >> node.input2X
+
+    return node.outputX
 
 @profiled
-def divide(inAttr1, inAttr2, inName=None, **kwargs):
+def div(inAttr1, inAttr2, inName=None, **kwargs):
     inAttr1 = getNode(inAttr1)
     inAttr2 = getNode(inAttr2)
 
@@ -509,24 +581,92 @@ def reverse(inAttr, inName=None, **kwargs):
 
     return revNode.outputX
 
+@profiled
+def sin(inAttr, inName=None, **kwargs):
+    inAttr = getNode(inAttr)
+
+    nodeName = inName or reduceName(SIN_FORMAT.format(formatAttr(inAttr)))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output
+
+    node = create("tkSin", nodeName, **kwargs)
+    inAttr >> node.input
+
+    return node.output
+
+@profiled
+def cos(inAttr, inName=None, **kwargs):
+    inAttr = getNode(inAttr)
+
+    nodeName = inName or reduceName(COS_FORMAT.format(formatAttr(inAttr)))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output
+
+    node = create("tkCos", nodeName, **kwargs)
+    inAttr >> node.input
+
+    return node.output
+
+@profiled
+def mod(inAttr1, inAttr2, inName=None, **kwargs):
+    inAttr1 = getNode(inAttr1)
+    inAttr2 = getNode(inAttr2)
+
+    attr1Scalar = isinstance(inAttr1, (int,float))
+    attr2Scalar = isinstance(inAttr2, (int,float))
+
+    ns = ""
+    if not attr1Scalar:
+        ns = str(inAttr1.node().namespace())
+    elif not attr2Scalar:
+        ns = str(inAttr2.node().namespace())
+
+    attr1Name = formatScalar(inAttr1) if attr1Scalar else formatAttr(inAttr1, True)
+    attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
+
+    nodeName = inName or ns + reduceName(MOD_FORMAT.format(attr1Name, attr2Name))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output
+
+    node = create("tkMod", nodeName, **kwargs)
+
+    #Todo manage vector or scalar types (considered scalar as it is)
+    if attr1Scalar:
+        node.input1.set(inAttr1)
+    else:
+        inAttr1 >> node.input1
+
+    if attr2Scalar:
+        node.input2.set(inAttr2)
+    else:
+        inAttr2 >> node.input2
+
+    return node.output
+
 # Vectors / Matrices
 #################################################################################
+
+@profiled
+def decomposeMatrix(inAttr, inName=None, **kwargs):
+    inAttr = getNode(inAttr)
+
+    nodeName = inName or reduceName(DECMAT_FORMAT.format(formatAttr(inAttr)))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName)
+        
+    node = create("decomposeMatrix", nodeName, **kwargs)
+    inAttr >> node.inputMatrix
+    
+    return node
 
 @profiled
 def worldMatrix(inObj, inName=None, **kwargs):
     inObj = getNode(inObj)
 
     if inObj.type() != "transform":
-        return inObj
+        return decomposeMatrix(inObj)
 
-    nodeName = inName or reduceName(WORLD_MATRIX_FORMAT.format(formatAttr(inObj)))
-    if pc.objExists(nodeName):
-        return pc.PyNode(nodeName)
-        
-    node = create("decomposeMatrix", nodeName, **kwargs)
-    inObj.worldMatrix[0] >> node.inputMatrix
-    
-    return node
+    return decomposeMatrix(inObj.worldMatrix[0])
 
 @profiled
 def vector(inSource, inDestination, inWorld=True, inName=None, **kwargs):
@@ -658,9 +798,84 @@ def getClosestPoint(inCurve, inPositionNode, inWorld=True, inName=None, **kwargs
 
     return node
 
+# Custom
+#################################################################################
+@profiled
+def keep(inAttr, inName=None, **kwargs):
+    inAttr = getNode(inAttr)
+
+    types = {
+        "double":0,
+        "doubleLinear":0,
+        "double3":1,
+        "matrix":2,
+        None:2
+        }
+
+    valueType = types.get(inAttr.type())
+
+    if valueType is None:
+        raise ValueError("Unmanaged type {0}".format(inAttr.type()))
+
+    nodeName = inName or reduceName(KEEP_FORMAT.format(formatAttr(inAttr)))
+    if pc.objExists(nodeName):
+        if valueType == 0:#double
+            return pc.PyNode(nodeName).outputX
+        elif valueType == 1:#double3
+            return pc.PyNode(nodeName).output
+        else:#matrix
+            return pc.PyNode(nodeName).outputMat
+
+    node = create("tkKeep", nodeName, **kwargs)
+
+    pc.PyNode("time1").outTime >> node.time
+
+    inputAttr = None;
+    outputAttr = None;
+
+    if valueType == 0:#double
+        inputAttr = node.inputX
+        outputAttr = node.outputX
+    elif valueType == 1:#double3
+        inputAttr = node.input
+        outputAttr = node.output
+    else:#matrix
+        inputAttr = node.inputMat
+        outputAttr = node.outputMat
+
+    inAttr >> inputAttr
+    return outputAttr
+
+@profiled
+def accu(inAttr, inName=None, **kwargs):
+    inAttr = getNode(inAttr)
+
+    nodeName = inName or reduceName(ACCU_FORMAT.format(formatAttr(inAttr)))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output
+
+    node = create("tkAccu", nodeName, **kwargs)
+
+    pc.PyNode("time1").outTime >> node.time
+
+    inAttr >> node.input
+
+    return node.output
+
 #################################################################################
 #                           MACROS                                              #
 #################################################################################
+
+
+@profiled
+def getVelocity(inObj, **kwargs):
+    keptMat = keep(inObj.worldMatrix[0])
+    keptMatDec = decomposeMatrix(keptMat)
+    objMatDec = decomposeMatrix(inObj.worldMatrix[0])
+
+    velocity = sub(objMatDec.outputTranslate, keptMatDec.outputTranslate)
+
+    print velocity
 
 @profiled
 def createExtremumSystem(inAttrs, inMinimum=True, **kwargs):
@@ -732,7 +947,7 @@ def createProximitiesCompound(inObj, inStart, inEnd, inDist=False, **kwargs):
     startToEndDist = distance(inStart, inEnd)
     distPow = npow(startToEndDist)
     
-    normDivide = divide(ObjOnLocDot, distPow)
+    normDivide = div(ObjOnLocDot, distPow)
     rsltClamp = clamp(normDivide)
     rsltReverse = reverse(rsltClamp)
 
@@ -894,7 +1109,81 @@ def createProximitiesSystemOnSelection(inResultObjName="RESULTS", inResultAttrFo
 #                           EXPRESSIONS                                         #
 #################################################################################
 
-exprInstance = None
+EXPR_INSTANCE = None
+RESULT_RE = re.compile("^\s*(.*)\s*=\s*")
+IF_RE = re.compile("\s*if\s*\(\s*(.*)\s*\)[\S\s]*?({)")
+
+def findEnclosed(inString, inStart, inStartChar ="{", inEndChar ="}"):
+    lenString = len(inString)
+    caret = inStart
+    drop = 0
+    while(caret < lenString):
+        curChar = inString[caret]
+        if curChar == inEndChar:
+            if drop == 0:
+                return caret
+            else:
+                drop += -1
+        elif curChar == inStartChar:
+            drop += 1
+
+        caret += 1
+    
+    return -1
+
+def convertIf(inString, inStartChar ="{", inEndChar ="}"):
+    matches = IF_RE.search(inString)
+    if matches:
+        #Get if condition and first trailing "{"
+        condition, endChar = matches.groups()
+
+        condition = condition.strip(" \t\n\r")
+
+        #Get firstTerm
+        startFirst = matches.end(2)
+        endFirst = findEnclosed(inString, startFirst, inStartChar, inEndChar)
+        if endFirst == -1:
+            raise ValueError("Can't find 'firstTerm' closing bracket !")
+
+        firstTerm = inString[startFirst:endFirst].strip(" \t\n\r")
+        firstTerm = convertIf(firstTerm, inStartChar, inEndChar)
+
+        firstSplit = firstTerm.split("=")
+        firstInput = firstSplit[0].strip(" \t\n\r")
+        firstOutput = firstSplit[1].strip(" \t\n\r;")
+
+        #Get secondTerm
+        startSecond = inString.find(inStartChar, endFirst)
+        if startSecond == -1:
+            raise ValueError("Can't find 'else' opening bracket !")
+
+        startSecond += 1
+        endSecond = findEnclosed(inString, startSecond, inStartChar, inEndChar)
+        if endSecond == -1:
+            raise ValueError("Can't find 'secondTerm' closing bracket !")
+
+        secondTerm = inString[startSecond:endSecond].strip(" \t\n\r")
+        secondTerm = convertIf(secondTerm, inStartChar, inEndChar)
+
+        secondSplit = secondTerm.split("=")
+        secondInput = secondSplit[0].strip(" \t\n\r")
+        secondOutput = secondSplit[1].strip(" \t\n\r;")
+
+        if firstInput != secondInput:
+            raise ValueError("Can't convert 'if's when its cases affect different inputs ({0} != {1}) !".format(firstInput, secondInput))
+
+        #print "start",start,inString[start-1:start+1]
+        #print "end",end,inString[end-1:end+1]
+        #print "---"
+        #print "condition",condition
+        #print "firstTerm",firstTerm
+        #print "secondTerm",secondTerm
+        #print "---"
+        #print "{0} = cond({1}, {2}, {3})".format(firstInput, condition, firstOutput, secondOutput)
+
+        return "{0} = cond({1}, {2}, {3})".format(firstInput, condition, firstOutput, secondOutput)
+
+    return inString
 
 class NodalTerm(tke.Term):
 
@@ -929,9 +1218,21 @@ class NodalTerm(tke.Term):
     def div(self, other):
         return div(self.value, other.value)
 
+    def pow(self, other):
+        return npow(self.value, other.value)
+
+    def mod(self, other):
+        return mod(self.value, other.value)
+
     #Functions
     def reverse(self):
         return reverse(self.value)
+
+    def cos(self):
+        return cos(self.value)
+
+    def sin(self):
+        return sin(self.value)
 
     def clamp(self, otherMin, otherMax):
         return clamp(self.value, otherMin.value, otherMax.value)
@@ -942,14 +1243,12 @@ class NodalTerm(tke.Term):
 class NodalExpr(tke.Expr):
     logger = tke.logger
 
-    RESULT = re.compile("^\s*(.*)\s*=\s*")
-
     def __init__(self):
         super(NodalExpr, self).__init__(NodalTerm, sys.modules[self.__module__])
 
-    def compile(self, inExpr):
+    def compile(self, inExpr, inDeleteUnused=False):
         result = None
-        regResult = NodalExpr.RESULT.match(inExpr)
+        regResult = RESULT_RE.match(inExpr)
 
         if not regResult is None:
             result = getNode(regResult.groups()[0])
@@ -960,21 +1259,55 @@ class NodalExpr(tke.Expr):
         else:
             NodalExpr.logger.debug("Result not found")
 
+        startProfiling()
+
         output = super(NodalExpr, self).compile(inExpr)
 
         if not result is None:
             output >> result
-            return result
 
-        return output
+        if inDeleteUnused:
+            tkc.deleteUnusedNodes()
 
-def compileNodes(inExpr):
-    global exprInstance
+        return stopProfiling()
 
-    if exprInstance == None:
-        exprInstance = NodalExpr()
+def compileNodes(inExpr, inDeleteUnused=False):
+    global EXPR_INSTANCE
 
-    return exprInstance.compile(inExpr)
+    if EXPR_INSTANCE == None:
+        EXPR_INSTANCE = NodalExpr()
 
-def convertExpression(inExpr):
-    pass
+    return EXPR_INSTANCE.compile(inExpr, inDeleteUnused)
+
+def convertExpressionString(inString, inDeleteUnused=False):
+    exprs = convertIf(inString)
+
+    exprs = [expr.strip(os.linesep) for expr in exprs.split(";") if len(expr) > 1]
+
+    NodalExpr.logger.debug("{0} exprs :\n{1}".format(len(exprs), "\n".join(exprs)))
+
+    nodes = []
+
+    for expr in exprs:
+        nodes.append(compileNodes(expr))
+
+    if inDeleteUnused:
+        tkc.deleteUnusedNodes()
+
+    return nodes
+
+def convertExpression(inExpr, inDeleteUnused=False):
+    inExpr = getNode(inExpr)
+
+    if inExpr.type() != "expression":
+        pc.warning("Cannot convert {0} to nodes (Not an expression !)".format(inExpr))
+        return
+
+    nodes = convertExpressionString(inExpr.getString())
+
+    pc.delete(inExpr)
+
+    if inDeleteUnused:
+        tkc.deleteUnusedNodes()
+
+    return nodes
