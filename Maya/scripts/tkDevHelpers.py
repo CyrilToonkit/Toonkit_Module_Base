@@ -555,17 +555,28 @@ def evaluateNode(inName, inPath):
     if inName == "UnRoll":
         inName = "Unroll"
 
+    roots = None
+
     modelName = inName + ":" + inName
     rootName = modelName + "_Root"
+
+    if not pc.objExists(rootName):
+        roots = [o.name() for o in pc.ls(assemblies=True) if (o.getShape() == None or o.getShape().type() != "camera")]
+    else:
+        roots = [rootName]
 
     #Evaluate with all visible
     try:
         pc.setAttr(inName + ":Hidden.visibility", 1)
         tkSIGroups.refreshOverrides()
-    except:
-        pass
+    except Exception,e:
+        print e
 
-    setAnim(rootName, nFrames=100)
+    for root in roots:
+        try:
+            setAnim(root, nFrames=100)
+        except Exception,e:
+            print e
 
     return 100.0 / tkc.benchIt(evaluate, 100)[0]
 
