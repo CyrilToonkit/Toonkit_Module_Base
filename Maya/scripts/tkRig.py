@@ -46,6 +46,7 @@ import OscarZmqMayaString as ozms
 import tkMayaCore as tkc
 import tkSIGroups
 import PAlt as palt
+import tkNodeling as tkn
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -72,8 +73,6 @@ CONST_TRANSMARKER = [["posx", "posy", "posz"],["rotx", "roty", "rotz"],["sclx", 
 ELEMSINDICES = {0:"Model", 1:"Root", 2:"Input", 3:"Output", 4:"Null", 5:"Control", 6:"Deform", 7:"PlaceHolder"}
 
 ALLOWED_GEOMETRIES = ["mesh"]
-
-ANIMTYPES = ["animCurveTA","animCurveTL","animCurveTT","animCurveTU","animCurveUA","animCurveUL","animCurveUT"]
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                          _    ____ ___ 
@@ -3290,7 +3289,123 @@ def exportAnim(inObjects=None, inPath=None, inAppend=False, inOverride=True, inI
     for extraAttr in extraAttrs:
         extraAttr.delete()
 
-def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=True, addProxies=False):
+"""
+Walker test
+
+import tkMayaCore as tkc
+reload(tkc)
+
+import tkRig
+reload(tkRig)
+
+import tkNodeling
+reload(tkNodeling)
+
+poseName = "walk"
+tkRig.importAnim(inPath=r"C:\Users\cyril\Documents\maya\projects\default\scenes\walkerAnim.ma", poseName=poseName)
+pose = pc.PyNode(poseName)
+tkRig.injectPose(pose)
+
+locomotion = tkn.createAccumulatedVelocity(pc.PyNode("driver1"))
+
+locomotion >> pose.frame
+"""
+
+def createPose(inCurves, inName="newPose"):
+    poseGroup = pc.group(empty=True, name=inName)
+
+    start = 100000
+    end = -start
+
+    poseGroup.addAttr("frame", dv=0.0)
+
+    for curve in inCurves:
+        #print "curve name",curve.name()
+        poseGroup.addAttr(curve.name())
+        curve.output >> poseGroup.attr(curve.name())
+        poseGroup.attr("frame") >> curve.input
+
+        nKeys = curve.numKeys()
+        if start > curve.getTime(0):
+            start = curve.getTime(0)
+        if end < curve.getTime(nKeys-1):
+            end = curve.getTime(nKeys-1)  
+
+    poseGroup.addAttr("start", at="long", dv=start)
+    poseGroup.addAttr("end", at="long", dv=end)
+    poseGroup.addAttr("duration", at="long", dv=end-start+1)
+
+    return poseGroup
+
+def getLayer(inNode):
+    neutral = tkc.getNeutralPose(inNode)
+    if neutral is None:
+        #pc.cutKey(inNode)
+        #tkc.resetAll(inNode)
+        neutral = tkc.setNeutralPose(inNode)
+
+    if tkc.getNeutralPose(neutral) is None:
+        tkc.setNeutralPose(neutral)
+
+    return neutral
+
+def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inRedirect=None):
+    poseGroup = tkc.getNode(inPose)
+
+    channels = [attr for attr in poseGroup.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+
+    connections = {}
+
+    connectedAttrs = []
+
+    for channel in channels:
+        #print "channel", channel
+        #print "getRealAttr", tkc.getRealAttr(channel.name(), inSkipCurves=False)
+        node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
+
+        nodeName, attrName = node.tkConnection.get().split(".")
+
+        if nodeName in connections:
+            connections[nodeName][attrName] = channel
+        else:
+            connections[nodeName] = {attrName:channel}
+
+    for nodeName, attrs in connections.iteritems():
+        if not pc.objExists(nodeName):
+            pc.warning("{0} can't be found !".format(nodeName))
+            continue
+
+        node = pc.PyNode(nodeName)
+
+        if( not inInclude is None and not node in inInclude or 
+            not inExclude is None and node in inExclude):
+            continue
+
+        if not inRedirect is None:
+            for key, value in inRedirect.iteritems():
+                if node.stripNamespace() == key and pc.objExists(value):
+                    nodeName = pc.PyNode(value)
+                    node = pc.PyNode(nodeName)
+                    break
+
+        layer = getLayer(node)
+
+        if not inSiblingSuffix is None:
+            siblingName = nodeName+"_"+inSiblingSuffix
+            if not pc.objExists(siblingName):
+                layer = pc.duplicate(layer, parentOnly=True)[0]
+                layer.rename(siblingName)
+
+        for attr, channel in attrs.iteritems():
+            if pc.attributeQuery(attr, node=layer, exists=True):
+                channel >> layer.attr(attr)
+                connectedAttrs.append(layer.attr(attr))
+            else:
+                print "{0}.{1} can't be found !".format(layer.name(), attr)
+
+    return connectedAttrs
+
+def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=True, addProxies=False, poseName=None):
     if inPath == None:
         inPath = mc.fileDialog2(caption="Load your animation file", fileFilter="mayaAscii file (*.ma)(*.ma)", dialogStyle=2, fileMode=1)
 
@@ -3300,9 +3415,13 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
     if inPath == None:
         pc.warning("Invalid file !")
         return False
-        
+
     nodes = pc.system.importFile(inPath, returnNewNodes=True)
-    
+
+    poseGroup = None
+    if not poseName is None:
+        return createPose(nodes, poseName)
+
     extraAttrs = []
     
     foundNodes = {}
@@ -3361,6 +3480,393 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
         pc.warning("Some nodes have not been reconnected, they will be {0} ({1})".format(option, [n.name() for n in notFoundNodes]))
         if cleanUnconnected:
             pc.delete(notFoundNodes)
+
+"""
+import tkRig
+reload(tkRig)
+
+import tkNodeling as tkn
+reload(tkn)
+
+#tkRig.createWalker()
+tkRig.project("projected", "origin", inGrounds=["pSphere1", "pCone1", "pPlane1"])
+"""
+
+def project(inObject, inProjectorObj, inProjectAttr="project", inProjectorAxis=None, inOriginObj=None, inOffset=None, inGrounds=None, inSystemName="Projection_"):
+    createdObjects = []
+
+    inObject = tkc.getNode(inObject)
+
+    ns = inObject.namespace()
+
+    inProjectorObj = tkc.getNode(inProjectorObj)
+
+    if inProjectorAxis is None:
+        inProjectorAxis = [0,-1,0]
+
+    layer = getLayer(inObject)
+
+    if inOriginObj is None:
+        inOriginObj = layer.getParent()
+
+    if inProjectAttr is None:
+        inProjectAttr = "project"
+
+    offsetNode = None
+    if not inOffset is None:
+        offsetNode = pc.group(empty=True, name=ns + inSystemName + str(inObject.stripNamespace()) + "_projectOffset")
+        inOriginObj.addChild(offsetNode)
+        offsetNode.t.set(inOffset)
+        offsetNode.r.set([0,0,0])
+        offsetNode.s.set([1,1,1])
+
+    node = pc.createNode("tkProject", name=ns + inSystemName + str(inObject.stripNamespace()) + "_Project")
+
+    createdObjects.append(node)
+
+    worldLayer = tkn.worldMatrix(offsetNode or inOriginObj)
+    worldLayer.outputTranslate >> node.origin
+
+    direction = tkn.pointMatrixMul(inProjectorAxis, inProjectorObj.worldMatrix[0], vectorMultiply=True)
+    direction >> node.direction
+
+    #localize the output
+    localized = tkn.pointMatrixMul(node.output, layer.parentInverseMatrix[0])
+
+    if not offsetNode is None:#Remove local offset
+        localized = tkn.sub(localized, 0)
+        substractNode = localized.node()
+        offsetNode.t >> substractNode.input3D[1]
+
+        createdObjects.append(offsetNode)
+
+    if isinstance(inProjectAttr, basestring):
+        try:
+            inProjectAttr = pc.PyNode(inProjectAttr)
+        except:
+            pass
+
+    if isinstance(inProjectAttr, basestring):
+        attrName = inProjectAttr.split(".")[-1]
+        inObject.addAttr(attrName, minValue=0.0, maxValue=1.0, defaultValue=1.0, keyable=True)
+        inProjectAttr = inObject.attr(attrName)
+
+    mult = tkn.mul(localized, inProjectAttr)
+    mult >> layer.t
+
+    if inGrounds is not None:
+        if not isinstance(inGrounds, (list,tuple)):
+            inGrounds = [inGrounds]
+
+        for i in range(len(inGrounds)):
+            ground = tkc.getNode(inGrounds[i])
+            if ground.type() == "transform":
+                ground = ground.getShape()
+
+            ground.worldMesh[0] >> node.attr("targets[{0}]".format(i))
+
+    return createdObjects
+
+#tkRig.createFootFixer("locator1", "updown.output", inBlendFrames="locator4.fixFootBlend", inDestObj="locator4")
+
+def connectProjections(inMeshes, inNamespace=None):
+    kwargs={}
+    if not inNamespace is None:
+        kwargs["name"] = inNamespace + ("" if inNamespace.endswith("*") else "*")
+
+    projectNodes = pc.ls(type="tkProject", **kwargs)
+
+    meshes = []
+
+    for inMesh in inMeshes:
+        if inMesh.type() == "transform":
+            meshes.append(inMesh.getShape())
+        else:
+            meshes.append(inMesh)
+
+    for projectNode in projectNodes:
+        freeIndex = tkc.get_next_free_multi_index(projectNode.targets.name())
+        for mesh in meshes:
+            mesh.worldMesh[0] >> projectNode.attr("targets[{0}]".format(freeIndex))
+            freeIndex += 1
+
+
+def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
+    inRef = tkc.getNode(inRef)
+    inOnOffAttr = tkc.getNode(inOnOffAttr)
+
+    blendIsScalar = True
+    if not isinstance(inBlendFrames, (int, float)):
+        blendIsScalar = False
+        inBlendFrames = tkc.getNode(inBlendFrames)
+
+    inMatrix = inRef
+    if inRef.type() == "transform":
+        inMatrix = inRef.worldMatrix[0]
+
+    delayedOnOff = tkn.keep(inOnOffAttr)
+
+    reversedOnOff = tkn.reverse(inOnOffAttr)
+
+    #Create keep system
+    keepMat1 = tkn.keep(inMatrix, immediate=True, refresh=delayedOnOff)
+
+    keepMat2 = tkn.keep(keepMat1, immediate=True, refresh=reversedOnOff)
+
+    #Blender
+    keepIter = tkn.keep(keepMat1.node().iterations, immediate=True, refresh=reversedOnOff)
+
+    deltaFrames = tkn.sub(keepMat1.node().iterations, keepIter)
+
+    insideBlenCond = tkn.condition(deltaFrames, inBlendFrames, inCriterion="<")
+    reversedInsideBlenCond = tkn.sub(1, insideBlenCond)
+
+    blendDivide = tkn.div(deltaFrames, inBlendFrames)
+    reversedDivide = tkn.sub(1, blendDivide)
+    
+    #blend1 = tkn.add(keepMat1, keepMat2)
+    blend1 = tkn.add(inMatrix, keepMat2)
+
+    blendDivide >> blend1.node().wtMatrix[0].weightIn
+    reversedDivide >> blend1.node().wtMatrix[1].weightIn
+
+    blend2 = tkn.add(blend1, keepMat1)
+    #blend2 = tkn.add(blend1, inMatrix)
+    reversedInsideBlenCond >> blend2.node().wtMatrix[0].weightIn
+    insideBlenCond >> blend2.node().wtMatrix[1].weightIn
+
+    """
+    #Pair blends
+    deckeepMat1 = tkn.decomposeMatrix(keepMat1)
+    deckeepMat2 = tkn.decomposeMatrix(keepMat2)
+
+    pairBlend1 = tkn.pairBlend(deckeepMat2.outputTranslate, deckeepMat2.outputRotate,
+                                deckeepMat1.outputTranslate, deckeepMat1.outputRotate, blendDivide, inName=inRef+"_blendPose1")
+
+    pairBlend2 = tkn.pairBlend(pairBlend1.outTranslate, pairBlend1.outRotate,
+                                deckeepMat1.outputTranslate, deckeepMat1.outputRotate, insideBlenCond, inName=inRef+"_blendPose2")
+
+    """
+
+    if not inDestObj is None:
+        inDestObj = tkc.getNode(inDestObj)
+
+        decBlend2 = tkn.decomposeMatrix(blend2)
+
+        #todo localize the output
+        decBlend2.outputTranslate >> inDestObj.t
+        pairBlend2.outputRotate >> inDestObj.r
+
+    return blend2
+
+def groupAttrs(inRef, inNodes):
+    inRef = tkc.getNode(inRef)
+    inNodes = tkc.getNodes(inNodes)
+
+    for node in inNodes:
+        attrs = pc.listAttr(node, keyable=True)
+        for attr in attrs:
+            attrNode = node.attr(attr)
+            if not pc.attributeQuery(attr, node=inRef, exists=True):
+                inRef.addAttr(attrNode.longName(), at=attrNode.type(), defaultValue=attrNode.get(), keyable=True)
+            inRef.attr(attr) >> attrNode
+
+def createParent(inObj):
+    layer = getLayer(inObj)
+    parent = pc.duplicate(inObj, parentOnly=True)[0]
+    parent.rename(inObj.name() + "_Parent")
+    layerParentName = layer.getParent().name()
+    layer.getParent().addChild(parent)
+    layer.getParent().rename(parent + tkc.CONST_NEUTRALSUFFIX)
+    newBuffer = tkc.addBuffer(layer)
+    newBuffer.rename(layerParentName)
+    parent.addChild(newBuffer)
+    
+    shape = inObj.getShape()
+
+    if not shape is None:
+        parentShape = pc.duplicate(shape, addShape=True)[0]
+        pc.parent(parentShape, parent, add=True, shape=True)
+        pc.parent(parentShape, shape=True,rm=True)
+
+        displays = tkc.getDisplay(parent)
+        #([t,r,s], size, name)
+        tkc.setDisplay(parent, trs=displays[0], size=displays[1] * 1.15, displayName=displays[2])
+
+    return parent
+
+def walkSystem(inName="WalkSystem", inParent=None):
+    root = pc.group(empty=True, name=inName)
+
+    if not inParent is None:
+        inParent = tkc.getNode(inParent)
+        inParent.addChild(root)
+
+    projectSystem = pc.group(empty=True, name="{0}_Projection".format(inName))
+    root.addChild(projectSystem)
+
+    Global_Ctrl = pc.PyNode("Global_Ctrl")
+    Local_Ctrl = pc.PyNode("Local_Ctrl")
+
+    Left_Leg_IK_Ctrl = pc.PyNode("Left_Leg_IK_Ctrl")
+    Right_Leg_IK_Ctrl = pc.PyNode("Right_Leg_IK_Ctrl")
+
+    #-------------------------------------
+    #Foot projections
+    #-------------------------------------
+
+    #Create "super" controls
+    super_Left_Leg_IK_Ctrl = createParent(Left_Leg_IK_Ctrl)
+    super_Right_Leg_IK_Ctrl = createParent(Right_Leg_IK_Ctrl)
+
+    #Create orienter rig
+    projections = []
+
+    #Left
+    super_Left_Leg_IK_Ctrl.addAttr("project", minValue=0.0, maxValue=1.0, defaultValue=1.0, keyable=True)
+
+    heelOrient = pc.group(empty=True, name=Left_Leg_IK_Ctrl.name() + "_HeelOrient")
+    super_Left_Leg_IK_Ctrl.addChild(heelOrient)
+    heelOrient.t.set([-0.5,-1,0.3])
+    leftHeelProject = project(heelOrient, Global_Ctrl, inProjectAttr=super_Left_Leg_IK_Ctrl.project)
+    projections.append(leftHeelProject[0])
+
+    tipOrient = pc.group(empty=True, name=Left_Leg_IK_Ctrl.name() + "_TipOrient")
+    super_Left_Leg_IK_Ctrl.addChild(tipOrient)
+    tipOrient.t.set([-0.5,-1,-2])
+    leftTipProject = project(tipOrient, Global_Ctrl, inProjectAttr=super_Left_Leg_IK_Ctrl.project)
+    projections.append(leftTipProject[0])
+
+    sideOrient = pc.group(empty=True, name=Left_Leg_IK_Ctrl.name() + "_SideOrient")
+    super_Left_Leg_IK_Ctrl.addChild(sideOrient)
+    sideOrient.t.set([.5,-1,0.3])
+    leftSideProject = project(sideOrient, Global_Ctrl, inProjectAttr=super_Left_Leg_IK_Ctrl.project)
+    projections.append(leftSideProject[0])
+    
+    tkc.constrain(heelOrient, tipOrient, "Direction", False, sideOrient)
+
+    leftLayer = getLayer(Left_Leg_IK_Ctrl)
+
+    #WARNING Reparenting here ! 
+    #print "Left_Leg_IK_Ctrl layer",layer
+    heelOrient.addChild(leftLayer.getParent())
+
+    #Right
+    super_Right_Leg_IK_Ctrl.addAttr("project", minValue=0.0, maxValue=1.0, defaultValue=1.0, keyable=True)
+
+    heelOrient = pc.group(empty=True, name=Right_Leg_IK_Ctrl.name() + "_HeelOrient")
+    super_Right_Leg_IK_Ctrl.addChild(heelOrient)
+    heelOrient.t.set([-0.5,-1,0.3])
+    RightHeelProject = project(heelOrient, Global_Ctrl, inProjectAttr=super_Right_Leg_IK_Ctrl.project)
+    projections.append(RightHeelProject[0])
+    
+    tipOrient = pc.group(empty=True, name=Right_Leg_IK_Ctrl.name() + "_TipOrient")
+    super_Right_Leg_IK_Ctrl.addChild(tipOrient)
+    tipOrient.t.set([-0.5,-1,-2])
+    RightTipProject = project(tipOrient, Global_Ctrl, inProjectAttr=super_Right_Leg_IK_Ctrl.project)
+    projections.append(RightTipProject[0])
+    
+    sideOrient = pc.group(empty=True, name=Right_Leg_IK_Ctrl.name() + "_SideOrient")
+    super_Right_Leg_IK_Ctrl.addChild(sideOrient)
+    sideOrient.t.set([.5,-1,0.3])
+    RightSideProject = project(sideOrient, Global_Ctrl, inProjectAttr=super_Right_Leg_IK_Ctrl.project)
+    projections.append(RightSideProject[0])
+    
+    tkc.constrain(heelOrient, tipOrient, "Direction", False, sideOrient)
+
+    rightLayer = getLayer(Right_Leg_IK_Ctrl)
+
+    #WARNING Reparenting here ! 
+    #print "Right_Leg_IK_Ctrl layer",layer
+    heelOrient.addChild(rightLayer.getParent())
+
+    groupAttrs(projectSystem, projections)
+
+    projectSystem.useCollisionMode.set(True)
+
+    #-------------------------------------
+    #Animation Player
+    #-------------------------------------
+
+    animSystem = pc.group(empty=True, name="{0}_Animation".format(inName))
+    root.addChild(animSystem)
+
+    animSystem.addAttr("velocity", minValue=0.0, maxValue=100.0, defaultValue=1.9, keyable=True)
+    animSystem.addAttr("walkFrame", defaultValue=0, keyable=True)
+
+    #Create velocity listener
+    vel = tkn.velocity(Local_Ctrl)
+
+    #Create global -Z axis
+    xaxis = tkn.pointMatrixMul([0,0,-1], Local_Ctrl.worldMatrix[0], vectorMultiply=True)
+    #Get z-axis component
+    xvel = tkn.dot(vel, xaxis)
+
+    #Accumulate
+    accuxvel = tkn.accu(xvel)
+
+    #Import walk anim
+    poseName = "walk"
+    importAnim(inPath=r"C:\Users\cyril\Documents\maya\projects\default\scenes\johnny_walker_animOnly.ma", poseName=poseName)
+    pose = pc.PyNode(poseName)
+    animSystem.addChild(pose)
+
+    mul = tkn.mul(accuxvel, animSystem.velocity)
+
+    mul >> animSystem.walkFrame
+
+    animSystem.walkFrame >> pose.frame
+
+    #Inject
+    #For feet we will inject in separate objects and blend afterwards with foot fixer
+    #injectPose(pose, inExclude=[Left_Leg_IK_Ctrl, Right_Leg_IK_Ctrl])
+    #attributes = injectPose(pose, inSiblingSuffix="walkPose", inInclude=[Left_Leg_IK_Ctrl, Right_Leg_IK_Ctrl])
+
+    injectPose(pose, inRedirect={   str(Left_Leg_IK_Ctrl.stripNamespace()):str(super_Left_Leg_IK_Ctrl.stripNamespace()),
+                                    str(Right_Leg_IK_Ctrl.stripNamespace()):str(super_Right_Leg_IK_Ctrl.stripNamespace())})
+
+    #-------------------------------------
+    #Foot fixer
+    #-------------------------------------
+
+    fixerSystem = pc.group(empty=True, name="{0}_FootFixer".format(inName))
+    root.addChild(fixerSystem)
+
+    fixerSystem.addAttr("blend", defaultValue=3, keyable=True, at="long")
+
+    fixerSystem.addAttr("Left_UpDown", defaultValue=1.0, keyable=True)
+    fixerSystem.addAttr("Right_UpDown", defaultValue=1.0, keyable=True)
+
+    #Left
+    ref = leftLayer.getParent()
+    mat = createFootFixer(ref, fixerSystem.Left_UpDown, fixerSystem.blend)
+    #mat = tkn.composeMatrix(pairBlend.outTranslate, pairBlend.outRotate)
+
+    mat = tkn.mul(mat, leftLayer.parentInverseMatrix[0])
+
+    dec = tkn.decomposeMatrix(mat)
+
+    dec.outputTranslate >> leftLayer.t
+    dec.outputRotate >> leftLayer.r
+
+    #Right
+    ref = rightLayer.getParent()
+    mat = createFootFixer(ref, fixerSystem.Right_UpDown, fixerSystem.blend)
+    #mat = tkn.composeMatrix(pairBlend.outTranslate, pairBlend.outRotate)
+
+    mat = tkn.mul(mat, rightLayer.parentInverseMatrix[0])
+
+    dec = tkn.decomposeMatrix(mat)
+
+    dec.outputTranslate >> rightLayer.t
+    dec.outputRotate >> rightLayer.r
+
+    root.addAttr("startFrame", defaultValue=1, keyable=True, at="long")
+
+    keeps = pc.ls(type="tkKeep")
+    for keep in keeps:
+        root.startFrame >> keep.startFrame
+    #groupAttrs(fixerSystem, keeps)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                          _   _      

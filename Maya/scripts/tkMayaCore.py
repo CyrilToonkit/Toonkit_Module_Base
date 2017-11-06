@@ -274,6 +274,8 @@ UNITS_RATIO = { "mm":0.1,
                 "mile":160934.4}
 
 
+ANIMTYPES = ["animCurveTA","animCurveTL","animCurveTT","animCurveTU","animCurveUA","animCurveUL","animCurveUT"]
+
 RE_ENV = re.compile('%\w+%')
 
 OLD_PARENT_SUFFIX = "_OLDPARENT"
@@ -1519,9 +1521,13 @@ def addBuffer(inTarget, inSuffix=CONST_BUFFERSUFFIX):
     return myBuffer
 
 def getNeutralPose(inTarget, inSuffix=None):
-    parents = pc.listRelatives(inTarget, parent=True)
-    if len(parents) != 0 and parents[0].name() == inTarget.name() + (inSuffix or CONST_NEUTRALSUFFIX):#todo objectType group
-        return parents[0]
+    parents = inTarget.getAllParents()
+
+    neutralName = inTarget.name() + (inSuffix or CONST_NEUTRALSUFFIX)
+    for parent in parents:
+        if parent.name() == neutralName:
+            return parent
+
     return None
 
 def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
@@ -4185,7 +4191,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                                                          \_\                                           /_/ 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-def getRealAttr(inAttr):
+def getRealAttr(inAttr, inSkipCurves=True):
     ns = ""
     if ":" in inAttr:
         ns = inAttr.split(":")[0] + ":"
@@ -4194,17 +4200,30 @@ def getRealAttr(inAttr):
     conAttrs = pc.listConnections(inAttr, destination=False, plugs=True)
     if len(conAttrs) > 0:
         for conAttrCandidate in conAttrs:
-            if conAttrCandidate.nodeType() != "animCurveTU":
-                conAttr = conAttrCandidate
+            candidate = conAttrCandidate
+            if candidate.nodeType() == "unitConversion":
+                candidate = candidate.node().input
+
+            if not inSkipCurves or not candidate.nodeType() in ANIMTYPES:
+                conAttr = candidate
+                if not inSkipCurves and candidate.nodeType() in ANIMTYPES:
+                    return candidate
                 break
+
     while conAttr != "":
         inAttr = conAttr.name()
         conAttr = ""
         conAttrs = pc.listConnections(inAttr, destination=False, plugs=True)
         if len(conAttrs) > 0:
             for conAttrCandidate in conAttrs:
-                if conAttrCandidate.nodeType() != "animCurveTU":
-                    conAttr = conAttrCandidate
+                candidate = conAttrCandidate
+                if candidate.nodeType() == "unitConversion":
+                    candidate = candidate.node().input
+
+                if not inSkipCurves or not candidate.nodeType() in ANIMTYPES:
+                    conAttr = candidate
+                    if not inSkipCurves and candidate.nodeType() in ANIMTYPES:
+                        return candidate
                     break
 
     return inAttr
@@ -4217,7 +4236,7 @@ def setRealAttr(inAttr, inValue):
     conAttr = ""
     conAttrs = pc.listConnections(inAttr, destination=False, plugs=True)
     for conAttrCandidate in conAttrs:
-        if conAttrCandidate.nodeType() != "animCurveTU":
+        if not conAttrCandidate.nodeType() in ANIMTYPES:
             conAttr = conAttrCandidate
             break
     while conAttr != "":
@@ -4225,7 +4244,7 @@ def setRealAttr(inAttr, inValue):
         conAttr = ""
         conAttrs = pc.listConnections(inAttr, destination=False, plugs=True)
         for conAttrCandidate in conAttrs:
-            if conAttrCandidate.nodeType() != "animCurveTU":
+            if not conAttrCandidate.nodeType()in ANIMTYPES:
                 conAttr = conAttrCandidate
                 break
 
@@ -4235,6 +4254,16 @@ def setRealAttr(inAttr, inValue):
 
     pc.cutKey(objName, attribute=attrName)
     pc.setAttr(inAttr, inValue)
+
+def get_next_free_multi_index( attr_name, start_index=0 ):
+    '''Find the next unconnected multi index starting at the passed in index.'''
+    # assume a max of 10 million connections
+    while start_index < 10000000:
+        if len( pc.connectionInfo('{0}[{1}]'.format(attr_name, start_index), sfd=True ) or [] ) == 0:
+            return start_index
+        start_index += 1
+
+    return start_index
 
 def disconnect(inParam):
     cons = pc.listConnections(inParam, destination=False, plugs=True)

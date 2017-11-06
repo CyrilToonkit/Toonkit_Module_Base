@@ -80,7 +80,7 @@ __author__ = "Cyril GIBAUD - Toonkit"
 EPSILON = sys.float_info.epsilon * 10
 OMEGA = 1.0/EPSILON
 
-MAX_NAME_LEN = 80
+MAX_NAME_LEN = 100
 
 # Words
 #################################################################################
@@ -98,11 +98,13 @@ NS_SEPARATOR = ":"
 #################################################################################
 
 DECMAT_FORMAT = "{0}_Dec"
+COMPMAT_FORMAT = "{0}_Comp"
 
 NEG_FORMAT = "{0}_Neg"
 ADD_FORMAT = "{0}_{1}_Add"
 SUBSTRACT_FORMAT = "{0}_{1}_Sub"
 MUL_FORMAT = "{0}_{1}_Mul"
+PM_MUL_FORMAT = "{0}_{1}_PMMul"
 ABS_FORMAT = "{0}_Abs"
 WORLD_MATRIX_FORMAT = "{0}_World"
 VECTOR_FORMAT = "{0}_TO_{1}_{2}_Vec"
@@ -113,6 +115,7 @@ DOT_FORMAT = "{0}_ON_{1}_Dot"
 CROSS_FORMAT = "{0}_ON_{1}_Cross"
 DIVIDE_FORMAT = "{0}_OVER_{1}_Div"
 
+BLEND_FORMAT = "{0}_{1}_{2}_Blend"
 CLAMP_FORMAT = "{0}_{1}_{2}_Clamp"
 REVERSE_FORMAT = "{0}_Rev"
 SIN_FORMAT = "{0}_Sin"
@@ -124,6 +127,8 @@ ACCU_FORMAT = "{0}_Accu"
 CURVEINFO_FORMAT = "{0}_Info"
 CLOSESTPOINT_FORMAT = "{0}_{1}_Close"
 CONDITION_FORMAT = "{0}_{1}_{2}_Cond"
+
+VELOCITY_FORMAT = "{0}_Vel"
 
 # Output names
 #################################################################################
@@ -262,6 +267,9 @@ def create(inType, inName, **kwargs):
 #################################################################################
 
 def formatScalar(inScalar):
+    if isinstance(inScalar, (list,tuple)):
+        return "_".join([formatScalar(scl) for scl in inScalar])
+
     if inScalar <= EPSILON:
         return "eps"
     elif inScalar >= OMEGA:
@@ -277,7 +285,9 @@ def formatAttr(inAttr, stripNamespace=False, inSeparator=ATTR_SEPARATOR):
 
     nodeName = str(inAttr.node().stripNamespace() if stripNamespace else inAttr.node().name())
 
-    return "{0}{1}{2}".format(nodeName, inSeparator, inAttr.shortName())
+    short = inAttr.shortName().replace("[", "_").replace("]", "_")
+
+    return "{0}{1}{2}".format(nodeName, inSeparator, short)
 
 def get3DOut(inObj):
     inObj = getNode(inObj)
@@ -378,9 +388,13 @@ def add(inAttr1, inAttr2, inName=None, **kwargs):
     attr1Scalar = isinstance(inAttr1, (int,float))
     attr2Scalar = isinstance(inAttr2, (int,float))
 
+    attr1Matrix = False
+
     ns = ""
     if not attr1Scalar:
         ns = str(inAttr1.node().namespace())
+        if inAttr1.type() is None or inAttr1.type() == "matrix":
+            attr1Matrix = True
     elif not attr2Scalar:
         ns = str(inAttr2.node().namespace())
 
@@ -389,19 +403,62 @@ def add(inAttr1, inAttr2, inName=None, **kwargs):
 
     nodeName = inName or ns + reduceName(ADD_FORMAT.format(attr1Name, attr2Name))
     if pc.objExists(nodeName):
+        if attr1Matrix:
+            return pc.PyNode(nodeName).matrixSum
+
         return pc.PyNode(nodeName).output
 
-    node = create("addDoubleLinear", nodeName, **kwargs)
+    node = None
+    out = None
+
+    if attr1Matrix:
+        node = create("wtAddMatrix", nodeName, **kwargs)
+        out = node.matrixSum
+    else:
+        node = create("addDoubleLinear", nodeName, **kwargs)
+        out = node.output
 
     if attr1Scalar:
         node.input1.set(inAttr1)
+    elif attr1Matrix:
+        inAttr1 >> node.wtMatrix[0].matrixIn
     else:
         inAttr1 >> node.input1
 
     if attr2Scalar:
         node.input2.set(inAttr2)
+    elif attr1Matrix:
+        inAttr2 >> node.wtMatrix[1].matrixIn
     else:
         inAttr2 >> node.input2
+
+    return out
+
+def pointMatrixMul(inPoint, inMat, inName=None, vectorMultiply=False, **kwargs):
+    inPoint = getNode(inPoint)
+    attr1Scalar = isinstance(inPoint, (list,tuple))
+
+    ns = ""
+    if not attr1Scalar:
+        ns = str(inPoint.node().namespace())
+
+    attr1Name = formatScalar(inPoint) if attr1Scalar else formatAttr(inPoint, True)
+    attr2Name = formatAttr(inMat, True)
+
+    nodeName = inName or ns + reduceName(PM_MUL_FORMAT.format(attr1Name, attr2Name))
+
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output
+
+    node = create("pointMatrixMult", nodeName, **kwargs)
+    node.vectorMultiply.set(vectorMultiply)
+
+    inMat >> node.inMatrix
+
+    if attr1Scalar:
+        node.inPoint.set(inPoint)
+    else:
+        inPoint >> node.inPoint
 
     return node.output
 
@@ -414,30 +471,73 @@ def mul(inAttr1, inAttr2, inName=None, **kwargs):
     attr1Scalar = isinstance(inAttr1, (int,float))
     attr2Scalar = isinstance(inAttr2, (int,float))
 
+    attr1Vector = False
+    attr2Vector = False
+
+    attr1Matrix = False
+    attr2Matrix = False
+
     ns = ""
     if not attr1Scalar:
         ns = str(inAttr1.node().namespace())
+        attr1Vector = inAttr1.type() in ["double3", "float3"]
+        if not attr1Vector:
+            if inAttr1.type() is None or inAttr1.type() == "matrix":
+                attr1Matrix = True
     elif not attr2Scalar:
         ns = str(inAttr2.node().namespace())
+        attr2Vector = inAttr2.type() in ["double3", "float3"]
 
     attr1Name = formatScalar(inAttr1) if attr1Scalar else formatAttr(inAttr1, True)
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(MUL_FORMAT.format(attr1Name, attr2Name))
     if pc.objExists(nodeName):
+        if attr1Matrix:
+            return pc.PyNode(nodeName).matrixSum
         return pc.PyNode(nodeName).output
 
-    node = create("multDoubleLinear", nodeName, **kwargs)
-
-    if attr1Scalar:
-        node.input1.set(inAttr1)
+    node = None
+    if attr1Vector or attr2Vector:
+        node = create("multiplyDivide", nodeName, **kwargs)
+        node.operation.set(1)#Multiply
     else:
-        inAttr1 >> node.input1
+        if attr1Matrix:
+            node = create("multMatrix", nodeName, **kwargs)
+        else:
+            node = create("multDoubleLinear", nodeName, **kwargs)
 
-    if attr2Scalar:
-        node.input2.set(inAttr2)
+    if attr1Matrix:
+        inAttr1 >> node.matrixIn[0]
+        inAttr2 >> node.matrixIn[1]
+
+        return node.matrixSum
     else:
-        inAttr2 >> node.input2
+        if attr1Scalar:
+            if attr2Vector:
+                node.input1.set([inAttr1, inAttr1, inAttr1])
+            else:
+                node.input1.set(inAttr1)
+        else:
+            if not attr1Vector and attr2Vector:
+                inAttr1 >> node.input1X
+                inAttr1 >> node.input1Y
+                inAttr1 >> node.input1Z
+            else:
+                inAttr1 >> node.input1
+
+        if attr2Scalar:
+            if attr1Vector:
+                node.input2.set([inAttr2, inAttr2, inAttr2])
+            else:
+                node.input2.set(inAttr2)
+        else:
+            if not attr2Vector and attr1Vector:
+                inAttr2 >> node.input2X
+                inAttr2 >> node.input2Y
+                inAttr2 >> node.input2Z
+            else:
+                inAttr2 >> node.input2
 
     return node.output
 
@@ -467,11 +567,16 @@ def sub(inAttr1, inAttr2, inName=None, **kwargs):
 
         return node.output
 
-    if inAttr1.type() == "double3":
+    if not attr1Scalar and inAttr1.type() == "double3":
         node = create("plusMinusAverage", nodeName, **kwargs)
         node.operation.set(2)#Substract
         inAttr1 >> node.input3D[0]
-        inAttr2 >> node.input3D[1]
+        if attr2Scalar:
+            node.input3D[1].input3Dx.set(inAttr2)
+            node.input3D[1].input3Dy.set(inAttr2)
+            node.input3D[1].input3Dz.set(inAttr2)
+        else:
+            inAttr2 >> node.input3D[1]
 
         return node.output3D
     else:
@@ -653,11 +758,26 @@ def decomposeMatrix(inAttr, inName=None, **kwargs):
     nodeName = inName or reduceName(DECMAT_FORMAT.format(formatAttr(inAttr)))
     if pc.objExists(nodeName):
         return pc.PyNode(nodeName)
-        
+    
     node = create("decomposeMatrix", nodeName, **kwargs)
     inAttr >> node.inputMatrix
     
     return node
+
+@profiled
+def composeMatrix(inTranslation, inRotation, inName=None, **kwargs):
+    inTranslation = getNode(inTranslation)
+    inRotation = getNode(inRotation)
+
+    nodeName = inName or reduceName(COMPMAT_FORMAT.format(inTranslation.node().name()))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).outputMatrix
+    
+    node = create("composeMatrix", nodeName, **kwargs)
+    inTranslation >> node.inputTranslate
+    inRotation >> node.inputRotate
+    
+    return node.outputMatrix
 
 @profiled
 def worldMatrix(inObj, inName=None, **kwargs):
@@ -757,6 +877,40 @@ def cross(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
 
     return node.output
 
+@profiled
+def pairBlend(inTranslate1, inRotate1, inTranslate2, inRotate2, inWeight=0, inName=None, **kwargs):
+    inTranslate1 = getNode(inTranslate1)
+    inRotate1 = getNode(inRotate1)
+
+    inTranslate2 = getNode(inTranslate2)
+    inRotate2 = getNode(inRotate2)
+
+    weightScalar = isinstance(inWeight, (int,float))
+    if not weightScalar:
+        inWeight = getNode(inWeight)
+
+    weightName = formatScalar(inWeight) if weightScalar else formatAttr(inWeight, True)
+    nodeName = inName or reduceName(BLEND_FORMAT.format(inTranslate1.node().name(), weightName, inTranslate2.node().stripNamespace()))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName)
+
+    node = create("pairBlend", nodeName, **kwargs)
+
+    inTranslate1 >> node.inTranslate1
+    inRotate1 >> node.inRotate1
+
+    inTranslate2 >> node.inTranslate2
+    inRotate2 >> node.inRotate2
+
+    if weightScalar:
+        node.weight.set(inWeight)
+    else:
+        inWeight >> node.weight
+
+    return node
+
+
+
 # Curves
 #################################################################################
 
@@ -807,9 +961,11 @@ def keep(inAttr, inName=None, **kwargs):
     types = {
         "double":0,
         "doubleLinear":0,
+        "float":0,
         "double3":1,
         "matrix":2,
-        None:2
+        None:2,
+        "long":0
         }
 
     valueType = types.get(inAttr.type())
@@ -819,7 +975,7 @@ def keep(inAttr, inName=None, **kwargs):
 
     nodeName = inName or reduceName(KEEP_FORMAT.format(formatAttr(inAttr)))
     if pc.objExists(nodeName):
-        if valueType == 0:#double
+        if valueType == 0:#number
             return pc.PyNode(nodeName).outputX
         elif valueType == 1:#double3
             return pc.PyNode(nodeName).output
@@ -828,12 +984,19 @@ def keep(inAttr, inName=None, **kwargs):
 
     node = create("tkKeep", nodeName, **kwargs)
 
+    for key, value in kwargs.iteritems():
+        if pc.attributeQuery(key, node=node, exists=True):
+            if isinstance(value, pc.general.Attribute):
+                value >> node.attr(key)
+            else:
+                node.attr(key).set(value)
+
     pc.PyNode("time1").outTime >> node.time
 
     inputAttr = None;
     outputAttr = None;
 
-    if valueType == 0:#double
+    if valueType == 0:#number
         inputAttr = node.inputX
         outputAttr = node.outputX
     elif valueType == 1:#double3
@@ -868,14 +1031,26 @@ def accu(inAttr, inName=None, **kwargs):
 
 
 @profiled
-def getVelocity(inObj, **kwargs):
+def velocity(inObj, **kwargs):
+    nodeName = reduceName(VELOCITY_FORMAT.format(inObj.name()))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output3D
+
     keptMat = keep(inObj.worldMatrix[0])
     keptMatDec = decomposeMatrix(keptMat)
     objMatDec = decomposeMatrix(inObj.worldMatrix[0])
 
-    velocity = sub(objMatDec.outputTranslate, keptMatDec.outputTranslate)
+    vel = sub(objMatDec.outputTranslate, keptMatDec.outputTranslate, nodeName)
 
-    print velocity
+    return vel
+
+@profiled
+def createAccumulatedVelocity(inObj, **kwargs):
+    vel = velocity(inObj)
+    mag = vectorMag(vel)
+    acc = accu(mag)
+
+    return acc
 
 @profiled
 def createExtremumSystem(inAttrs, inMinimum=True, **kwargs):
