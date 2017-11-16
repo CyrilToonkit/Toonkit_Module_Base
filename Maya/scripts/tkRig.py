@@ -3082,12 +3082,19 @@ def connectOscarPoses(inPosesHolder, nodal=True, scaling=True):
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''   
 
-def getPosedControls(inCharName, inCategory="All"):
-    keyables = tkc.getKeyables(inCategory=inCategory, inCharacters=[inCharName], ordered=False)
+def getAnimated(inControls):
+    animatedControls = []
 
+    for ctrl in inControls:
+        if pc.keyframe(ctrl, query=True, keyframeCount=True) > 0:
+            animatedControls.append(ctrl)
+
+    return animatedControls
+
+def getPosed(inControls):
     movedControls = []
 
-    for keyable in keyables:
+    for keyable in inControls:
         nControl = pc.PyNode(keyable)
         if not tkc.listsBarelyEquals(nControl.getTranslation(), [0.0,0.0,0.0]):
             movedControls.append(nControl.name())
@@ -3100,6 +3107,10 @@ def getPosedControls(inCharName, inCategory="All"):
             continue
 
     return movedControls
+
+def getPosedControls(inCharName, inCategory="All"):
+    keyables = tkc.getKeyables(inCategory=inCategory, inCharacters=[inCharName], ordered=False)
+    return getPosed(keyables)
 
 def savePose(inCharName, inKeySet):
     pose = {}
@@ -3311,6 +3322,18 @@ locomotion = tkn.createAccumulatedVelocity(pc.PyNode("driver1"))
 locomotion >> pose.frame
 """
 
+def getLayer(inNode):
+    neutral = tkc.getNeutralPose(inNode)
+    if neutral is None:
+        #pc.cutKey(inNode)
+        #tkc.resetAll(inNode)
+        neutral = tkc.setNeutralPose(inNode)
+
+    if tkc.getNeutralPose(neutral) is None:
+        tkc.setNeutralPose(neutral)
+
+    return neutral
+
 def createPose(inCurves, inName="newPose"):
     poseGroup = pc.group(empty=True, name=inName)
 
@@ -3329,7 +3352,7 @@ def createPose(inCurves, inName="newPose"):
         if start > curve.getTime(0):
             start = curve.getTime(0)
         if end < curve.getTime(nKeys-1):
-            end = curve.getTime(nKeys-1)  
+            end = curve.getTime(nKeys-1)
 
     poseGroup.addAttr("start", at="long", dv=start)
     poseGroup.addAttr("end", at="long", dv=end)
@@ -3337,19 +3360,60 @@ def createPose(inCurves, inName="newPose"):
 
     return poseGroup
 
-def getLayer(inNode):
-    neutral = tkc.getNeutralPose(inNode)
-    if neutral is None:
-        #pc.cutKey(inNode)
-        #tkc.resetAll(inNode)
-        neutral = tkc.setNeutralPose(inNode)
+def mulPose(inPose, inMultiplier, inName=None):
+    poseName = inName or "{0}_{1}_Posemul".format(inPose.name(), tkn.formatAttr(inMultiplier, True))
 
-    if tkc.getNeutralPose(neutral) is None:
-        tkc.setNeutralPose(neutral)
+    poseGroup = pc.group(empty=True, name=poseName)
+    poseGroup.addAttr("frame", dv=0.0)
 
-    return neutral
+    poseGroup.frame >> inPose.frame
 
-def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inRedirect=None):
+    channels = [attr for attr in inPose.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+
+    for channel in channels:
+        #print "channel", channel
+        #print "getRealAttr", tkc.getRealAttr(channel.name(), inSkipCurves=False)
+        poseGroup.addAttr(channel.longName())
+
+        node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
+        nodeName, attrName = node.tkConnection.get().split(".")
+
+        if attrName in ["sx", "sy", "sz"]:#Scaling
+            print "Mul Scaling ! (remove 1, mul, then add one)", attrName
+        else:
+            #print "Classic", attrName
+            tkn.mul(channel, inMultiplier) >> poseGroup.attr(channel.longName())
+
+    return poseGroup
+
+def addPose(inPose1, inPose2, inName=None):
+    poseName = inName or "{0}_{1}_Poseadd".format(inPose1.name(), inPose2.stripNamespace())
+
+    poseGroup = pc.group(empty=True, name=poseName)
+    poseGroup.addAttr("frame", dv=0.0)
+
+    poseGroup.frame >> inPose1.frame
+    poseGroup.frame >> inPose2.frame
+
+    channels = [attr for attr in inPose.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+
+    for channel in channels:
+        #print "channel", channel
+        #print "getRealAttr", tkc.getRealAttr(channel.name(), inSkipCurves=False)
+        poseGroup.addAttr(channel.longName())
+
+        node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
+        nodeName, attrName = node.tkConnection.get().split(".")
+
+        if attrName in ["sx", "sy", "sz"]:#Scaling
+            print "Add Scaling ! (mul)", attrName
+        else:
+            #print "Classic", attrName
+            tkn.add(channel, inPose1.attr(channel.longName())) >> poseGroup.attr(channel.longName())
+
+    return poseGroup
+
+def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inRedirect=None, inActivationAttrName="autoWalk"):
     poseGroup = tkc.getNode(inPose)
 
     channels = [attr for attr in poseGroup.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
@@ -3360,7 +3424,7 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
 
     for channel in channels:
         #print "channel", channel
-        #print "getRealAttr", tkc.getRealAttr(channel.name(), inSkipCurves=False)
+        #print "getRealAttr", channel.name(), "=", tkc.getRealAttr(channel.name(), inSkipCurves=False)
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
 
         nodeName, attrName = node.tkConnection.get().split(".")
@@ -3398,7 +3462,17 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
 
         for attr, channel in attrs.iteritems():
             if pc.attributeQuery(attr, node=layer, exists=True):
-                channel >> layer.attr(attr)
+                if not pc.attributeQuery(inActivationAttrName, node=node, exists=True):
+                    node.addAttr(inActivationAttrName, minValue=0.0, maxValue=1.0, defaultValue=1.0, keyable=True)
+
+                channelMul = tkn.mul(channel, node.attr(inActivationAttrName))
+
+                locked = layer.attr(attr).isLocked()
+                if locked:
+                    layer.attr(attr).unlock()
+                channelMul >> layer.attr(attr)
+                if locked:
+                    layer.attr(attr).lock()
                 connectedAttrs.append(layer.attr(attr))
             else:
                 print "{0}.{1} can't be found !".format(layer.name(), attr)
@@ -3659,13 +3733,16 @@ def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
 
     return blend2
 
-def groupAttrs(inRef, inNodes):
+def groupAttrs(inRef, inNodes, inExclude=None):
     inRef = tkc.getNode(inRef)
     inNodes = tkc.getNodes(inNodes)
 
     for node in inNodes:
         attrs = pc.listAttr(node, keyable=True)
         for attr in attrs:
+            if not inExclude is None and attr in inExclude:
+                continue
+
             attrNode = node.attr(attr)
             if not pc.attributeQuery(attr, node=inRef, exists=True):
                 inRef.addAttr(attrNode.longName(), at=attrNode.type(), defaultValue=attrNode.get(), keyable=True)
@@ -3687,11 +3764,11 @@ def createParent(inObj):
     if not shape is None:
         parentShape = pc.duplicate(shape, addShape=True)[0]
         pc.parent(parentShape, parent, add=True, shape=True)
-        pc.parent(parentShape, shape=True,rm=True)
+        mc.parent(parentShape.name(), shape=True,rm=True)
 
         displays = tkc.getDisplay(parent)
         #([t,r,s], size, name)
-        tkc.setDisplay(parent, trs=displays[0], size=displays[1] * 1.15, displayName=displays[2])
+        tkc.setDisplay(parent, trs=displays[0], size=displays[1] * 1.25, displayName=displays[2])
 
     return parent
 
@@ -3963,9 +4040,14 @@ def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
     createdSets = []
 
     for char in inCharacters:
-        prop = tkc.getProperty(char, tkc.CONST_KEYSETSTREEPROP)
+        ns = char.split(":")[0]
 
+        if len(ns) > 0:
+            ns += ":"
+
+        prop = tkc.getProperty(char, tkc.CONST_KEYSETSTREEPROP)
         keySets = tkc.getKeySets(char)
+
         keySetsHierachy = []
 
         for keySet in keySets:
@@ -3977,20 +4059,25 @@ def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
 
         for hKeySey in keySetsHierachy:
             selectSet(char, inSet=hKeySey[0])
-            createdSets.append(pc.sets(name=prefix + hKeySey[0] + suffix))
+            createdSets.append(pc.sets(name=ns + prefix + hKeySey[0] + suffix))
             if len(hKeySey[1]) > 0:
                 for parentKeySet in hKeySey[1]:
-                    pc.sets(prefix + parentKeySet.replace("$", "") + suffix, rm=pc.selected())
+                    pc.sets(ns + prefix + parentKeySet.replace("$", "") + suffix, rm=pc.selected())
 
-                pc.sets(prefix + hKeySey[1][-1].replace("$", "") + suffix, fe=createdSets[-1])
+                pc.sets(ns + prefix + hKeySey[1][-1].replace("$", "") + suffix, fe=createdSets[-1])
             else:
                 rootSets.append(createdSets[-1])
 
         for rootSet in rootSets:
-            if not rootSet.name() == prefix + "All" + suffix:
-                pc.sets(prefix + "All" + suffix, fe=rootSet)
+            if not rootSet.name() == ns + prefix + "All" + suffix:
+                pc.sets(ns + prefix + "All" + suffix, fe=rootSet)
+            else:
+                elems = pc.sets(rootSet.name(), query=True)
+                for elem in elems:
+                    if elem.type() != "objectSet":
+                        pc.sets(rootSet.name(), rm=elem)
 
-        pc.rename(prefix + "All" + suffix, "ctrls_set")
+        pc.rename(ns + prefix + "All" + suffix, ns + "ctrls_set")
 
 def symSel(mode=0):
     pc.undoInfo(openChunk=True)

@@ -4191,6 +4191,12 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                                                          \_\                                           /_/ 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+ATTRWALK = {
+    "unitConversion":"input",
+    "multDoubleLinear":"input1"
+}
+
 def getRealAttr(inAttr, inSkipCurves=True):
     ns = ""
     if ":" in inAttr:
@@ -4201,8 +4207,8 @@ def getRealAttr(inAttr, inSkipCurves=True):
     if len(conAttrs) > 0:
         for conAttrCandidate in conAttrs:
             candidate = conAttrCandidate
-            if candidate.nodeType() == "unitConversion":
-                candidate = candidate.node().input
+            if candidate.nodeType() in ATTRWALK:
+                candidate = candidate.node().attr(ATTRWALK[candidate.nodeType()])
 
             if not inSkipCurves or not candidate.nodeType() in ANIMTYPES:
                 conAttr = candidate

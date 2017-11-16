@@ -80,7 +80,7 @@ __author__ = "Cyril GIBAUD - Toonkit"
 EPSILON = sys.float_info.epsilon * 10
 OMEGA = 1.0/EPSILON
 
-MAX_NAME_LEN = 100
+MAX_NAME_LEN = 130
 
 # Words
 #################################################################################

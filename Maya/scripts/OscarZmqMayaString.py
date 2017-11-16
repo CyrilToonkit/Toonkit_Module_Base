@@ -12,13 +12,9 @@ import math
 #Starting with Maya 2018 (maybe 2017) PyNode.getRotation sometimes return OpenMaya.EulerRotation !
 def getPymelRotation(inNode, space="object"):
 	r = inNode.getRotation(space=space)
-	print "getPymelRotation",inNode
 	if not isinstance(r, dt.EulerRotation):
 		radToDeg = (180.0/math.pi)
-		print " -not EulerRotation (",type(r),")", dt.EulerRotation(radToDeg*r.x, radToDeg*r.y, radToDeg*r.z)
 		return dt.EulerRotation(radToDeg*r.x, radToDeg*r.y, radToDeg*r.z)
-
-	print " -EulerRotation", r
 	return r
 
 def dtvec3tostring(vec3):
