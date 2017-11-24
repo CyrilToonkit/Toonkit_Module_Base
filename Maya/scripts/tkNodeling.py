@@ -129,6 +129,7 @@ CLOSESTPOINT_FORMAT = "{0}_{1}_Close"
 CONDITION_FORMAT = "{0}_{1}_{2}_Cond"
 
 VELOCITY_FORMAT = "{0}_Vel"
+ANGVELOCITY_FORMAT = "{0}_Angvel"
 
 # Output names
 #################################################################################
@@ -331,21 +332,31 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
     else:
         inAttr2 >> node.secondTerm
 
+    outVectors = False
+
     if not inAttrTrue is None:
         attrTrueScalar = isinstance(inAttrTrue, (int,float))
         if attrTrueScalar:
             node.colorIfTrueR.set(inAttrTrue)
         else:
-            inAttrTrue >> node.colorIfTrueR
+            if inAttrTrue.type() in ["double3", "float3"]:
+                outVectors = True
+                inAttrTrue >> node.colorIfTrue
+            else:
+                inAttrTrue >> node.colorIfTrueR
     
     if not inAttrFalse is None:
         attrFalseScalar = isinstance(inAttrFalse, (int,float))
         if attrFalseScalar:
             node.colorIfFalseR.set(inAttrFalse)
         else:
-            inAttrFalse >> node.colorIfFalseR
+            if inAttrFalse.type() in ["double3", "float3"]:
+                outVectors = True
+                inAttrFalse >> node.colorIfFalse
+            else:
+                inAttrFalse >> node.colorIfFalseR
 
-    return node.outColorR
+    return node.outColorR if not outVectors else node.outColor
 
 # Algebra
 #################################################################################
@@ -1041,6 +1052,20 @@ def velocity(inObj, **kwargs):
     objMatDec = decomposeMatrix(inObj.worldMatrix[0])
 
     vel = sub(objMatDec.outputTranslate, keptMatDec.outputTranslate, nodeName)
+
+    return vel
+
+@profiled
+def angularVelocity(inObj, **kwargs):
+    nodeName = reduceName(ANGVELOCITY_FORMAT.format(inObj.name()))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).output3D
+
+    keptMat = keep(inObj.worldMatrix[0])
+    keptMatDec = decomposeMatrix(keptMat)
+    objMatDec = decomposeMatrix(inObj.worldMatrix[0])
+
+    vel = sub(objMatDec.outputRotate, keptMatDec.outputRotate, nodeName)
 
     return vel
 

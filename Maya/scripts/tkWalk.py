@@ -25,8 +25,13 @@ import os
 import pymel.core as pc
 
 import tkMayaCore as tkc
+import tkRig
 
 __author__ = "Cyril GIBAUD - Toonkit"
+
+#################################################################################
+#   Projection
+#################################################################################
 
 def getProjectNodes(inNamespace=None):
     projectNodes = []
@@ -60,9 +65,93 @@ def removeGround(inProjectNode, inGround=None):
 
     targets = getTargets(inProjectNode, connections=True)
 
-    for inputAttr, target in targets:
-        if target == inGround:
+    for inputAttr, targetAttr in targets:
+        if targetAttr.node() == inGround:
             inputAttr.disconnect()
+
+#################################################################################
+#   Baking
+#################################################################################
+
+def getBakeables(inNamespace=None):
+    bakeables = []
+    if inNamespace is None:
+        bakeables = pc.ls("*{0}".format(tkRig.CONST_BAKERSUFFIX), transforms=True)
+    else:
+        if isinstance(inNamespace, basestring):
+            inNamespace = [inNamespace]
+        bakeables = pc.ls(["{0}:*{1}".format(ns, tkRig.CONST_BAKERSUFFIX) for ns in inNamespace], transforms=True)
+
+    return bakeables
+
+def bake(inStart, inEnd, inNamespace=None, inUnbake=True):
+    if inUnbake:
+        unbake(inNamespace=inNamespace)
+
+    bakeables = getBakeables(inNamespace=inNamespace)
+    sources = []
+    toBake = []
+    cns = []
+    bakeAttrs = []
+
+    for bakeable in bakeables:
+        sourceName = bakeable.name()[:-len(tkRig.CONST_BAKERSUFFIX)]
+        if not pc.objExists(sourceName):
+            pc.warning("Source object {0} not found for baking !".format(sourceName))
+            continue
+
+        source = pc.PyNode(sourceName)
+        sources.append(source)
+        cns.append(tkc.constrain(bakeable, source, inOffset=False))
+        toBake.append(bakeable)
+
+        attr = tkc.getRealAttr(source.baked.name())
+        if not attr in bakeAttrs:
+            bakeAttrs.append(attr)
+
+    if len(toBake) == 0:
+        pc.warning("Nothing to bake, skipping...")
+        return
+
+    timerMessage = "Baking {0} transforms on {1} frames".format(len(toBake), inEnd-inStart+1)
+
+    try:
+        pc.mel.eval("paneLayout -e -manage false $gMainPane")
+
+        tkc.startTimer(timerMessage, inReset=True)
+        pc.bakeResults(toBake, simulation=True, sampleBy=1, t=(inStart,inEnd), disableImplicitControl=False, preserveOutsideKeys=True, sparseAnimCurveBake=False, removeBakedAttributeFromLayer=False, bakeOnOverrideLayer=False, minimizeRotation=False, controlPoints=False, shape=False)
+        pc.delete(cns)
+        tkc.stopTimer(timerMessage, inLog=True)
+    except Exception, e:
+        pc.warning("Unmanaged exception in baking ({0})".format(e))
+    finally:
+        pc.mel.eval("paneLayout -e -manage true $gMainPane") 
+
+    for bakeAttr in bakeAttrs:
+        pc.setAttr(bakeAttr, 1)
+
+def unbake(inNamespace=None):
+    bakeables = getBakeables(inNamespace=inNamespace)
+
+    bakeAttrs = []
+
+    for bakeable in bakeables:
+        sourceName = bakeable.name()[:-len(tkRig.CONST_BAKERSUFFIX)]
+        if not pc.objExists(sourceName):
+            pc.warning("Source object {0} not found for baking !".format(sourceName))
+            continue
+
+        pc.cutKey(bakeable, clear=True)
+        tkc.resetTRS(bakeable)
+
+        source = pc.PyNode(sourceName)
+        attr = tkc.getRealAttr(source.baked.name())
+
+        if not attr in bakeAttrs:
+            bakeAttrs.append(attr)
+
+    for bakeAttr in bakeAttrs:
+        pc.setAttr(bakeAttr, 0)
 
 #################################################################################
 #   UI
@@ -85,8 +174,6 @@ def refreshGrounds():
     pc.textScrollList("walkGroundsLB", edit=True, removeAll=True)
 
     ns = getNamespaces()
-
-    print "ns",ns
 
     if not ns is None and len(ns) == 0:
         return
@@ -167,6 +254,22 @@ def walkGroundClearClick(*args):
 
     refreshGrounds()
 
+def walkBakeClick(*args):
+    start = float(pc.textField("walkStartFrameLE", query=True, text=True))
+    end = float(pc.textField("walkEndFrameLE", query=True, text=True))
+
+    bake(start, end, getNamespaces())
+
+def walkUnbakeClick(*args):
+    unbake(getNamespaces())
+
+def walkGetFromSceneClick(*args):
+    start = pc.playbackOptions(query=True, animationStartTime=True)
+    end = pc.playbackOptions(query=True, animationEndTime=True)
+
+    pc.textField("walkStartFrameLE", edit=True, text=str(start))
+    pc.textField("walkEndFrameLE", edit=True, text=str(end))
+
 #INIT
 ###########################################################################
 
@@ -177,6 +280,9 @@ def connectControls():
     pc.button("walkGroundAddBT", edit=True, c=walkGroundAddClick)
     pc.button("walkGroundRemBT", edit=True, c=walkGroundRemClick)
     pc.button("walkGroundClearBT", edit=True, c=walkGroundClearClick)
+    pc.button("walkGetFromSceneBT", edit=True, c=walkGetFromSceneClick)
+    pc.button("walkBakeBT", edit=True, c=walkBakeClick)
+    pc.button("walkUnbakeBT", edit=True, c=walkUnbakeClick)
 
 def showUI(*inArgs):
     if (pc.window('walkUI', q=True, exists=True)):
@@ -195,5 +301,7 @@ def showUI(*inArgs):
     connectControls()
 
     refreshAll()
+
+    walkGetFromSceneClick()
 
     pc.control("walkProgressBar", edit=True, visible=False)

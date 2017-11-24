@@ -276,6 +276,8 @@ UNITS_RATIO = { "mm":0.1,
 
 ANIMTYPES = ["animCurveTA","animCurveTL","animCurveTT","animCurveTU","animCurveUA","animCurveUL","animCurveUT"]
 
+CHANNELS = ["t","tx","ty","tz","r","rx","ry","rz","s","sx","sy","sz"]
+
 RE_ENV = re.compile('%\w+%')
 
 OLD_PARENT_SUFFIX = "_OLDPARENT"
@@ -1588,6 +1590,17 @@ def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
 
     return neutral
 
+def getNeutralPoses(inTarget, inSuffix=None):
+    neutralPoses = []
+
+    neutral = getNeutralPose(inTarget, inSuffix=inSuffix)
+
+    while not neutral is None:
+        neutralPoses.append(neutral)
+        neutral = getNeutralPose(neutral, inSuffix=inSuffix)
+
+    return neutralPoses
+
 def removeNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
     neutral = getNeutralPose(inTarget, inSuffix)
 
@@ -1705,6 +1718,27 @@ def setLimits(inNode,   inMinTx=1, inMaxTx=-1, inMinTy=1, inMaxTy=-1, inMinTz=1,
         args["sz"] = [inMinSz, inMaxSz]
 
     pc.transformLimits(inNode, **args)
+
+def getConnected(inNode, inCustomChannels=None, inUseTransforms=True):
+    connectedChannels = []
+
+    channels = CHANNELS if inUseTransforms else []
+
+    if not inCustomChannels is None:
+        channels.extend(inCustomChannels)
+
+    if len(channels) == 0:
+        raise ValueError("No channels given for getConnected on {0}".format(inNode))
+
+    for channel in channels:
+        if len(inNode.attr(channel).inputs()) > 0:
+            connectedChannels.append(channel)
+
+    return connectedChannels
+
+def isConnected(inNode, inCustomChannels=None, inUseTransforms=True):
+    return len(getConnected(inNode, inCustomChannels=inCustomChannels, inUseTransforms=inUseTransforms)) > 0
+
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _   _ _                         _           
@@ -1939,9 +1973,10 @@ def isProperty(obj):
 def isElement(obj):
     return pc.objExists("{0}_{1}".format(obj.name(), CONST_ATTRIBUTES))
 
-def isNeutralPose(obj):
+def isNeutralPose(obj, inSuffix=None):
+    suffix = inSuffix or CONST_NEUTRALSUFFIX
     if obj != None and obj.type() == "transform" and obj.getShape() == None:
-        if obj.name().endswith(CONST_NEUTRALSUFFIX):
+        if obj.name().endswith(suffix):
             return True
     return False
 
@@ -4194,7 +4229,8 @@ def reorderDeformers(inObj, inTypesPriorities=None):
 
 ATTRWALK = {
     "unitConversion":"input",
-    "multDoubleLinear":"input1"
+    "multDoubleLinear":"input1",
+    "addDoubleLinear":"input1"
 }
 
 def getRealAttr(inAttr, inSkipCurves=True):
@@ -4223,8 +4259,8 @@ def getRealAttr(inAttr, inSkipCurves=True):
         if len(conAttrs) > 0:
             for conAttrCandidate in conAttrs:
                 candidate = conAttrCandidate
-                if candidate.nodeType() == "unitConversion":
-                    candidate = candidate.node().input
+                if candidate.nodeType() in ATTRWALK:
+                    candidate = candidate.node().attr(ATTRWALK[candidate.nodeType()])
 
                 if not inSkipCurves or not candidate.nodeType() in ANIMTYPES:
                     conAttr = candidate

@@ -74,6 +74,8 @@ ELEMSINDICES = {0:"Model", 1:"Root", 2:"Input", 3:"Output", 4:"Null", 5:"Control
 
 ALLOWED_GEOMETRIES = ["mesh"]
 
+CONST_BAKERSUFFIX = "_tkBaker"
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                          _    ____ ___ 
   / _ \ ___  ___ __ _ _ __     / \  |  _ \_ _|
@@ -3322,17 +3324,66 @@ locomotion = tkn.createAccumulatedVelocity(pc.PyNode("driver1"))
 locomotion >> pose.frame
 """
 
-def getLayer(inNode):
-    neutral = tkc.getNeutralPose(inNode)
+def getLayer(inNode, inSuffix=None):
+    neutral = tkc.getNeutralPose(inNode, inSuffix)
     if neutral is None:
         #pc.cutKey(inNode)
         #tkc.resetAll(inNode)
         neutral = tkc.setNeutralPose(inNode)
 
-    if tkc.getNeutralPose(neutral) is None:
-        tkc.setNeutralPose(neutral)
+    if tkc.getNeutralPose(neutral, inSuffix) is None:
+        lockedChannels = []
+        channels = ["tx","ty","tz","rx","ry","rz","sx","sy","sz"]
+        for channel in channels:
+            if neutral.attr(channel).isLocked():
+                neutral.attr(channel).unlock()
+                lockedChannels.append(channel)
+
+        tkc.setNeutralPose(neutral, inSuffix)
+
+        for channel in lockedChannels:
+            neutral.attr(channel).lock()
 
     return neutral
+
+def getLayers(inNode, inConnected=True, inSuffix=None):
+    neutrals = tkc.getNeutralPoses(inNode, inSuffix)
+
+    return [n for n in neutrals if not inConnected or tkc.isConnected(n)]
+
+def getAllLayers(inConnected=True, inSuffix=None):
+    suffix = inSuffix or tkc.CONST_NEUTRALSUFFIX
+
+    return [l for l in pc.ls("*{0}".format(suffix)) if not inConnected or tkc.isConnected(l)]
+
+def getBaker(inNode):
+    bakerName = inNode.name() + CONST_BAKERSUFFIX
+    if pc.objExists(bakerName):
+        return pc.PyNode(bakerName)
+
+    baker = pc.group(empty=True, name=bakerName)
+    inNode.getParent().addChild(baker)
+    tkc.resetTRS(baker)
+
+    if not pc.attributeQuery("baked", node=inNode, exists=True):
+        inNode.addAttr("baked", defaultValue=0, minValue=0, maxValue=1, at="byte")
+
+    connecteds = tkc.getConnected(inNode)
+
+    for connected in connecteds:
+        connectedAttr = inNode.attr(connected)
+        connection = connectedAttr.inputs(plugs=True)[0]
+        
+        locked=False
+        if connectedAttr.isLocked():
+            connectedAttr.unlock()
+            locked=True
+
+        tkn.condition(inNode.baked, 0, "==", connection, baker.attr(connected), inName=tkn.formatAttr(connectedAttr.name()) + "_Baked_Cond") >> connectedAttr
+
+        if locked:
+            connectedAttr.lock()
+    return baker
 
 def createPose(inCurves, inName="newPose"):
     poseGroup = pc.group(empty=True, name=inName)
@@ -3343,7 +3394,14 @@ def createPose(inCurves, inName="newPose"):
     poseGroup.addAttr("frame", dv=0.0)
 
     for curve in inCurves:
+        #.scaleX
         #print "curve name",curve.name()
+        nodeName, attrName = curve.tkConnection.get().split(".")
+
+        #TODO Scaling is skipped right now !!
+        if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
+            continue
+
         poseGroup.addAttr(curve.name())
         curve.output >> poseGroup.attr(curve.name())
         poseGroup.attr("frame") >> curve.input
@@ -3364,9 +3422,6 @@ def mulPose(inPose, inMultiplier, inName=None):
     poseName = inName or "{0}_{1}_Posemul".format(inPose.name(), tkn.formatAttr(inMultiplier, True))
 
     poseGroup = pc.group(empty=True, name=poseName)
-    poseGroup.addAttr("frame", dv=0.0)
-
-    poseGroup.frame >> inPose.frame
 
     channels = [attr for attr in inPose.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
 
@@ -3378,7 +3433,7 @@ def mulPose(inPose, inMultiplier, inName=None):
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
         nodeName, attrName = node.tkConnection.get().split(".")
 
-        if attrName in ["sx", "sy", "sz"]:#Scaling
+        if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
             print "Mul Scaling ! (remove 1, mul, then add one)", attrName
         else:
             #print "Classic", attrName
@@ -3390,26 +3445,42 @@ def addPose(inPose1, inPose2, inName=None):
     poseName = inName or "{0}_{1}_Poseadd".format(inPose1.name(), inPose2.stripNamespace())
 
     poseGroup = pc.group(empty=True, name=poseName)
-    poseGroup.addAttr("frame", dv=0.0)
 
-    poseGroup.frame >> inPose1.frame
-    poseGroup.frame >> inPose2.frame
+    channelsDic = {}
 
-    channels = [attr for attr in inPose.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
-
-    for channel in channels:
-        #print "channel", channel
-        #print "getRealAttr", tkc.getRealAttr(channel.name(), inSkipCurves=False)
-        poseGroup.addAttr(channel.longName())
-
+    channels1 = [attr for attr in inPose1.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+    for channel in channels1:
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
-        nodeName, attrName = node.tkConnection.get().split(".")
+        channelName = node.tkConnection.get()
 
-        if attrName in ["sx", "sy", "sz"]:#Scaling
-            print "Add Scaling ! (mul)", attrName
+        if channelName in channelsDic:
+            channelsDic[channelName].append(channel)
         else:
-            #print "Classic", attrName
-            tkn.add(channel, inPose1.attr(channel.longName())) >> poseGroup.attr(channel.longName())
+            channelsDic[channelName] = [channel]
+
+    channels2 = [attr for attr in inPose2.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+    for channel in channels2:
+        node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
+        channelName = node.tkConnection.get()
+
+        if channelName in channelsDic:
+            channelsDic[channelName].append(channel)
+        else:
+            channelsDic[channelName] = [channel]
+
+    for channel, attrs in channelsDic.iteritems():
+        nodeName, attrName = channel.split(".")
+
+        poseGroup.addAttr(attrs[0].longName())
+
+        if len(attrs) == 1:
+            attrs[0] >> poseGroup.attr(attrs[0].longName())
+        else:
+            if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
+                print "Add Scaling ! (mul)", attrName
+            else:
+                #print "Classic", attrName
+                tkn.add(attrs[0], attrs[1]) >> poseGroup.attr(attrs[0].longName())
 
     return poseGroup
 

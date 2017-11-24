@@ -54,8 +54,6 @@ ROOTVAR = "$ROOT"
 PROJECTVAR = "$PROJECT"
 PROJECTPATHVAR = "$PROJECTPATH"
 
-CORETOOL = tkc.getTool()
-
 DEBUG=False
 
 DEBUGPATH = "\\\\NHAMDS\\ToonKit\\ToonKit\\Rnd\\Picker\\Picker_Files"
@@ -73,7 +71,7 @@ def resolvePath(inPath):
     ROOT = DEBUGPATH
     replacements.append((ROOTVAR, ROOT))
 
-    PROJECTPATH = os.path.join(ROOT, CORETOOL.options["project"])
+    PROJECTPATH = os.path.join(ROOT, tkc.getTool().options["project"])
     replacements.append((PROJECTPATHVAR, PROJECTPATH))
 
     #Perform paths replacements
