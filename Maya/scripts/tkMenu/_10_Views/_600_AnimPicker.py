@@ -1,2 +1,2 @@
 import tkAnimPicker
-tkAnimPicker.show()
+tkAnimPicker.show(True)

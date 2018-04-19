@@ -76,6 +76,7 @@ SEP_VARIABLE_START_LENGTH = None
 SEP_VARIABLE_END_LENGTH = None
 
 RE_VARIABLES = None
+RE_INTFORMAT = re.compile("\[0-9\]\{(\d)\}")
 
 def setSynTax(inVariableSep=SEP_VARIABLE, inVariableStart=SEP_VARIABLE_START, inVariableEnd=SEP_VARIABLE_END):
     global SEP_VARIABLE
@@ -140,6 +141,12 @@ def expandVariables(inPattern, inVariables=None):
 
         if variableName in inVariables:#Resolvable
             if variableReg != None:
+                matchObj = RE_INTFORMAT.match(variableReg)
+                if matchObj:
+                    #TODO : Here is a brute force handling of int formatting with n zeroes in front...
+                    inVariables[variableName] = int(inVariables[variableName])
+                    variableName = "{0}:0{1}d".format(variableName, matchObj.groups()[0])
+                    
                 parseAblePath = parseAblePath.replace(variable, encloseVariable(variableName))
         else:#Not Resolvable
             safeVariable = variableName
@@ -739,8 +746,18 @@ def match(inPattern, inString, inVariables=None):
         pattern = inPattern
         for variable in variables:
             variableName, variableReg = splitReVariable(variable)
+            if variableReg == None:
+                variableReg = ".+"
+            else:
+                searchIndex = re.search("<(.+)>", variableReg)
+                #Search if we have a custom sorting directive (index)
+                if searchIndex:
+                    index=searchIndex.groups()[0]
+                    variableReg = variableReg.replace("<"+index+">", "")
+
             if "\\" in variableReg:
                 print "WARNING : Please don't use escaped characters in variables regular expressions !"
+
             pattern = pattern.replace(variable, "("+variableReg+")")
 
         curReg = re.compile(pattern.replace('\\', r'\\'), re.IGNORECASE)

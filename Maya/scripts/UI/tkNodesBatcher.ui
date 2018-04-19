@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>724</width>
-    <height>840</height>
+    <width>713</width>
+    <height>785</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>tk Batcher 1.0</string>
+   <string>tk Batcher 1.1</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
@@ -32,7 +32,7 @@
      <item>
       <widget class="QLineEdit" name="batcherPathLE">
        <property name="text">
-        <string>Z:\Toonkit\RnD\Src\GitRepo\oscar\build\OscarEditor\release\Data\Rigs\{NodeName:.+}\{NodeName:.+}.ma</string>
+        <string/>
        </property>
       </widget>
      </item>
@@ -48,7 +48,7 @@
    <item>
     <widget class="QGroupBox" name="Nodes">
      <property name="title">
-      <string>Nodes</string>
+      <string>Items</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
@@ -78,9 +78,40 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="batcherLoadReferencesCB">
+          <property name="text">
+           <string>Load references</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="batcherExploreSelectedCB">
           <property name="text">
            <string>Explore selected</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_10">
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="batcherImportSelectedBT">
+          <property name="text">
+           <string>Import selected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="batcherReferenceSelectedBT">
+          <property name="text">
+           <string>Reference selected</string>
           </property>
          </widget>
         </item>
@@ -191,6 +222,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;#saveFile : (bool) tells if we have to save the file in the end (default can change, see UI)&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;#success : (bool) tells if the batch is a success (default True, always False if script failed)&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt;&quot;&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;&lt;br /&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;print fileName&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;saveFile = False&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -596,6 +628,70 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>51</x>
      <y>436</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSaveBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>673</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>51</x>
+     <y>416</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSaveBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>selectAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>673</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>361</x>
+     <y>610</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSaveBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeTE</receiver>
+   <slot>copy()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>673</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>361</x>
+     <y>610</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>batcherSaveBT</sender>
+   <signal>pressed()</signal>
+   <receiver>batcherCodeLE</receiver>
+   <slot>paste()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>673</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>51</x>
+     <y>416</y>
     </hint>
    </hints>
   </connection>

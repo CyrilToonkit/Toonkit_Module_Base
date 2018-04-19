@@ -117,19 +117,30 @@ def resolveReferences(inPicker, inNs):
                     menus = []
                     for i in range(len(item["controls"])):
                         if "\n" in item["controls"][i]:
-                            splitValues = item["controls"][i].split("\n")
-                            space = splitValues[0][1:]
-                            if DEBUG:
-                                print "Space switcher detected ({0}, {1}) !".format(space, inNs)
+                            splitValues = [it for it in item["controls"][i].split("\n") if len(it) > 0]
 
-                            spaceNode, spaceAttr = space.split(".")
-                            if pc.objExists(inNs + spaceNode):
-                                if pc.attributeQuery(spaceAttr, node=inNs + spaceNode, exists=True):
-                                    enums = pc.attributeQuery(spaceAttr, node=inNs + spaceNode, listEnum=True)[0].split(":")
-                                    for j in range(len(enums)):
-                                        menus.append([enums[j], "import tkRig\ntkRig.setSpace(__NAMESPACE__+\":"+space+"\", "+str(j)+")"])
+                            if len(splitValues) > 1:
+                                if splitValues[0].startswith("#"):
+                                    space = splitValues[0][1:]
+                                    if DEBUG:
+                                        print "Space switcher detected ({0}, {1}) !".format(space, inNs)
 
-                            item["controls"][i] = splitValues[-1]
+                                    spaceNode, spaceAttr = space.split(".")
+                                    if pc.objExists(inNs + spaceNode):
+                                        if pc.attributeQuery(spaceAttr, node=inNs + spaceNode, exists=True):
+                                            enums = pc.attributeQuery(spaceAttr, node=inNs + spaceNode, listEnum=True)[0].split(":")
+                                            for j in range(len(enums)):
+                                                menus.append([enums[j], "import tkRig\ntkRig.setSpace(__NAMESPACE__+\":"+space+"\", "+str(j)+")"])
+                                        else:
+                                            pc.warning("'" + inNs + spaceNode + "." + spaceAttr + "' does not exists !!")
+                                    else:
+                                        pc.warning("'" + inNs + spaceNode + "' does not exists !!")
+
+                                    item["controls"][i] = splitValues[-1]
+                                else:
+                                    item["controls"][i] = splitValues[0]
+                            else:
+                                item["controls"][i] = splitValues[0]
 
                     if len(menus) > 0:
                         item['menus'] = menus
@@ -214,7 +225,7 @@ def show(*args):
 
     mods = pc.getModifiers()
 
-    print "modifiers",mods
-    print "mods & 8",mods & 8
+    #print "modifiers",mods
+    #print "mods & 8",mods & 8
 
     load(mods & 8, forceRebuild=rebuild)

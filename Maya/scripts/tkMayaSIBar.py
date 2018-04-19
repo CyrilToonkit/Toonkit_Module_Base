@@ -29,6 +29,7 @@ import math
 
 import pymel.core as pc
 
+import OscarZmqMayaString as ozms
 import tkMayaCore as tkc
 import tkSIGroups
 
@@ -122,6 +123,10 @@ def updateSelExplorer(sel=None):
 			pc.textScrollList("tksiSelExplorerLB", edit=True, append=sel, selectItem=sel)
 
 def selectionChanged():
+	#In rare cases this is called when the window is already closed, just check that a control exists and skip if it does not
+	if not pc.control("tksiLocalRB", query=True, exists=True):
+		return
+
 	pc.optionVar(intValue=(G_OPT_SELCHANGEDMUTED, 1))
 	sel = pc.ls(sl=True, transforms=True)
 
@@ -396,7 +401,7 @@ def setSRT(transform, xyz):
 			oldValues[xyz -1] = tkc.parseValue(value, "double", str(oldValue), i, selLen)
 			values.append(oldValues)
 		elif transform == 2:
-			oldValues = obj.getRotation(space=space)
+			oldValues = ozms.getPymelRotation(obj, space=space)
 			oldValue = oldValues[xyz -1]
 			oldValues[xyz -1] = tkc.parseValue(value, "double", str(oldValue), i, selLen)
 			values.append(oldValues)

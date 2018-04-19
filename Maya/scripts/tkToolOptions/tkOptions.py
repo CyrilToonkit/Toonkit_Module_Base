@@ -100,6 +100,9 @@ class Options(object):
         if oldVal != value:
             self._optionChanged(option=self.getOption(key, value), old=oldVal, new=value)
 
+    def __contains__(self, key):
+            return key in self.__data
+
     def __repr__(self):
         if not self:
             return '%s()' % (self.__class__.__name__,)
@@ -173,6 +176,16 @@ class Options(object):
     @staticmethod
     def deserialize(strObj):
         jsonObj = json.loads(strObj, object_pairs_hook=Options.OrderedDict)
+
+        #Convert sub-dictionaries from Options.OrderedDict to classic dict
+        for key in jsonObj.keys():
+            if isinstance(jsonObj[key], type(jsonObj)):
+                classicDict = {}
+                for subKey in jsonObj[key].keys():
+                    classicDict[subKey] = jsonObj[key][subKey]
+
+                jsonObj[key] = classicDict
+
         return jsonObj
 
     def addOption(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
@@ -219,18 +232,20 @@ class Options(object):
                 if not os.path.exists(dirname):
                     try:
                         os.makedirs(dirname)
-                    except OSError as exc: # Guard against race condition
+                    except OSError, exc: # Guard against race condition
                         if exc.errno != errno.EEXIST:
-                            raise
+                            raise exc
 
                 with open(inPath, 'w') as content_file:
                     content_file.write(Options.serialize(self.__data))
             else:#Asssume it's a file-like object
                 try:
                     inPath.write(Options.serialize(self.__data))
-                finally:
+                except Exception, exp:
                     inPath.close()
-                    raise
+                    raise exp
+
+                inPath.close()
         except Exception, e:
             print "Error saving options : {0}".format(e)
             return False

@@ -49,8 +49,45 @@ MENUFORMAT_REPLACE = {
 }
 
 #Todo : implement this at Oscar project level
-SERVER_PATH_SUBST = ("Z:\\Toonkit\\","\\\\NHAMDS\\Toonkit\\ToonKit\\")
+SERVER_PATH_SUBST = (["Z:\\Toonkit\\", "Z:\\ToonKit\\"],["\\\\NHAMDS\\Toonkit\\ToonKit\\", "\\\\NHAMDS\\Toonkit\\ToonKit\\"])
 
+def getServerPath(inPath):
+    localSubsts = SERVER_PATH_SUBST[0]
+    if not isinstance(localSubsts, list):
+        localSubsts = [localSubsts]
+        
+    serverSubsts = SERVER_PATH_SUBST[1]
+    if not isinstance(serverSubsts, list):
+        serverSubsts = [serverSubsts]
+        
+    for i in range(len(localSubsts)):
+        if inPath.startswith(localSubsts[i]):
+            return inPath.replace(localSubsts[i], serverSubsts[i])
+
+    return inPath
+
+def pathIsLocal(inPath):
+    localSubsts = SERVER_PATH_SUBST[0]
+    if not isinstance(localSubsts, list):
+        localSubsts = [localSubsts]
+    
+    for localSubst in localSubsts:
+        if inPath.startswith(localSubst):
+            return True
+    
+    return False
+    
+def pathIsServer(inPath):
+    serverSubsts = SERVER_PATH_SUBST[1]
+    if not isinstance(serverSubsts, list):
+        serverSubsts = [serverSubsts]
+    
+    for serverSubst in serverSubsts:
+        if inPath.startswith(serverSubst):
+            return True
+
+    return False
+    
 def menuFormat(in_rawName, inLocal=False, inServer=False, inMakeNice=True):
     formattedName = in_rawName
 
@@ -159,8 +196,8 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
     if folderPath == "":
         pc.warning("External menu {0} returned invalid value '{1}', must be a string representing a folder absolute path ' !".format(in_scriptPath, folderPath))
         return
-
-    if not os.path.isdir(folderPath) and (not inServer or not os.path.isdir(folderPath.replace(SERVER_PATH_SUBST[0], SERVER_PATH_SUBST[1]))):
+    
+    if not os.path.isdir(folderPath) and (not inServer or not os.path.isdir(getServerPath(folderPath))):
         pc.warning("External menu {0}, folder not found '{1}' !".format(in_scriptPath, folderPath))
         return
 
@@ -173,7 +210,7 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
 def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
     global SEP#Indicates if last item was a separator
 
-    alternatePath = in_scriptsPath.replace(SERVER_PATH_SUBST[0], SERVER_PATH_SUBST[1])
+    alternatePath = getServerPath(in_scriptsPath)
 
     elementsDic = {}
 
@@ -210,8 +247,8 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
             server = True
             
             if in_checkServer:
-                local = fullpath.startswith(SERVER_PATH_SUBST[0])
-                server = fullpath.startswith(SERVER_PATH_SUBST[1]) or len(elementsDic[element]) > 1
+                local = pathIsLocal(fullpath)
+                server = pathIsServer(fullpath) or len(elementsDic[element]) > 1
             
             if "__" in elementName:#Separator
                 if not SEP:

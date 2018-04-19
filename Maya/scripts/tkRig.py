@@ -47,6 +47,7 @@ import tkMayaCore as tkc
 import tkSIGroups
 import PAlt as palt
 import tkNodeling as tkn
+import tkExpressions
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -4595,6 +4596,17 @@ def setCtrlVisibility(inModel, ctrlLevel, value):
                 else:
                     pc.setAttr(visParamName, max(0,combinedValue))
                     pc.setAttr(visGlobalParamName, 1)
+            else:
+                idx = 0
+                prefix = "Controls_"
+                visParamName = tkc.stripMockNamespace(inModel + ":" + rawName + "." + prefix + str(idx))
+                while pc.objExists(visParamName):
+                    if value:
+                        pc.setAttr(visParamName, 1 if idx <= ctrlLevel else 0)
+                    else:
+                        pc.setAttr(visParamName, 1 if idx + 1 <= ctrlLevel else 0)
+                    idx += 1
+                    visParamName = tkc.stripMockNamespace(inModel + ":" + rawName + "." + prefix + str(idx))
         else:
             pc.error("Cannot get 'GlobalSRT_Main_Ctrl' name from dictionary (%s)" % paramName)
             return
@@ -4911,6 +4923,216 @@ def switchIkToFk(inFKBone0,inFKBone1,inFKEff,inIKBone0,inIKBone1,inIKEff,inBlend
         cObjsToKey.AddItems(inChilds);      
     SaveKeyOnLocal(cObjsToKey);
     '''
+
+
+"""
+SelfModelName = "chr_straightGaze_default_rig_v003"
+
+ns = SelfModelName if len(SelfModelName) == 0 else SelfModelName + ":"
+
+IK_To_FK = [
+    {"Right_Arm_FK_01":
+        {"matchR":"Right_ARM_IK_Bone_0",
+         "sx":"(TK_Right_ARM_IK_Root_SetupParameters.Right_ARM_IK_Bone0_length/TK_Right_ARM_IK_Root_SetupParameters.Right_ARM_IK_Bone0_Init)*TK_Right_ARM_IK_Root_SetupParameters.Right_ARM_IK_Scale",
+         "t":[0,0,0]}
+    },
+    {"Right_Arm_FK_02":
+        {"matchR":"Right_ARM_IK_Bone_1",
+         "sx":"(TK_Right_ARM_IK_Root_SetupParameters.Right_ARM_IK_Bone1_length/TK_Right_ARM_IK_Root_SetupParameters.Right_ARM_IK_Bone1_Init)*TK_Right_ARM_IK_Root_SetupParameters.Right_ARM_IK_Scale",
+         "t":[0,0,0]}
+    },
+    {"Right_Hand_FK":
+        {"match":"Right_ARM_IK_Stretch_FKREF"}
+    },
+    {"Right_Elbow":
+        {"match":"Right_Elbow"}
+    }
+]
+
+FK_To_IK = [
+    {"Right_Arm_FK_02":
+        {"check":("abs(Right_Arm_FK_02.rotateX) <= 0.002", "Right_Arm_FK_02 rotateX is not 0"),
+         "check":("abs(Right_Arm_FK_02.rotateY) <= 0.002", "Right_Arm_FK_02 rotateY is not 0")}
+    },
+    {"Right_Arm_IK":
+        {"match":"Right_Hand_FK_IKREF",
+        "Bone0_Scale":"Right_Arm_FK_01.sx",
+        "Bone1_Scale":"Right_Arm_FK_02.sx",
+        "Roll":0,
+        "StickJoint":0,
+        "Stretch":1,
+        "Squash":0}
+    },
+    {"Right_Arm_IK_upV":
+        {"matchPV":("Right_Arm_FK_01", "Right_Arm_FK_02", "TK_Right_ARM_FK_Effector")}
+    },
+    {"Right_Elbow":
+        {"match":"Right_Elbow"}
+    }
+]
+
+#matchInPlace("Left_Arm_ParamHolder.IkFk", 0.0, FK_To_IK, ns)
+
+
+toggleInPlace("Left_Arm_ParamHolder.IkFk", 0.0, IK_To_FK, 1.0, FK_To_IK, ns)
+
+"""
+
+def setAttr(inObj, inValue):
+    inObj.set(inValue)
+
+def match(inObj, inValue):
+    pc.xform( inObj, worldSpace=True, matrix=inValue )
+
+def matchT(inObj, inValue):
+    r = inObj.r.get()
+    s = inObj.s.get()
+    match(inObj, inValue)
+    inObj.r.set(r)
+    inObj.s.set(s)
+
+def matchR(inObj, inValue):
+    t = inObj.t.get()
+    s = inObj.s.get()
+    match(inObj, inValue)
+    inObj.t.set(t)
+    inObj.s.set(s)
+
+def matchS(inObj, inValue):
+    t = inObj.t.get()
+    r = inObj.r.get()
+    match(inObj, inValue)
+    inObj.t.set(t)
+    inObj.r.set(r)
+
+def matchPV(inObj, inValue):
+    topMat, middleMat, downMat = inValue
+
+    topObj = pc.group(empty=True, world=True)
+    match(topObj, topMat)
+    middleObj = pc.group(empty=True, world=True)
+    match(middleObj, middleMat)
+    downObj = pc.group(empty=True, world=True)
+    match(downObj, downMat)
+
+    target = pc.group(empty=True, world=True)
+    tkc.createResPlane(target, topObj, middleObj, downObj)
+    pc.xform(inObj, worldSpace=True, matrix=pc.xform(target, query=True, worldSpace=True, matrix=True ))
+
+    pc.delete([target, topObj, middleObj, downObj])
+
+FUNCTIONS = {
+    "setAttr"   :setAttr,
+    "match"     :match,
+    "matchT"    :matchT,
+    "matchR"    :matchR,
+    "matchS"    :matchS,
+    "matchPV"   :matchPV,
+}
+
+def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
+    setAttrs = []
+    
+    confirmMessages = []
+
+    #First calculate all attribute values that need to be set
+    for matcher in inMatchData:
+        for matchObj, matchSteps in matcher.iteritems():
+            matchObj = inNs + matchObj
+
+            #print "matchObj",matchObj
+            for matchRule, matchRef in matchSteps.iteritems():
+                #print " -matchRule",matchRule
+                #print " -matchRef",matchRef
+                
+                if matchRule == "check":
+                    if len(matchRef) != 2:
+                        raise ValueError("Check function takes two arguments : expression to check and message !")
+                    expr, message = matchRef
+                    exprComponents = tkExpressions.Expr.getTerms(expr)
+                    for exprComponent in exprComponents:
+                        if "." in exprComponent:
+                            #Check if this component is really an attribute name (may be a floating point number)
+                            idx = exprComponent.index(".")
+                            if not ( (idx == 0 or exprComponent[idx-1].isdigit()) and
+                                (idx == len(exprComponent) + 1 or exprComponent[idx+1].isdigit())):
+                                #print " -exprComponent",exprComponent
+                                expr = expr.replace(exprComponent, str(pc.getAttr(inNs + exprComponent)))
+
+                    rslt = eval(expr)
+                    if not rslt:
+                        confirmMessages.append(message)
+
+                elif matchRule in FUNCTIONS:
+                    #Match an object on another
+                    if isinstance(matchRef, (list,tuple)):
+                        matrices = []
+                        for matchRefItem in matchRef:
+                            matrices.append(pc.xform(inNs + matchRefItem, query=True, worldSpace=True, matrix=True ))
+                        setAttrs.append((matchRule, matchObj, matrices))
+                    else:
+                        setAttrs.append((matchRule, matchObj, pc.xform(inNs + matchRef, query=True, worldSpace=True, matrix=True )))
+                else:
+                    #Simple "setAttr"
+                    attrName = "{0}.{1}".format(matchObj, matchRule)
+                    if not pc.attributeQuery(matchRule, node=matchObj, exists=True):
+                        raise ValueError("Given attribute '{0}' does not exists !".format(attrName))
+                       
+                    if isinstance(matchRef, basestring):
+                        exprComponents = tkExpressions.Expr.getTerms(matchRef)
+                        for exprComponent in exprComponents:
+                            if "." in exprComponent:
+                                #print " -exprComponent",exprComponent
+                                #Check if this component is really an attribute name (may be a floating point number)
+                                idx = exprComponent.index(".")
+                                if not ( (idx == 0 or exprComponent[idx-1].isdigit()) and
+                                    (idx == len(exprComponent) + 1 or exprComponent[idx+1].isdigit())):
+                                    matchRef = matchRef.replace(exprComponent, str(pc.getAttr(inNs + exprComponent)))
+
+                        #print " -MODIFIED matchRef",matchRef
+                        matchRef = eval(matchRef)
+
+                    setAttrs.append(("setAttr", attrName, matchRef))
+
+        #print ""
+
+    if len(confirmMessages) > 0:
+        message = "Current state may be incompatible with a seamless switch:\n{0}\nDo you want to switch anyway ?".format("\n".join([" - {0}".format(m) for m in confirmMessages]))
+        if "Yes" != pc.confirmDialog( title='Confirm', message=message, button=['Yes','No'], defaultButton='Yes', cancelButton='No', dismissString='No' ):
+            pc.warning("Switch cancelled !")
+            return
+
+    pc.undoInfo(openChunk=True)
+    
+    #Set the value of the blend attribute
+    pc.PyNode(inNs + inBlendAttrName).set(inBlendAttrValue)
+
+    #Set the attributes based on values calculated in the first pass
+    for setter in setAttrs:
+        func, item, value = setter
+        item = tkc.getNode(item)
+
+        if func in FUNCTIONS:
+            FUNCTIONS[func](item, value)
+        else:
+            pc.warning("Set function '{0}' is not implemented ({1}). Possible values are : {1}.".format(func, setAttr, ",".join(FUNCTIONS.keys())))
+    
+    pc.undoInfo(closeChunk=True)
+
+def toggleInPlace(inBlendAttrName, inState1Value, inState1Data, inState2Value, inState2Data, inNs=""):
+    toggleValue = (inState2Value - inState1Value) / 2.0 
+    currentValue = pc.getAttr(inNs + inBlendAttrName)
+
+    if currentValue == toggleValue:
+        pc.warning("Blend parameter is exactly between the two states, cannot proceed !")
+        return
+
+    if currentValue < toggleValue:
+        #State1 to State2
+        matchInPlace(inBlendAttrName, inState2Value, inState1Data, inNs)
+    else:
+        #State2 to State1
+        matchInPlace(inBlendAttrName, inState1Value, inState2Data, inNs)
 
 def toggleDeformers(*args):
     sel = pc.selected()

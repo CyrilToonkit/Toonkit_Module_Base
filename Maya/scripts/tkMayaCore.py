@@ -521,6 +521,37 @@ def listsBarelyEquals(val1, val2, delta=CONST_DELTA):
 def vectorBarelyEquals(val1, val2, delta=CONST_DELTA):
     return doubleBarelyEquals(val1.x, val2.x) and doubleBarelyEquals(val1.y, val2.y) and doubleBarelyEquals(val1.z, val2.z) 
 
+def orientationEquals(inObj1, inObj2, inTolerance=0.5):
+    mat1 = inObj1.wm.get()
+    mat2 = inObj2.wm.get()
+
+    vecX = pc.datatypes.Vector(1,0,0)
+    vecY = pc.datatypes.Vector(0,1,0)
+    vecZ = pc.datatypes.Vector(0,0,1)
+
+    vec1X = vecX * mat1
+    vec1X.normalize()
+    vec2X = vecX * mat2
+    vec2X.normalize()
+    if vec1X.dot(vec2X) <= inTolerance:
+        return False
+
+    vec1Y = vecY * mat1
+    vec1Y.normalize()
+    vec2Y = vecY * mat2
+    vec2Y.normalize()
+    if vec1Y.dot(vec2Y) <= inTolerance:
+        return False
+
+    vec1Z = vecZ * mat1
+    vec1Z.normalize()
+    vec2Z = vecZ * mat2
+    vec2Z.normalize()
+    if vec1Z.dot(vec2Z) <= inTolerance:
+        return False
+
+    return True
+
 def coordToAngleWeight(inX, inY):
     sign = 1
     if inY < 0:
@@ -670,7 +701,7 @@ def renameDuplicates(inPyNodes=None, inLog=False):
 
 def rename(node, newName, respectConventions=True, renameAttrs=False, labelJoints=True):
     oldName = node.name()
-    neutral = getNeutralPose(node)
+    neutral = getNeutralPose(node) if node.type() == "transform" else None
     props = getProperties(node)
 
     if ":" in oldName:
@@ -1412,6 +1443,8 @@ def matchTRS(inTarget, inRef, inTrans=True, inRot=True, inScl=True, inWorldSpace
     if scl != None:
         setTRS(inTarget, None, None, scl)
 
+    compensateCns(inTarget)
+
 def matchT(inTarget, inRef, inWorldSpace=True):
     matchTRS(inTarget=inTarget, inRef=inRef, inTrans=True, inRot=False, inScl=False, inWorldSpace=inWorldSpace)
 
@@ -1800,13 +1833,36 @@ def isChildOf(inObject, inParent, inUseNamespace=True):
 
     return inParent in inObject.getAllParents()
 
-def sortHierarchically(inObjects):
+def getAllParents(inObject, inConsiderConstraints=True):
+    if not inConsiderConstraints:
+        return inObject.getAllParents()
+
+    curObj = inObject
+    curParent = curObj.getParent()
+    curCons = [c for c in getConstraints(curObj) if c.type() == "parentConstraint"]
+
+    realParent = getConstraintTargets(curCons[0])[0] if len(curCons) > 0 else curParent
+
+    allParents = []
+
+    while not realParent is None:
+        allParents.append(realParent)
+
+        curObj = realParent
+        curParent = curObj.getParent()
+        curCons = [c for c in getConstraints(curObj) if c.type() == "parentConstraint"]
+        
+        realParent = getConstraintTargets(curCons[0])[0] if len(curCons) > 0 else curParent
+
+    return allParents
+
+def sortHierarchically(inObjects, inConsiderConstraints=True):
     levelDict = {}
 
     for obj in inObjects:
         if obj in levelDict:
             pass
-        parents = obj.getAllParents()
+        parents = getAllParents(obj, inConsiderConstraints=inConsiderConstraints)
         lenParents = len(parents)
         solved=False
         for i in range(lenParents):
@@ -3807,7 +3863,7 @@ def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False):
         if getSkinCluster(source) != None:
             pc.skinCluster(source,edit=True, unbind=True)
 
-        skin = pc.skinCluster(source,infs)
+        skin = pc.skinCluster(source,infs, toSelectedBones=True)
 
         if inDirectCopy:
             skin = loadSkin(storedSkin, inObject=source)
@@ -4227,6 +4283,67 @@ def reorderDeformers(inObj, inTypesPriorities=None):
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+def getSelectedAttrs():
+    """
+    Get selected attributes in channel box
+    """
+    selAttrs = []
+    
+    sel = pc.selected()
+    
+    if len(sel) > 0:
+        attrs = pc.channelBox("mainChannelBox", query=True, sma=True)
+    
+        if len(attrs) > 0:
+            for selObj in sel:
+                for selAttr in attrs:
+                    if pc.attributeQuery(selAttr, node=selObj, exists=True):
+                        selAttrs.append("{0}.{1}".format(selObj.name(), selAttr))
+
+    return selAttrs
+
+def getConnectionsRecur(inNode, inSource=False, inDestination=True, inAlreadyCollected=None):
+    if inAlreadyCollected is None:
+        inAlreadyCollected = []
+
+    cons = [con for con in pc.listConnections(source=inSource, destination=inDestination, plugs=True) if(inAlreadyCollected is None or not con in inAlreadyCollected)]
+
+    thisCons = cons[:]
+    for con in thisCons:
+        cons.extend(getConnectionsRecur(con, inSource=inSource, inDestination=inDestination, inAlreadyCollected=cons))
+
+    return cons
+
+def graphAttrs(inAttrs=None, inSource=False, inDestination=True, inMaxDepth=100, inShowNodal=True):
+    if inAttrs is None:
+        inAttrs = getSelectedAttrs()
+
+    if len(inAttrs) == 0:
+        pc.warning("No attributes given !")
+        return
+
+    collectedNodes = []
+
+    attrNodes = getNodes(inAttrs)
+
+    for attrNode in attrNodes:
+        collectedNodes.extend(getConnectionsRecur(attrNode, inSource=inSource, inDestination=inDestination))
+    
+    if inShowNodal:
+        allNodes = collectedNodes[:]
+        allNodes.extend(attrNodes)
+        
+        pc.select(clear=True)
+        
+        nodeEd = pc.mel.eval("nodeEditorWindow")
+        pc.select(allNodes)
+        pc.nodeEditor(nodeEd, edit=True, traversalDepthLimit=0)
+        pc.nodeEditor(nodeEd, edit=True, addNode="")
+        
+    return collectedNodes
+
+
+
 ATTRWALK = {
     "unitConversion":"input",
     "multDoubleLinear":"input1",
@@ -4591,15 +4708,17 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
 
     if not glob:
         paramName = ".overrideVisibility"
-        if not pc.getAttr(node + ".overrideEnabled", settable=True) or not pc.getAttr(node + ".overrideVisibility", settable=True):
-            pc.warning(node + ".overrideEnabled or " + node + ".overrideVisibility already connected !")
-            return
+
         if node.type() == "transform": 
             shape = node.getShape()
             if shape != None:
                 node = shape
             else:
                 node = node.name()
+
+        if not pc.getAttr(node + ".overrideEnabled", settable=True):
+            pc.warning(node + ".overrideEnabled already connected !")
+            return
     
         pc.setAttr(node + ".overrideEnabled", True)
     else:
@@ -4677,14 +4796,16 @@ def getDefinition(inParam):
 
 def getParamsDictionary(inNode, strName, bidirectionnal=False):
     dic = {}
-    params = getParameters(inNode, customOnly=True, containerName=strName, keyableOnly=False)
 
-    fullname = inNode.name() + "_" + strName
-    for param in params:
-        val = pc.getAttr(fullname + "." + param)
-        dic[param] = val
-        if bidirectionnal:
-            dic[val] = param
+    if pc.objExists(inNode):
+        params = getParameters(inNode, customOnly=True, containerName=strName, keyableOnly=False)
+
+        fullname = inNode.name() + "_" + strName
+        for param in params:
+            val = pc.getAttr(fullname + "." + param)
+            dic[param] = val
+            if bidirectionnal:
+                dic[val] = param
 
     return dic
 
@@ -4740,7 +4861,9 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers):
         for inputC in inputCons:
             pc.connectAttr(inputC, strIndexAttr, force=True)
     else:
-        cmds.setAttr(param, min(oldValue, len(objectNames)))
+        val = min(oldValue, len(objectNames) - 1)
+        if val > 0:
+            cmds.setAttr(param, val)
 
     counter = 0
     for constraint in constraints:
@@ -5515,7 +5638,7 @@ def getFps():
     
     return fps
 
-def capture(filepath, start=None, end=None, width=100, height=100, displaymode="smoothShaded", showFrameNumbers=True, format="iff", compression="jpg", ornaments=False, play=False, useCamera=None, i_inFilmFit=0, i_inDisplayResolution=0, i_inDisplayFilmGate=0, i_inOverscan=1.0, i_inSafeAction=0, i_inSafeTitle=0, i_inGateMask=0, f_inMaskOpacity=0.8):
+def capture(filepath, start=None, end=None, width=100, height=100, displaymode="smoothShaded", showFrameNumbers=True, format="iff", compression="jpg", ornaments=False, play=False, useCamera=None, i_inFilmFit=0, i_inDisplayResolution=0, i_inDisplayFilmGate=0, i_inOverscan=1.0, i_inSafeAction=0, i_inSafeTitle=0, i_inGateMask=0, f_inMaskOpacity=0.8, quality=90):
     storeSelection()
     pc.select(cl=True)
     names = []
@@ -5575,7 +5698,7 @@ def capture(filepath, start=None, end=None, width=100, height=100, displaymode="
     pc.modelEditor(pan, edit=True, nurbsCurves=False, displayTextures= "textured" in displaymode or displaymode == "OpenGL")
 
     if format == "iff" and showFrameNumbers:
-        name = pc.playblast(format=format, compression=compression, quality=90, sequenceTime=False, clearCache=True, viewer=play, showOrnaments=ornaments, framePadding=4, forceOverwrite=True, percent=100, filename=filepath, startTime=start, endTime=end, width=width, height=height)
+        name = pc.playblast(format=format, compression=compression, quality=quality, sequenceTime=False, clearCache=True, viewer=play, showOrnaments=ornaments, framePadding=4, forceOverwrite=True, percent=100, filename=filepath, startTime=start, endTime=end, width=width, height=height)
         for i in range(start, end + 1):
             oldFileName = name.replace("####", str(i).zfill(4))
             newFileName = oldFileName.replace(".", "_", 1)
@@ -5585,9 +5708,9 @@ def capture(filepath, start=None, end=None, width=100, height=100, displaymode="
             names.append(newFileName)
     else:
         if format == "iff":
-            name = pc.playblast(format=format, compression=compression, quality=90, sequenceTime=False, clearCache=True, viewer=play, showOrnaments=ornaments, framePadding=4, forceOverwrite=True, percent=100, completeFilename=filepath, startTime=start, endTime=end, width=width, height=height)
+            name = pc.playblast(format=format, compression=compression, quality=quality, sequenceTime=False, clearCache=True, viewer=play, showOrnaments=ornaments, framePadding=4, forceOverwrite=True, percent=100, completeFilename=filepath, startTime=start, endTime=end, width=width, height=height)
         else:
-            name = pc.playblast(format=format, compression=compression, quality=90, sequenceTime=False, clearCache=True, viewer=play, showOrnaments=ornaments, framePadding=4, forceOverwrite=True, percent=100, filename=filepath, startTime=start, endTime=end, width=width, height=height)
+            name = pc.playblast(format=format, compression=compression, quality=quality, sequenceTime=False, clearCache=True, viewer=play, showOrnaments=ornaments, framePadding=4, forceOverwrite=True, percent=100, filename=filepath, startTime=start, endTime=end, width=width, height=height)
 
         names.append(name)
 
