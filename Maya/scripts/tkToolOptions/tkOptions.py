@@ -36,18 +36,21 @@ class Option(object):
     """
     Base class for simple option, with a name, description and default value
     """
-    def __init__(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
+    def __init__(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None, inMin=None, inMax=None, inValues=None):
         self.name = inName
-        self.set(inValue, inDescription, inNiceName, inOptional, inCategory)
+        self.set(inValue, inDescription, inNiceName, inOptional, inCategory, inMin, inMax, inValues)
         self._type = None
 
 
-    def set(self, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
+    def set(self, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None, inMin=None, inMax=None, inValues=None):
         self.niceName = self.name if inNiceName is None else inNiceName
         self.defaultValue = inValue
         self.description = inDescription
         self.optional = inOptional
         self.category = inCategory
+        self.min = inMin
+        self.max = inMax
+        self.values = inValues
 
     @property
     def type(self):
@@ -188,16 +191,16 @@ class Options(object):
 
         return jsonObj
 
-    def addOption(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None):
+    def addOption(self, inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None, inMin=0, inMax=100, inValues=None):
         optionExists = False
         for opt in self.__options:
             if opt.name == inName:
                 optionExists = True
-                opt.set(inValue, inDescription, inNiceName, inOptional, inCategory)
+                opt.set(inValue, inDescription, inNiceName, inOptional, inCategory, inMin, inMax, inValues)
                 break
 
         if not optionExists:
-            opt = Option(inName, inValue, inDescription, inNiceName, inOptional, inCategory)
+            opt = Option(inName, inValue, inDescription, inNiceName, inOptional, inCategory, inMin, inMax, inValues)
             self.__options.append(opt)
 
         if not inName in self.__data:

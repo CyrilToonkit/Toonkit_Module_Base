@@ -35,7 +35,7 @@ class JointsFromCurve(Tool):
             inUsage="Select a curve and run", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())
-        self.options.addOption("NbJoints", 4, "Number of joints to create", "Number of joints")
+        self.options.addOption("NbJoints", 4, "Number of joints to create", "Number of joints", inMin=1, inMax=300)
         self.options.addOption("SplineIK", False, "Generate a spline IK handle", "Spline IK")
         self.options.addOption("Scale", False, "Make the spine scale", "Scale")
         self.options.addOption("Squash", False, "Make the spine squash and stretch", "Squash")

@@ -36,6 +36,18 @@ WARNING_PREFIX = "WARNING"
 
 DEFAULT_CATEGORY = "Miscellaneous"
 
+def addShelfButton(inLabel, inCode, inDCode=None, inImage=None, inShelf=None):
+    if inShelf is None:
+        inShelf = pc.mel.eval("$currentShelf = `tabLayout -q -st $gShelfTopLevel`")
+
+    if inImage is None:
+        inImage = "pythonFamily.png"
+
+    pc.setParent(inShelf)
+
+    pc.shelfButton(label=inLabel, imageOverlayLabel=inLabel, command=inCode, dcc=inDCode, image=inImage)
+    pc.mel.eval("shelfTabRefresh")
+
 class Tool(object):
     """
     Base class for tools, encapsulating tkOptions instance
@@ -156,6 +168,28 @@ class Tool(object):
         self.arguments = self.getArguments(*args, **kwargs)
         self.logDebug("Executing {0} ({1})".format(self.getFullName(), ",".join([str(obj) for obj in self.arguments])))
 
+    def getExecuteCode(self, *args):
+        arguments = self.getArguments(*args)
+
+        strArgumentsLst = []
+
+        for argument in arguments:
+            strArgumentsLst.append("'{0}'".format(argument) if isinstance(argument, basestring) else str(argument))
+
+        className = self.__class__.__name__
+        return "tkc.getTool().getChildTool('{0}').execute({1})".format(className, ",".join(strArgumentsLst))
+
+    def getShowUICode(self, *args):
+        className = self.__class__.__name__
+        return "tkc.getTool().getChildTool('{0}').showUI()".format(className)
+
+    def addToShelf(self, *args):
+        className = self.__class__.__name__
+
+        code = self.getExecuteCode(*args)
+
+        addShelfButton(self.name, self.getExecuteCode(*args), self.getShowUICode(*args))
+
     #####################################################
     #                 UI                                #
     #####################################################
@@ -206,7 +240,7 @@ class Tool(object):
         elif inOption.type == "str":
             return pc.textFieldGrp(inOption.name, label=inOption.niceName, text=self.options[inOption.name], columnAlign=[1, "left"], adjustableColumn=2, cc=partial(self.textValueChanged, inOption.name, inOption.name) )
         elif inOption.type == "int":
-            return pc.intSliderGrp(inOption.name, label=inOption.niceName, field=True, value=self.options[inOption.name], columnAlign=[1, "left"], adjustableColumn=3, cc=partial(self.intValueChanged, inOption.name, inOption.name) )
+            return pc.intSliderGrp(inOption.name, label=inOption.niceName, field=True, value=self.options[inOption.name], minValue=inOption.min, maxValue=inOption.max, fieldMinValue=-1000000, fieldMaxValue=1000000, columnAlign=[1, "left"], adjustableColumn=3, cc=partial(self.intValueChanged, inOption.name, inOption.name) )
         else:
             self.warning("Option {0} have unmanaged type {1}, no item created !".format(inOption.name, inOption.type))
 
@@ -258,12 +292,13 @@ class Tool(object):
 
         pc.setParent(colLayout)
 
-        pc.rowLayout(numberOfColumns=3 if inExecutable else 2)
+        pc.rowLayout(numberOfColumns=4 if inExecutable else 2)
         if inExecutable:
             pc.button(label='Apply', c=self.executeUI)
         pc.button(label='Save options', c=self.saveOptionsUI)
         pc.button(label='Default options', c=self.defaultOptionsUI)
-
+        if inExecutable:
+            pc.button(label='Add to shelf', c=self.addToShelf)
         return uiName
 
     def showPrefs(self, *args):
