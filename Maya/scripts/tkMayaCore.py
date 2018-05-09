@@ -3253,6 +3253,27 @@ def substShapes(inObject, inRef):
             else:
                 pc.disconnectAttr(overrideVisibilityLink, objectShapes[0].name() + ".overrideVisibility")
                 pc.connectAttr(overrideVisibilityLink, refShapes[0].name() + ".overrideVisibility")
+
+        overrideVisibilityLinks = pc.listConnections(objectShapes[0].name() + ".visibility", source=False, plugs=True)
+        
+        for overrideVisibilityLink in overrideVisibilityLinks:
+            #print "link destination " + overrideVisibilityLink
+            if overrideVisibilityLink.node().type() == "expression":
+                overrideVisibilityLink.node().setExpression(overrideVisibilityLink.node().getExpression().replace(objectShapes[0].name(), refShapes[0].name()))
+            else:
+                pc.disconnectAttr(objectShapes[0].name() + ".visibility", overrideVisibilityLink)
+                pc.connectAttr(refShapes[0].name() + ".visibility", overrideVisibilityLink)
+                
+        overrideVisibilityLinks = pc.listConnections(objectShapes[0].name() + ".visibility", destination=False, plugs=True)
+        
+        for overrideVisibilityLink in overrideVisibilityLinks:
+            #print "link source " + overrideVisibilityLink
+            if overrideVisibilityLink.node().type() == "expression":
+                overrideVisibilityLink.node().setExpression(overrideVisibilityLink.node().getExpression().replace(objectShapes[0].name(), refShapes[0].name()))
+            else:
+                pc.disconnectAttr(overrideVisibilityLink, objectShapes[0].name() + ".visibility")
+                pc.connectAttr(overrideVisibilityLink, refShapes[0].name() + ".visibility")
+
         """
         overrideVisibilityLinks = pc.listConnections(objectShapes[0].name() + ".overrideVisibility", destination=False)
 
@@ -4267,7 +4288,12 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                 if managedHistory[i] != sortedHistory[i]:
                     newIndex = sortedHistory.index(managedHistory[i])
                     if newIndex > 0:
-                        cmds.reorderDeformers(sortedHistory[newIndex-1], managedHistory[i], inObj)
+                        #Embed reorderDeformers in try/except because it can fail if deformers are not correctly disconnected
+                        try:
+                            cmds.reorderDeformers(sortedHistory[newIndex-1], managedHistory[i], inObj)
+                        except:
+                            pass
+
                         managedHistory = cmds.ls(cmds.listHistory(inObj, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
                         break
     else:
@@ -4703,11 +4729,12 @@ def setExpression(inParam, inCode, inContainer="$SOURCE_Expr"):
     return node
 
 def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=None):
-    #print "linkVisibility : specValue", specValue
+    #print "linkVisibility", node,strSourceParam,direct,glob,specValue
     paramName = ".visibility"
 
     if not glob:
-        paramName = ".overrideVisibility"
+        #As we have inconsistencies with the behaviour of "overrideVisibility" connections, let's try to use "visibility" everywhere
+        #paramName = ".overrideVisibility"
 
         if node.type() == "transform": 
             shape = node.getShape()
@@ -4716,11 +4743,13 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
             else:
                 node = node.name()
 
+        """
         if not pc.getAttr(node + ".overrideEnabled", settable=True):
             pc.warning(node + ".overrideEnabled already connected !")
             return
     
         pc.setAttr(node + ".overrideEnabled", True)
+        """
     else:
         if not pc.getAttr(node + ".visibility", settable=True):
             pc.warning(node + ".visibility already connected !")
@@ -4741,12 +4770,14 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
                     newCode = oldCodeSplit[0] + "=" + oldCodeSplit[1] + " * " + finalExpr
                     pc.delete(cons[0])
                     pc.expression(s=newCode, name=exprName)
+                    print "setExpression0",newCode
         #else:
             #print "Unknown connection Type " + cons[0].type()
     else:
         if direct:
             if specValue == None:
                 pc.connectAttr(strSourceParam, node + paramName)
+                print "connectAttr0",strSourceParam,node + paramName
             else:
                 condition = pc.createNode("condition", name=node.name() + "_vis_cond")
                 pc.connectAttr(strSourceParam, condition.firstTerm)
@@ -4754,17 +4785,20 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
                 pc.setAttr(condition.colorIfFalse.colorIfFalseR, 0)
                 pc.setAttr(condition.colorIfTrue.colorIfTrueR, 1)
                 pc.connectAttr(condition.outColor.outColorR, node.name() + paramName)
+                print "connectAttr1"
         else:
             setExpression(node + paramName, finalExpr)
+            print "setExpression1",node + paramName,finalExpr
 
 def unLinkVisibility(node):
     shape = node.getShape()
     if shape != None:
-        node = shape
+        node = shape.name()
     else:
         node = node.name()
 
-    cons = pc.listConnections(node + ".overrideVisibility", destination=False)
+    #As we have inconsistencies with the behaviour of "overrideVisibility" connections, let's try to use "visibility" everywhere
+    cons = pc.listConnections(node + ".visibility", destination=False)
 
     if len(cons) > 0:
         pc.delete(cons)
