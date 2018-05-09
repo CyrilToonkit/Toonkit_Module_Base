@@ -276,9 +276,9 @@ def refreshOverrides(namespace="", useJointsDrawStyle=True):
 				if pc.getAttr(obj + ".overrideVisibility", settable=True):
 					if visibility != None:
 						pc.setAttr(obj + ".overrideVisibility", visibility)
-					elif override:
+					"""elif override:
 						pc.setAttr(obj + ".overrideVisibility", pc.getAttr(obj + ".visibility"))
-
+					"""
 			if pc.getAttr(obj + ".overrideDisplayType", settable=True):
 				if selectability != None:
 					pc.setAttr(obj + ".overrideDisplayType", 0 if selectability else 2)
