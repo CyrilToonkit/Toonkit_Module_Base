@@ -212,6 +212,78 @@ def OscarMirrorSel():
             opposite.t.set(selObj.t.get())
             opposite.r.set(selObj.r.get())
 
+def OscarHide(inControls, ns="*"):
+    if isinstance(inControls, basestring):
+        inControls = [inControls]
+    
+    for control in inControls:
+        #find object
+        pattern = control
+
+        if ns != "*":
+            if not ns.endswith(":"):
+                ns = ns + ":"
+    
+            pattern = ns + pattern
+        else:
+            pattern = ["*:" + pattern, pattern]
+    
+        toHides = pc.ls(pattern)
+    
+        #find rigStuff
+        for toHide in toHides:
+            attrs = pc.ls(toHide.namespace() + "*.RigStuff")
+            if len(attrs) > 0:
+                #connect
+                attrs[0] >> toHide.v
+
+def OscarRemoveControls(inControls, inHide=True, ns="*"):
+    if isinstance(inControls, basestring):
+        inControls = [inControls]
+
+    #find "KeySets" property
+    pattern = "*" + tkc.CONST_KEYSETSPROP
+
+    if ns != "*":
+        if not ns.endswith(":"):
+            ns = ns + ":"
+
+        pattern = ns + pattern
+    else:
+        pattern = ["*:" + pattern, pattern]
+
+    props = pc.ls(pattern, transforms=True)
+    
+    hidden = []
+
+    for prop in props:
+        attrs = tkc.getParameters(prop)
+        
+        for attr in attrs:
+            modified = False                    
+            value = prop.attr(attr).get()
+            
+            for control in inControls:
+                foundValue = None
+                candidate = "${0},".format(control)
+                if candidate in value:
+                    foundValue = candidate
+                else:
+                    candidate = ",${0}".format(control)
+                    if candidate in value:
+                        foundValue = candidate
+                
+                if not foundValue is None:
+                    modified = True
+                    value = value.replace(foundValue, "")
+
+                    if hide and not control in hidden:
+                        OscarHide(control)
+                        hidden.append(control)
+
+            if modified:
+                prop.attr(attr).set(value)
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ____            _             _   _                              
   / ___|___  _ __ | |_ _ __ ___ | | | |    __ _ _   _  ___ _ __ ___ 
