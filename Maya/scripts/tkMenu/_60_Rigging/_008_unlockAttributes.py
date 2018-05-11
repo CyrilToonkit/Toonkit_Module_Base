@@ -23,6 +23,10 @@ def lockAttrs(inObj, inLock=True):
         for subAttr in attrs:
             inObj.attr(subAttr).setLocked(inLock)
 
+            if not inLock:
+                inObj.attr(subAttr).setKeyable(True)
+                #inObj.attr(subAttr).showInChannelBox(True)
+
 def lockAttrsSelected(inLock=True):
     for selObj in pc.selected():
         lockAttrs(selObj, inLock)
