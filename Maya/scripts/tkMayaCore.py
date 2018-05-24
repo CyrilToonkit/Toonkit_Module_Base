@@ -3450,6 +3450,10 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
     valLength = len(inValues)
     infLength = len(inInfluences)
 
+    if infLength == 0:
+        pc.warning(inObject.name() + " : Invalid parameters, influences can't be empty !")
+        return
+
     #print "setWeights : %s, %s, %s" % (inObject.name(), str(inInfluences), str(inValues))
 
     if skin != None:
@@ -3465,10 +3469,6 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
 
     #verify values before setting weights
     nVerts = getPointsCount(inObject)
-
-    if infLength == 0:
-        pc.warning(inObject.name() + " : Invalid parameters, influences can't be empty !")
-        return
 
     if valLength != 0:
         expectedValLength = infLength * nVerts
