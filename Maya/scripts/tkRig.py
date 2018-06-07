@@ -4622,7 +4622,6 @@ def mirrorPose(inModel, symmetry=False, inAttrs=True):
                     controlsDic[oppositeName] = {"Name":oppositeName,"Pos":t,"Rot":r,"Scl":s, "Attrs":{}}
                     if inAttrs:
                         attrs = tkc.getParameters(control, keyableOnly=True)
-                        print control.name(), "attrs",attrs
                         for attr in attrs:
                             controlsDic[oppositeName]["Attrs"][attr] = pc.getAttr(control.name()+"."+attr)
             elif not symmetry and pc.objExists(oppositeName + "_OSCAR_Attributes.inversed_Axes"):
