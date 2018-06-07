@@ -4538,6 +4538,22 @@ def getRule(inName, i_inTrans, i_inChannel):
 
     return translatedRules["mirrorBaseRule"][i_inTrans][i_inChannel]
 
+def getMirrorAttr(inObjName):
+    obj = pc.PyNode(inObjName)
+
+    mirror = False
+
+    if pc.objExists(inObjName + "_OSCAR_Attributes.Mirror"):
+        mirror = pc.getAttr(inObjName + "_OSCAR_Attributes.Mirror") == 1
+        parents = obj.getAllParents()
+
+        for parent in parents:
+            if pc.objExists(parent.name() + "_OSCAR_Attributes.Mirror"):
+                if(pc.getAttr(parent.name() + "_OSCAR_Attributes.Mirror") == 1):
+                    mirror = not mirror
+
+    return mirror
+
 def mirrorPose(inModel, symmetry=False, inAttrs=True):
     pc.undoInfo(openChunk=True)
     keySet = "All"
@@ -4593,7 +4609,7 @@ def mirrorPose(inModel, symmetry=False, inAttrs=True):
                     rightName = oppositeName if "Right_" in oppositeName else control.name()
                     if pc.objExists(rightName + "_OSCAR_Attributes.Mirror"):
                         lazyName = oppositeName.split(':')[-1].replace("Left_", "").replace("Right_", "")
-                        if not pc.getAttr(rightName + "_OSCAR_Attributes.Mirror") or lazyName in overrideMirrorTrue:
+                        if not getMirrorAttr(rightName) or lazyName in overrideMirrorTrue:
                             for transIndex in range(3):
                                 trans = transform[transIndex]
                                 for channelIndex in range(3):
