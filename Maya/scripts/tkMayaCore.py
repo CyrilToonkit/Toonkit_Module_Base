@@ -1942,11 +1942,13 @@ def getDirectParent(node):
         
     # return None
 
-def getParent(node, root=False, model=False, ignoreNeutral=True, ignoreLayers=False, ignoreBuffers=False):
+def getParent(node, root=False, model=False, ignoreNeutral=True, ignoreLayers=False, ignoreBuffers=False, inRootSuffix="_Root"):
     if root and model:
         root = False
 
-    if root and node.name()[-5:] == "_Root":
+    lenRootSuffix = len(inRootSuffix)
+
+    if root and node.name()[-lenRootSuffix:] == inRootSuffix:
         return node
 
     if model and node.getParent() == None:
@@ -1971,7 +1973,7 @@ def getParent(node, root=False, model=False, ignoreNeutral=True, ignoreLayers=Fa
                 while isNeutralPose(parentNode):
                     parentNode = getDirectParent(parentNode)
 
-    while (model and parentNodeParent != None) or (root and parentNode != None and parentNode.name()[-5:] != "_Root"):
+    while (model and parentNodeParent != None) or (root and parentNode != None and parentNode.name()[-lenRootSuffix:] != inRootSuffix):
         parentNode = parentNodeParent
         if parentNode == None:
             break
@@ -2603,6 +2605,32 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         
     return createdObjects
 
+def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False):
+    externalTargets = []
+
+    allChildren = inRoot.getChildren(allDescendents=True, type="transform")
+    allChildren.append(inRoot)
+    
+    for child in allChildren:
+        targets = []
+
+        if inSource:
+            constraints = getConstraintsUsing(child)
+            for constraint in constraints:
+                for target in getConstraintOwner(constraint):
+                    targets.append((target, constraint))
+        if inDestination:
+            constraints = getConstraints(child)
+            for constraint in constraints:
+                for target in getConstraintTargets(constraint):
+                    targets.append((target, constraint))
+
+        externalTargets.extend([target for target in list(set(targets)) if not target[0] in allChildren])
+
+    if returnObjects:
+        return [t[0] for t in externalTargets]
+
+    return list(set([t[1] for t in externalTargets]))
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ____                _             _       _       
@@ -2645,6 +2673,10 @@ def getConstraintOwner(inCons):
             targets = pc.listConnections(inCons + ".constraintTranslateX")
             if len(targets) == 0:
                 targets = pc.listConnections(inCons + ".constraintTranslate")
+                if len(targets) == 0 and pc.objExists(inCons + ".constraintRotateX"):
+                    targets = pc.listConnections(inCons + ".constraintRotateX")
+                    if len(targets) == 0:
+                        targets = pc.listConnections(inCons + ".constraintRotate")
         elif pc.objExists(inCons + ".constraintRotateX"):
             targets = pc.listConnections(inCons + ".constraintRotateX")
             if len(targets) == 0:
@@ -5805,3 +5837,13 @@ def closeAllWindows(*args):
             print "closing", ui.name()
             pc.deleteUI(ui)
 
+def emptyDirectory(inPath):
+    for the_file in os.listdir(inPath):
+        file_path = os.path.join(inPath, the_file)
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(e)
