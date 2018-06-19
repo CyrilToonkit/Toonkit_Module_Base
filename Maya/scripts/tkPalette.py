@@ -278,7 +278,7 @@ def palManagedChanged(*args):
 def palLoadClick(*args):
     global PREVIZ_COLORS
 
-    choosenFile = mc.fileDialog2(caption="Select your palette file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=2, fileMode=1)
+    choosenFile = mc.fileDialog2(caption="Select your palette file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
 
     if choosenFile != None and len(choosenFile) > 0:
         choosenFile = choosenFile[0]
@@ -293,7 +293,7 @@ def palLoadClick(*args):
             initUI()
 
 def palSaveClick(*args):
-    choosenFile = mc.fileDialog2(caption="Save your palette file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=2, fileMode=0)
+    choosenFile = mc.fileDialog2(caption="Save your palette file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
 
     if choosenFile != None and len(choosenFile) > 0:
         choosenFile = choosenFile[0]
