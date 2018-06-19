@@ -48,6 +48,7 @@ import tkSIGroups
 import PAlt as palt
 import tkNodeling as tkn
 import tkExpressions
+import tkTagTool
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -1403,6 +1404,401 @@ print "----------------------------------------------"
 pc.warning("Assets merging and baking went OK !")
 print "----------------------------------------------"
 """
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  _     ___  ____  
+ | |   / _ \|  _ \ 
+ | |  | | | | | | |
+ | |__| |_| | |_| |
+ |_____\___/|____/ 
+                   
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def getRootName(inNodeName):
+    return "TK_{0}_Root".format(inNodeName)
+
+def getNodeName(inRootName):
+    return inRootName[3:-5]
+
+ATTRS = ["t{AXIS}", "r{AXIS}", "s{AXIS}", "v"]
+
+VARIABLES = {
+    "AXIS":["x", "y", "z"]
+}
+
+def lockAttrs(inObj, inLock=True):
+    for attr in ATTRS:
+        attrs = []
+        
+        isVar = False
+        for variable, values in VARIABLES.iteritems():
+            if variable in attr:
+                isVar = True
+                for value in values:
+                    attrs.append(attr.format(**{variable:value}))
+        
+        if not isVar:
+            attrs.append(attr)
+
+        for subAttr in attrs:
+            inObj.attr(subAttr).setLocked(inLock)
+
+            if not inLock:
+                inObj.attr(subAttr).setKeyable(True)
+                #inObj.attr(subAttr).showInChannelBox(True)
+
+def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin=None, inDontReskin=None, inRemoveFollicles=True, inRemoveLattices=True, inRemoveClusters=True, inDeleteTags=None, inDeleteObjs=None, inReconstrainPost=None, inDebugFolder=None):
+    debugCounter = 0
+
+    if not inDebugFolder is None:
+        if not os.path.isdir(inDebugFolder):
+            os.makedirs(inDebugFolder)
+        else:
+            tkc.emptyDirectory(inDebugFolder)
+        print "DEBUG MODE ACTIVATED ({})".format(inDebugFolder)
+        tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+        debugCounter = debugCounter + 1
+
+    #split nodes to remove/nodes to keep
+    nodes = OscarGetNodes()
+
+    allGivenNodes = inNodesToKeep[:]
+    nodesRootToKeep = nodes[:]
+    nodesRootToRemove = []
+
+    for node in nodes:
+        nodeName = getNodeName(node.name())
+        if not nodeName in inNodesToKeep:
+            nodesRootToRemove.append(node)
+            nodesRootToKeep.remove(node)
+        else:
+            allGivenNodes.remove(nodeName)
+
+    if len(allGivenNodes) > 0:
+        pc.warning("Some given nodes cannot be found in the rig:\n" + "\n".join(allGivenNodes))
+
+    #Add deformers
+    #------------------------------------------
+    if not inAddDeformers is None:
+        visLinker = None
+        visLinkers = pc.ls("*.Deformers")
+        if len(visLinkers) > 0:
+            visLinker = visLinkers[0]
+
+        addedDefs = []
+
+        for low_jnt in inAddDeformers:
+            if not pc.objExists(low_jnt):
+                pc.warning("Add low deformer skipped, can't find {0} !".format(low_jnt))
+            else:
+                newDef = tkc.createRigObject(refObject=pc.PyNode(low_jnt), name="$refObject_low_jnt", type="Deformer", mode="child", match=True)
+                if not visLinker is None:
+                    visLinker >> newDef.v
+                addedDefs.append(newDef)
+
+    deformersToReplace = {}
+    #Find deformers to replace
+    for nodeRoot in nodesRootToRemove:
+        deformers = nodeRoot.getChildren(allDescendents=True, type='joint')
+
+        for deformer in deformers:
+            deformersToReplace[deformer.name()] = deformer.getTranslation(space="world")
+
+    deformersRemaining = {}
+    #Find remaining deformers 
+    for nodeRoot in nodesRootToKeep:
+        deformers = nodeRoot.getChildren(allDescendents=True, type='joint')
+
+        for deformer in deformers:
+            deformersRemaining[deformer.name()] = deformer.getTranslation(space="world")
+
+    #Remove tags
+    if not inDeleteTags is None:
+        removedObjects = []
+        tags = tkTagTool.getTags()
+        for tag in inDeleteTags:
+            if tag in tags:
+                removedObjects.extend(tags[tag])
+
+        removedObjects = list(set(removedObjects))
+        if len(removedObjects) > 0:
+            print "Remove tagged objects (with tags {0}) : {1}".format(inDeleteTags, removedObjects)
+            pc.delete(removedObjects)
+            if not inDebugFolder is None:
+                tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_TaggedObjects.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+                debugCounter = debugCounter + 1
+
+    #Remove complex dependencies (geometry constraints/follicles...)
+    #---------------------------------------------------------------------------
+    #Follicles
+    if inRemoveFollicles:
+        follicles = [s.getParent() for s in pc.ls(type="follicle")]
+        for follicle in follicles:
+            follicleParent = follicle.getParent()
+            for follicleChild in follicle.getChildren(type="transform"):
+                lockAttrs(follicleChild, inLock=False)
+                follicleParent.addChild(follicleChild)
+        if len(follicles) > 0:
+            print "Remove follicles : {0}".format(follicles)
+            pc.delete(follicles)
+            if not inDebugFolder is None:
+                tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_Follicles.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+                debugCounter = debugCounter + 1
+
+    #Lattices ?
+    if inRemoveLattices:
+        lattices = [s.getParent() for s in pc.ls(type="lattice")]
+        if len(lattices) > 0:
+            print "Remove lattices : {0}".format(lattices)
+            pc.delete(lattices)
+            if not inDebugFolder is None:
+                tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_Lattices.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+                debugCounter = debugCounter + 1
+
+    #Clusters ?
+    if inRemoveClusters:
+        clusters = pc.ls(type="cluster")
+        removedClusters = []
+        for cluster in clusters:
+            meshHistory = pc.listHistory(cluster, future=True, type="mesh")
+            if len(meshHistory) > 0:
+                removedClusters.append(cluster)
+        if len(removedClusters) > 0:
+            print "Remove clusters : {0}".format(removedClusters)
+            pc.delete(removedClusters)
+            if not inDebugFolder is None:
+                tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_Clusters.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+                debugCounter = debugCounter + 1
+
+    #Reconstrain
+    #------------------------------------------
+    if not inReconstrain is None:
+        for old, new in inReconstrain.iteritems():
+            if not pc.objExists(old):
+                pc.warning("Forced reparenting : can't find child {0}".format(old))
+                continue
+            if not pc.objExists(new):
+                pc.warning("Forced reparenting : can't find parent {0}".format(new))
+                continue
+            oldNode = pc.PyNode(old)
+            newNode = pc.PyNode(new)
+
+            tkc.removeAllCns(oldNode)
+            tkc.constrain(oldNode, newNode)
+            tkc.constrain(oldNode, newNode, "Scaling")
+
+            print "Forced reparenting : reparent {0} to {1}".format(old, new)
+            if not inDebugFolder is None:
+                tkc.capture(os.path.join(inDebugFolder, "{0:04d}_reconstrain_{1}_TO_{2}.jpg".format(debugCounter, old, new)), start=1, end=1, width=1280, height=720)
+                debugCounter = debugCounter + 1
+
+    #'Live' blendshape targets
+    #------------------------------------
+    #If a "live" blendShape is found we will have two cases :
+        #The live BS have more kept deformers than the "top level" mesh : transfer target skinning to "top level" mesh     
+        #The live BS have less kept deformers than the "top level" mesh : ignore target skinning
+
+    blendShapes = pc.ls(type="blendShape")
+    for blendShape in blendShapes:
+        if pc.objExists(blendShape):
+            meshes = pc.listHistory(blendShape, future=True, type="mesh")
+            if len(meshes) > 0:
+                mesh = meshes[-1].getParent()
+                cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
+                keptTopInfs = []
+                skinTop = tkc.getSkinCluster(mesh)
+                if not skinTop is None:
+                    keptTopInfs = [inf for inf in skinTop.influenceObjects() if inf.name() in deformersRemaining]
+                for con in cons:
+                    skin = tkc.getSkinCluster(con)
+                    if not skin is None:
+                        BSinfs = skin.influenceObjects()
+                        #Determine if most of the influences are kept or dropped
+                        keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
+
+                        transfered = False
+                        if len(keptInfs) > len(keptTopInfs):
+                            transfered = True
+                            print "We need to TRANSFER skinning from", con
+                            tkc.gator([mesh], con, inCopyMatrices=True, inDirectCopy=True)
+                        else:
+                            print "We can DROP skinning from", con
+
+                        pc.skinCluster(skin, edit=True, unbind=True)
+                        if not inDebugFolder is None:
+                            tkc.capture(os.path.join(inDebugFolder, "{0:04d}_liveBS_{1}_{2}.jpg".format(debugCounter, con, "transfered" if transfered else "dropped")), start=1, end=1, width=1280, height=720)
+                            debugCounter = debugCounter + 1
+                        #TODO ? We may have to do the same with blendShapes...
+
+                    #tkc.freeze(con)
+                    #pc.delete(con)
+
+    skinningReplacements = {}
+    #Find closest deformers for replacement
+    for deformerToReplace, deformerToReplacePos in deformersToReplace.iteritems():
+
+        if not inReskin is None and deformerToReplace in inReskin and pc.objExists(inReskin[deformerToReplace]):
+            if pc.objExists(inReskin[deformerToReplace] + "_low_jnt"):
+                closestJoint = pc.PyNode(inReskin[deformerToReplace] + "_low_jnt")
+            else:
+                closestJoint = pc.PyNode(inReskin[deformerToReplace])
+
+            print "Reskin : forced replacement {0} => {1}".format(deformerToReplace, closestJoint)
+            if not closestJoint in skinningReplacements:
+                skinningReplacements[closestJoint] = [deformerToReplace]
+            else:
+                skinningReplacements[closestJoint].append(deformerToReplace)
+        else:
+            closestJoint = None
+            closestDist = 1000000
+
+            for deformerRemaining, deformerRemainingPos in deformersRemaining.iteritems():
+                if not inDontReskin is None and deformerRemaining in inDontReskin:
+                    continue
+                dist = (deformerToReplacePos - deformerRemainingPos).length()
+
+                if dist < closestDist:
+                    closestJoint = deformerRemaining
+                    closestDist = dist
+
+            print "Reskin : proximity replacement {0} => {1}".format(deformerToReplace, closestJoint)
+            if not closestJoint in skinningReplacements:
+                skinningReplacements[closestJoint] = [deformerToReplace]
+            else:
+                skinningReplacements[closestJoint].append(deformerToReplace)
+
+    #Actually replace deformers
+
+    #Filter skinClusters that affects meshes
+    skins = pc.ls(type="skinCluster")
+    meshSkins = [skin for skin in skins if len(skin.getGeometry()) > 0 and skin.getGeometry()[0].type() == "mesh"]
+
+    gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+
+    pc.progressBar( gMainProgressBar,
+    edit=True,
+    beginProgress=True,
+    isInterruptable=True,
+    status="Replacing deformers",
+    maxValue=len(skinningReplacements))
+
+    for newDef, oldDefs in skinningReplacements.iteritems():
+        pc.progressBar(gMainProgressBar, edit=True, step=1)
+        tkc.replaceDeformers(tkc.getNodes(oldDefs), tkc.getNode(newDef), inSkins=meshSkins)
+
+    pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+    reparentings = {}
+
+    #Figure out reparentings to do
+    for nodeRootToRemove in nodesRootToRemove:
+
+        #Get constraints to deleted objects
+        cons = tkc.getExternalConstraints(nodeRootToRemove)
+        for con in cons:
+            owners = tkc.getConstraintOwner(con)
+            for owner in owners:
+                root = tkc.getParent(owner, root=True)
+                #If constraint applies to a kept object
+                if root in nodesRootToKeep:
+                    for target in tkc.getConstraintTargets(con):
+                        #print "target.name()",target.name(),"reparented",reparented
+
+                        targetRoot = tkc.getParent(target, root=True)
+
+                        if targetRoot in nodesRootToKeep or target in reparentings:
+                            continue
+
+                        #print "! Reparent", target, "owner", owner, "cons",con
+                        #Find the best candidate for reparenting
+                        parents = tkc.getAllParents(target)
+                        for parent in parents:
+                            parentRoot = tkc.getParent(parent, root=True)
+                            if parentRoot in nodesRootToKeep:
+                                reparentings[target] = parent
+                                break
+
+    #Actually reparent
+    for target, newParent in reparentings.iteritems():
+        print "Automatic reparenting : reparent {0} to {1}".format(target, newParent)
+
+        lockAttrs(target, False)
+
+        #Create a copy
+        targetName = target.name()
+        target.rename(targetName + "_TKLOW")
+        lowObj = pc.group(empty=True, name=targetName, world=True)
+        tkc.matchTRS(lowObj, target)
+        target.getParent().addChild(lowObj)
+        for child in target.getChildren(type="transform"):
+            lowObj.addChild(child)
+
+        lockAttrs(lowObj, True)
+
+        #Actually reparent
+        newParent.addChild(target)
+        if target in nodesRootToRemove:
+            nodesRootToRemove.remove(target)
+            nodesRootToRemove.append(lowObj)
+
+        shapes = target.getShapes()
+        if len(shapes) > 0:
+            pc.delete(shapes)
+
+        if not inDebugFolder is None:
+            tkc.capture(os.path.join(inDebugFolder, "{0:04d}_autoReparent_{1}_TO_{2}.jpg".format(debugCounter, targetName, newParent)), start=1, end=1, width=1280, height=720)
+            debugCounter = debugCounter + 1
+
+    #Actually delete unwanted nodes
+    if not inDebugFolder is None:
+        for nodeRootToRemove in nodesRootToRemove:
+            pc.delete(nodeRootToRemove)
+
+            tkc.capture(os.path.join(inDebugFolder, "{0:04d}_deleteNode_{1}.jpg".format(debugCounter, nodeRootToRemove)), start=1, end=1, width=1280, height=720)
+            debugCounter = debugCounter + 1
+    else:
+        pc.delete(nodesRootToRemove)
+
+    if not inDeleteObjs is None:
+        for toDelete in inDeleteObjs:
+            if pc.objExists(toDelete):
+                pc.delete(toDelete)
+                if not inDebugFolder is None:
+                    tkc.capture(os.path.join(inDebugFolder, "{0:04d}_deleteObj_{1}.jpg".format(debugCounter, toDelete)), start=1, end=1, width=1280, height=720)
+                    debugCounter = debugCounter + 1
+            else:
+                print "Object {} to delete by name was not found".format(toDelete)
+
+    tkc.deleteUnusedNodes()
+
+    #ReconstrainPost
+    #------------------------------------------
+    if not inReconstrainPost is None:
+        for old, new in inReconstrainPost.iteritems():
+            oldNodes = pc.ls([old, old+"_TKLOW"])
+            if len(oldNodes) == 0:
+                pc.warning("Post reparenting : can't find child {0}".format(old))
+                continue
+            newNodes = pc.ls([new, new+"_TKLOW"])
+            if len(newNodes) == 0:
+                pc.warning("Post reparenting : can't find parent {0}".format(new))
+                continue
+
+            oldNode = oldNodes[0]
+            newNode = newNodes[0]
+
+            tkc.constrain(oldNode, newNode)
+            tkc.constrain(oldNode, newNode, "Scaling")
+
+            print "Post reparenting : reparent {0} to {1}".format(old, new)
+            if not inDebugFolder is None:
+                tkc.capture(os.path.join(inDebugFolder, "{0:04d}_postReparent_{1}_TO_{2}.jpg".format(debugCounter, old, new)), start=1, end=1, width=1280, height=720)
+                debugCounter = debugCounter + 1
+
+
+
+
 
 def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSquash=False, inClusters=False, inPrefix=None):
     
@@ -2849,12 +3245,13 @@ def convertClusterToSkinning(*args):
 
 def isControl(inObj):
     prop = tkc.getProperty(inObj, "OSCAR_Attributes")
-    return prop != None and hasattr(prop,"HierarchyLevel")
+    return prop != None and (hasattr(prop,"RefObject") or hasattr(prop,"inversed_Axes"))
 
 #Locators as groups
 def simplifyTransforms(locators=True, nurbsCurves=False):
     cnt = 0
     trans = pc.ls(type="transform")
+    
     for oTrans in trans:
         shapes = oTrans.getShapes()
         for shape in shapes:
@@ -2863,22 +3260,19 @@ def simplifyTransforms(locators=True, nurbsCurves=False):
                 cnt += 1
                 continue
             if nurbsCurves and shape.type() == "nurbsCurve":
-                #print "shape",shape
                 cons = pc.listConnections(shape)
                 for i in reversed(range(len(cons))):
                     if cons[i].type() == "hyperLayout":
                         cons.remove(cons[i])
-                visCons = pc.listConnections(shape.overrideVisibility, plugs=True)
-                #print "connexions",cons
-                #print "vis connexions",visCons
+                visCons = pc.listConnections([shape.overrideEnabled, shape.overrideVisibility, shape.visibility], plugs=True)
                 for i in reversed(range(len(visCons))):
                     if ".overrideVisibility" in visCons[i].name():
                         visCons.remove(visCons[i])
-                #print "filtered vis connexions",visCons
                 if len(cons) <= len(visCons):
                     if oTrans.getParent() != None and not isControl(oTrans):
                         pc.delete(shape)
                         cnt += 1
+
     print "Simplify transforms ok " + str(cnt) + " shapes deleted"
 
 #Groups as locators
@@ -4269,7 +4663,7 @@ def keySet(inModel, inSet="All"):
     pc.undoInfo(openChunk=True)
     ctrls = tkc.getKeyables(inSet, [inModel])
     if len(ctrls)>0:
-        pc.setKeyframe(ctrls, hierarchy="none")
+        pc.setKeyframe(ctrls, hierarchy="none", shape=False)
     else:
         pc.error("No character selected or key set don't exists ("+ inSet  +") !")
     pc.undoInfo(closeChunk=True)
