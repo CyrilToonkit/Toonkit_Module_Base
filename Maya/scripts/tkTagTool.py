@@ -30,24 +30,6 @@ UINAME = "tagToolUI"
 def getObjectsWithNotes():
     return [attr.node() for attr in pc.ls(["*:*.notes" ,"*.notes"])]
 
-""" DEPRECATED
-def getMeshesT():
-    meshes = pc.ls(["*", "*:*"], type="mesh")
-    
-    meshesT = []
-    
-    for mesh in meshes:
-        meshT = mesh.getParent()
-        if not meshT in meshesT:
-            meshesT.append(meshT)
-            
-        if pc.attributeQuery("notes", node=mesh, exists=True):
-            note = mesh.notes.get()
-            if note != "":
-                pc.warning("Notes on mesh shape '{0}', maybe it needs to be written on the tranform node ?".format(mesh.name()))
-    return meshesT
-"""
-
 def getTags(inObjects=None, inTags=None):
     if inObjects == None:
         inObjects = getObjectsWithNotes()
@@ -59,7 +41,10 @@ def getTags(inObjects=None, inTags=None):
     
     for meshT in inObjects:
         if pc.attributeQuery("notes", node=meshT, exists=True):
-            notes = meshT.notes.get().split(",")
+            notes = meshT.notes.get()
+            if notes is None:
+                continue
+            notes = notes.split(",")
             for note in notes:
                 if note == "" or (inTags != None and (inTags != note and not note in inTags)):
                     continue
@@ -119,6 +104,64 @@ def removeTags(inObjects=None, inTags=None):
         if modified:
             setTags(inObject, ",".join(tags))
 
+def saveTags(inTags, inPath):
+    with open(inPath, "w") as f:
+        f.write(str(inTags))
+
+def loadTags(inPath, inApply=False):
+    content = ""
+    tags = {}
+    
+    try:
+        with open(inPath) as f:
+            content = f.read()
+        
+        if len(content) > 0:
+            tags = eval(content)
+            
+        if inApply:
+            applyTags(tags)
+    except:
+        pc.warning("Can't read {0} as a tag file !".format(inPath))
+
+    return tags
+
+def applyTags(inTags):
+    defects=0
+    for tagValue, tagObjs in inTags.iteritems():
+        for tagObj in tagObjs:
+            baseName = tagObj.split(":")[-1]
+            candidates = [tagObj, "*:"+baseName]
+            if baseName != tagObj:
+                candidates.append(baseName)
+            tagCandidates = pc.ls(candidates)
+
+            if len(tagCandidates) == 0:
+                defects += 1
+                pc.warning("{0} cannot be found !".format(baseName))
+                continue
+
+            addTags([tagCandidates[0]], tagValue)
+
+    return defects == 0
+
+def loadClick(*args):
+    choosenFile = pc.fileDialog2(caption="Select your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
+
+    if choosenFile != None and len(choosenFile) > 0:
+        loadTags(choosenFile[0], inApply=True)
+        showUI()
+    else:
+        pc.warning("No file selected !")
+
+def saveClick(*args):
+    choosenFile = pc.fileDialog2(caption="Save your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
+
+    if choosenFile != None and len(choosenFile) > 0:
+        saveTags(getTags(), choosenFile[0])
+    else:
+        pc.warning("No file selected !")
+
 def addTagClick(*args):
     addTags(inTags=args[0])
     showUI()
@@ -139,6 +182,13 @@ def showUI(*args):
     
     ttWindow = pc.window(UINAME, title="Tag Tool", width=150)
 
+    pc.columnLayout()
+
+    row = pc.rowLayout(numberOfColumns=2)
+    pc.button( label='Load...', command=loadClick)
+    pc.button( label='Save...', command=saveClick)
+    pc.setParent(upLevel=True)
+
     pc.frameLayout(label="Add tags", collapsable=True)
     pc.columnLayout()
     row = pc.rowLayout(numberOfColumns=3)
@@ -157,5 +207,5 @@ def showUI(*args):
         pc.rowLayout(numberOfColumns=2, parent=frame)
         pc.button( label='Select "{0}"'.format(tag), command="pc.select([{0}])".format(",".join(["'{0}'".format(obj) for obj in objects])))
         pc.button( label='Remove "{0}" tag on selection'.format(tag), command=partial(removeTagClick, tag))
-
+    
     pc.showWindow(ttWindow)
