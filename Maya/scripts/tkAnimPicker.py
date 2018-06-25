@@ -219,9 +219,12 @@ def load(edit=False, multi=False, path=None, debug=False, forceRebuild=False):
 def show(*args):
     rebuild=False
 
-    if len(args) > 0 and isinstance(args[0], bool):
-        if isinstance(args[0], basestring):
+    if len(args) > 0:
+        if isinstance(args[0], bool):
             rebuild = args[0]
+        elif isinstance(args[0], basestring):
+            #TODO Check : can't remember why a string argument matters... 
+            pass
 
     mods = pc.getModifiers()
 
