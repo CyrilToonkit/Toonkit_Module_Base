@@ -223,6 +223,9 @@ class Tool(object):
 
     def intValueChanged(self, inControlName, inOptionName, uiArg):
         self.options[inOptionName] = pc.intSliderGrp(inControlName, query=True, value=True)
+        
+    def floatValueChanged(self, inControlName, inOptionName, uiArg):
+        self.options[inOptionName] = pc.floatSliderGrp(inControlName, query=True, value=True)
 
     def setOptionItem(self, inOption):
         if inOption.type == "bool":
@@ -231,6 +234,8 @@ class Tool(object):
             return pc.textFieldGrp(inOption.name, edit=True, text=self.options[inOption.name])
         elif inOption.type == "int":
             return pc.intSliderGrp(inOption.name, edit=True, value=self.options[inOption.name])
+        elif inOption.type == "float":
+            return pc.floatSliderGrp(inOption.name, edit=True, value=self.options[inOption.name])
         else:
             self.warning("Option {0} have unmanaged type {1}, no item set !".format(inOption.name, inOption.type))
 
@@ -241,6 +246,8 @@ class Tool(object):
             return pc.textFieldGrp(inOption.name, label=inOption.niceName, text=self.options[inOption.name], columnAlign=[1, "left"], adjustableColumn=2, cc=partial(self.textValueChanged, inOption.name, inOption.name) )
         elif inOption.type == "int":
             return pc.intSliderGrp(inOption.name, label=inOption.niceName, field=True, value=self.options[inOption.name], minValue=inOption.min, maxValue=inOption.max, fieldMinValue=-1000000, fieldMaxValue=1000000, columnAlign=[1, "left"], adjustableColumn=3, cc=partial(self.intValueChanged, inOption.name, inOption.name) )
+        elif inOption.type == "float":
+            return pc.floatSliderGrp(inOption.name, label=inOption.niceName, field=True, value=self.options[inOption.name], minValue=inOption.min, maxValue=inOption.max, fieldMinValue=-1000000.0, fieldMaxValue=1000000.0, pre = 3, columnAlign=[1, "left"], adjustableColumn=3, cc=partial(self.floatValueChanged, inOption.name, inOption.name) )
         else:
             self.warning("Option {0} have unmanaged type {1}, no item created !".format(inOption.name, inOption.type))
 
