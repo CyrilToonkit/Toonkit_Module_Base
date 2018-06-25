@@ -3429,6 +3429,88 @@ def curve(points, name="", parent=None, degree=3, closed=False, verbose=False):
 
     return curve
 
+
+def complexity (inObj):
+    """Compute the "complexity" of a mesh
+
+        Input arguments:
+        inObj -- a meshes
+
+        Return values:
+        complexity_mesh
+
+    """
+ 
+    nVerts = pc.polyEvaluate(inObj, vertex=True)
+    bb = inObj.getBoundingBox()
+    volume = bb.width()*bb.depth()*bb.height()
+    
+    if volume == 0:
+        complexity_mesh = 0
+    else:
+        complexity_mesh = nVerts / volume
+
+    return complexity_mesh
+
+def polyReduceComplexity (inObj, inMinComplx, inMaxComplx, inMinPercent = 0, inMaxPercent = 80, **inPolyReduceArguments):
+    """Use polyReduce from Maya or not depending on a threshold
+
+        Input arguments:
+        inObj -- a mesh
+        inMinComplx -- Threshold min for complexity
+        inMaxComplx -- Threshold max for complexity
+        inMinPercent -- (default 0)
+        inMaxPercent -- (default 100)
+        **inPolyReduceArguments -- argument for polyReduce (default default value for polyReduce)
+
+        Return values:
+
+
+    """
+    
+    defaultArguments={"percentage":10,"ver":1,"trm":0,"shp":0,"keepBorder":1,"keepMapBorder":1, "keepColorBorder":1, "keepFaceGroupBorder": 1, "keepHardEdge":1, "keepCreaseEdge":1,"keepBorderWeight":0.5,"keepMapBorderWeight":0.5,"keepColorBorderWeight":0.5,"keepFaceGroupBorderWeight":0.5,"keepHardEdgeWeight":0.5,"keepCreaseEdgeWeight":0.5,"useVirtualSymmetry":0,"symmetryTolerance":0.01, "sx":0, "sy":1, "sz":0, "sw":0, "preserveTopology":1, "keepQuadsWeight":1, "vertexMapName":"", "cachingReduce":1,"ch":0,"p":50,"vct":0,"tct":0,"replaceOriginal":1}
+    if bool(inPolyReduceArguments) is True: #if polyreduceagument has values
+        for key in inPolyReduceArguments.keys():
+            if key in defaultArguments.keys():
+                cp=inPolyReduceArguments[key]
+                defaultArguments[key]=cp
+                
+            else:
+                pc.warning("Wrong argument", key, "please try the short argument")
+            inPolyReduceArguments=defaultArguments.copy()
+    else: #if dictionary is empty
+        #Values by default
+        inPolyReduceArguments=defaultArguments.copy()
+
+    if "p" in inPolyReduceArguments:
+        del inPolyReduceArguments["p"]
+    if "percentage" in inPolyReduceArguments:
+        del inPolyReduceArguments["percentage"]
+
+  
+    density = complexity (inObj)
+    if inMinComplx >= inMaxComplx:
+        pc.warning("Minimum value must be inferior strict to maximum value !")
+    else:
+        if inMinPercent >= inMaxPercent:
+            pc.warning("Minimum percent must be inferior strict to maximum percent !")
+        else:
+            if density <= inMinComplx:
+                pc.warning("Not enought density !")
+               
+            if density > inMinComplx and density < inMaxComplx:
+                if inMaxComplx == 0:
+                    raise ValueError("Wrong value for inMaxComplx")
+                else:
+                    per = (density*inMaxPercent)/(inMaxComplx)
+                    pc.polyReduce(inObj,p=per, **inPolyReduceArguments)
+               
+            if density >= inMaxComplx:
+                if inMaxComplx != 0:
+                    pc.polyReduce(inObj,p=inMaxPercent, **inPolyReduceArguments)
+
+    return;
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____        __                            _   _             
  |  _ \  ___ / _| ___  _ __ _ __ ___   __ _| |_(_) ___  _ __  

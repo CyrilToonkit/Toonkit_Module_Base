@@ -36,6 +36,7 @@ import copy
 import json
 import re
 import math
+import operator
 
 import pymel.core as pc
 import maya.cmds as mc
@@ -1407,6 +1408,7 @@ print "----------------------------------------------"
 
 
 
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _     ___  ____  
  | |   / _ \|  _ \ 
@@ -1798,6 +1800,153 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
 
 
 
+def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNamePolyCombine = 'low_poly', inToJointParent=False, inDeleteJoints=False):
+    """Cut and combine the skinned meshes selected
+
+        Input arguments:
+        inObjList -- list of selected meshes
+        inDeleteMesh -- delete the original meshes (default False)
+        inFillHole -- close borders of creates meshes (default False)
+        inNamePolyCombine -- name of the new combine meshes (default 'low_poly')
+        inToJointParent -- new mesh parent of joint if True, child if false (default True) 
+        inDeleteJoints -- delete the joints (default True)
+
+        Return values:
+        newObjList -- dictionary list of new objects by joint
+
+    """
+    if inToJointParent == False:
+        inDeleteJoints == False
+
+    kk=0
+    #Dictionary List of ojects by influence (joint)
+    copyObject = {}
+    newObjList = {}
+
+    #For each object selected
+    for kk in range(len(inObjList)):
+        
+        #---INITIALIZATION---
+        #Get skin cluster
+        skin = tkc.getSkinCluster(inObjList[kk])        
+        #Get number of vertices
+        nVerts = pc.polyEvaluate(inObjList[kk], vertex=True)
+        nFace = pc.polyEvaluate(inObjList[kk], face=True)
+
+        #Get influences list
+        inf = pc.skinCluster(skin,query=True,inf=True)      
+        #Get skinCluster weights
+        w = tkc.getWeights(inObjList[kk]) 
+        #Dictionary list of {influence,weight_mean} by face
+        d1 = {u: 1.0 for u in range(nFace)}
+        #Dictionary list of {face,weight_mean} by influence
+        d2 = {v: [] for v in inf}     
+        i=0
+        k=0
+        moyenne = {k: 0.0 for k in inf}
+        numberOfVerticeByFace = []        
+        dicOfVerticeByFace = {k: [] for k in range(nFace)}        
+        #Recover the dictionnary of vertices by faces
+        for i in range(nFace):
+            #dicOfVerticeByFace[i]= inObjList[kk].faces[i].getVertices()
+            dicOfVerticeByFace[i]= inObjList[kk].getPolygonVertices(i)
+            numberOfVerticeByFace.append(len(dicOfVerticeByFace[i]))  
+        
+
+        #FIND for each face the corresponding influence
+        #For each polygon                        
+        i=0
+        while i < nFace :
+            k=0
+            #For each influence
+            for k in range(len(inf)):
+                #Compute arithmetic mean
+                sum=0
+                j=0
+                #Compute the mean for all the vertex of the face
+                while j < numberOfVerticeByFace[i] :
+                    sum=sum+w[dicOfVerticeByFace[i][j]+nVerts*k]  
+                    j+=1
+                moyenne[inf[k]]=sum/numberOfVerticeByFace[i]
+               
+            m_max=max(moyenne.iteritems(), key=operator.itemgetter(1))[0]
+            if m_max in d2.keys():
+                d2[m_max].append([i, moyenne[m_max]])
+            
+            d1[i]={m_max:moyenne[m_max]}
+            i+=1
+
+        list = []
+        for key, value in  d2.iteritems():
+            #Duplicate object by influence
+            nom1="{0}_{1}".format(key,inObjList[kk])
+            duplicata=pc.duplicate(inObjList[kk], name=nom1)
+         
+            #Create a dictionnary of objects by influence
+            if key in copyObject.keys():
+                copyObject[key].append(duplicata[0])
+            else:
+                copyObject[key]=[duplicata[0]]
+            
+            list = []          
+            #Delete the unused faces
+            for key2, value2 in d2.iteritems():
+                if key != key2:
+                    #list = []
+                    for k in value2:
+                        list.append("{0}.f[{1}]".format(duplicata[0], k[0]))                        
+            pc.delete(list)
+    
+            #Unlock the Transforms
+            attrs = ["tx","ty", "tz", "rx","ry","rz","sx","sy","sz"]
+            for attr in attrs:
+               duplicata[0].attr(attr).setLocked(False) 
+            parentJoint = key.getParent(1)             
+            if inToJointParent == False:
+                pc.parent(duplicata[0], key, add=False)
+            else:
+                if parentJoint != None:               
+                    pc.parent(duplicata[0], parentJoint, add=False)
+                else:
+                    pc.warning("Be careful, no parent defined !")
+                    pc.parent(duplicata[0], key, add=False)
+
+            #Fill the mesh if necessary
+            if inFillHole == True:
+                pc.polyCloseBorder(duplicata[0])
+             
+        #Delete the original mesh if necessary   
+        if inDeleteMesh ==  True:
+            pc.delete(inObjList[kk])
+                
+
+    newObjList = copyObject.copy()
+    #Combine objects with same influence (joint)    
+    for key3, value3 in copyObject.iteritems():
+        parentJoint = key3.getParent(1)
+        if len(value3) > 1: #Check if object > 1
+            del newObjList[key3]
+            nom2="{0}_{1}".format(key3,inNamePolyCombine)
+            combinedPoly = pc.polyUnite(value3, ch=False, mergeUVSets=True, centerPivot=True, name=nom2)
+            newObjList[key3]=[combinedPoly]
+            if inToJointParent == False:
+                pc.parent(combinedPoly,key3, add=False)
+            else:
+                if parentJoint != None:  
+                    pc.parent(combinedPoly,parentJoint, add=False)
+                else:
+                    pc.warning("Be careful, no parent defined !")
+                    pc.parent(combinedPoly,key3, add=False)
+        else:  
+            continue
+        
+        if inDeleteJoints == True and parentJoint != None:
+            pc.delete(key3)
+        else:
+            continue
+
+
+    return newObjList
 
 
 def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSquash=False, inClusters=False, inPrefix=None):
