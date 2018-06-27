@@ -3448,7 +3448,7 @@ def complexity (inObj):
     if volume == 0:
         complexity_mesh = 0
     else:
-        complexity_mesh = nVerts / volume
+        complexity_mesh = nVerts / volume ** .33#pseudo cubic root 
 
     return complexity_mesh
 
@@ -3469,7 +3469,7 @@ def polyReduceComplexity (inObj, inMinComplx, inMaxComplx, inMinPercent = 0, inM
     """
     
     defaultArguments={"percentage":10,"ver":1,"trm":0,"shp":0,"keepBorder":1,"keepMapBorder":1, "keepColorBorder":1, "keepFaceGroupBorder": 1, "keepHardEdge":1, "keepCreaseEdge":1,"keepBorderWeight":0.5,"keepMapBorderWeight":0.5,"keepColorBorderWeight":0.5,"keepFaceGroupBorderWeight":0.5,"keepHardEdgeWeight":0.5,"keepCreaseEdgeWeight":0.5,"useVirtualSymmetry":0,"symmetryTolerance":0.01, "sx":0, "sy":1, "sz":0, "sw":0, "preserveTopology":1, "keepQuadsWeight":1, "vertexMapName":"", "cachingReduce":1,"ch":0,"p":50,"vct":0,"tct":0,"replaceOriginal":1}
-    if bool(inPolyReduceArguments) is True: #if polyreduceagument has values
+    if len(inPolyReduceArguments) > 0: #if polyreduceagument has values
         for key in inPolyReduceArguments.keys():
             if key in defaultArguments.keys():
                 cp=inPolyReduceArguments[key]
@@ -3503,12 +3503,17 @@ def polyReduceComplexity (inObj, inMinComplx, inMaxComplx, inMinPercent = 0, inM
                     raise ValueError("Wrong value for inMaxComplx")
                 else:
                     per = (density*inMaxPercent)/(inMaxComplx)
-                    pc.polyReduce(inObj,p=per, **inPolyReduceArguments)
+                    try:
+                        pc.polyReduce(inObj,p=per, **inPolyReduceArguments)
+                    except:
+                        pc.warning("Can't reduce " + inObj)
                
             if density >= inMaxComplx:
                 if inMaxComplx != 0:
-                    pc.polyReduce(inObj,p=inMaxPercent, **inPolyReduceArguments)
-
+                    try:
+                        pc.polyReduce(inObj,p=inMaxPercent, **inPolyReduceArguments)
+                    except:
+                        pc.warning("Can't reduce " + inObj)
     return;
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
