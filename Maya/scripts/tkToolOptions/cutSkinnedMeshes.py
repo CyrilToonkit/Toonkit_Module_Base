@@ -33,7 +33,7 @@ VERSIONINFO = "1.0.0.0"
 
 class cutSkinnedMeshes(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        super(cutSkinnedMeshes, self).__init__(inName="cutSkinnedMeshes", inDescription="Cut and combine the skinned meshes selected",
+        super(cutSkinnedMeshes, self).__init__(inName="Cut Skinned Meshes", inDescription="Cut and combine the skinned meshes selected",
             inUsage="Select any number of meshes skinned", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())
