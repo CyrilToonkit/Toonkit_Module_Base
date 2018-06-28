@@ -1800,7 +1800,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
 
 
 
-def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNamePolyCombine = 'low_poly', inToJointParent=False, inDeleteJoints=False):
+def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNamePolyCombine = 'low_poly', inToJointParent=False, inDeleteJoints=False, inCombine=True):
     """Cut and combine the skinned meshes selected
 
         Input arguments:
@@ -1880,8 +1880,10 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
         for key, value in  d2.iteritems():
             #Duplicate object by influence
             nom1="{0}_{1}".format(key,inObjList[kk])
-            duplicata=pc.duplicate(inObjList[kk], name=nom1)
+            duplicata=  pc.duplicate(inObjList[kk], name=nom1)
          
+            cleanMesh(duplicata[0].name())
+
             #Create a dictionnary of objects by influence
             if key in copyObject.keys():
                 copyObject[key].append(duplicata[0])
@@ -1913,37 +1915,38 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
 
             #Fill the mesh if necessary
             if inFillHole == True:
-                pc.polyCloseBorder(duplicata[0])
+                pc.polyCloseBorder(duplicata[0], ch=False)
              
-        #Delete the original mesh if necessary   
+        #Delete the original mesh if necessary  
         if inDeleteMesh ==  True:
             pc.delete(inObjList[kk])
                 
 
     newObjList = copyObject.copy()
-    #Combine objects with same influence (joint)    
-    for key3, value3 in copyObject.iteritems():
-        parentJoint = key3.getParent(1)
-        if len(value3) > 1: #Check if object > 1
-            del newObjList[key3]
-            nom2="{0}_{1}".format(key3,inNamePolyCombine)
-            combinedPoly = pc.polyUnite(value3, ch=False, mergeUVSets=True, centerPivot=True, name=nom2)
-            newObjList[key3]=[combinedPoly]
-            if inToJointParent == False:
-                pc.parent(combinedPoly,key3, add=False)
-            else:
-                if parentJoint != None:  
-                    pc.parent(combinedPoly,parentJoint, add=False)
-                else:
-                    pc.warning("Be careful, no parent defined !")
+    if inCombine:
+        #Combine objects with same influence (joint)    
+        for key3, value3 in copyObject.iteritems():
+            parentJoint = key3.getParent(1)
+            if len(value3) > 1: #Check if object > 1
+                del newObjList[key3]
+                nom2="{0}_{1}".format(key3,inNamePolyCombine)
+                combinedPoly = pc.polyUnite(value3, ch=False, mergeUVSets=True, centerPivot=True, name=nom2)[0]
+                newObjList[key3]=[combinedPoly]
+                if inToJointParent == False:
                     pc.parent(combinedPoly,key3, add=False)
-        else:  
-            continue
-        
-        if inDeleteJoints == True and parentJoint != None:
-            pc.delete(key3)
-        else:
-            continue
+                else:
+                    if parentJoint != None:  
+                        pc.parent(combinedPoly,parentJoint, add=False)
+                    else:
+                        pc.warning("Be careful, no parent defined !")
+                        pc.parent(combinedPoly,key3, add=False)
+            else:  
+                continue
+            
+            if inDeleteJoints == True and parentJoint != None:
+                pc.delete(key3)
+            else:
+                continue
 
 
     return newObjList
@@ -4817,12 +4820,12 @@ def keySet(inModel, inSet="All"):
         pc.error("No character selected or key set don't exists ("+ inSet  +") !")
     pc.undoInfo(closeChunk=True)
 
-def resetSel(inParams=True):
+def resetSel(inParams=False):
     pc.undoInfo(openChunk=True)
     tkc.executeFromSelection(tkc.resetAll, 0, 0, 0, 0, "Wrong inputs !", False, inParams)
     pc.undoInfo(closeChunk=True)
 
-def resetAll(inModel, inkeySet="All", inParams=True):
+def resetAll(inModel, inkeySet="All", inParams=False):
     pc.undoInfo(openChunk=True)
 
     ctrls = tkc.getKeyables(inkeySet, [inModel])
