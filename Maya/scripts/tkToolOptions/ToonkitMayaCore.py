@@ -110,6 +110,11 @@ HOTKEYS =   {
                     {"key":"<" , "ctrl":True , "alt":False, "mel":False,
                         "desc":"Select objects constrained to selection",
                         "code":"import pymel.core as pc;import tkMayaCore as tkc;tkc.selectConstrained(pc.selected()[0]) if len(pc.selected()) > 0 else False"
+                    },
+                "searchInTkMenu":
+                    {"key":"f" , "ctrl":True , "alt":False, "mel":False,
+                        "desc":"Show toonkit menu search tool",
+                        "code":"tkc.showSearch()"
                     }
             }
 
@@ -192,6 +197,10 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("selectConstrainedCtrl", True, None, "Ctrl", False, "HotKeys.selectConstrained")
         self.options.addOption("selectConstrainedAlt", False, None, "Alt", False, "HotKeys.selectConstrained")
 
+        self.options.addOption("searchInTkMenuKey", "f", None, "Key", False, "HotKeys.searchInTkMenu")
+        self.options.addOption("searchInTkMenuCtrl", True, None, "Ctrl", False, "HotKeys.searchInTkMenu")
+        self.options.addOption("searchInTkMenuAlt", False, None, "Alt", False, "HotKeys.searchInTkMenu")
+
         if not self.options.isSaved():
             self.saveOptions()
 
@@ -247,6 +256,7 @@ class ToonkitMayaCore(Tool):
         tkMainMenu = pc.menu(MENU_NAME, label="Toonkit", parent=gMainWindow, tearOff=True)
 
         pc.menuItem(label="Rebuild menu", parent=tkMainMenu, command=self.reload)
+        pc.menuItem(label="Search...", parent=tkMainMenu, command=tkc.showSearch)
         pc.menuItem(divider=True)
 
         oscarmodulepath = locationModule.OscarModuleLocation()
@@ -258,6 +268,8 @@ class ToonkitMayaCore(Tool):
         pc.menuItem(label="Toolkit options...", parent=tkMainMenu, command=self.showPrefs)
         pc.menuItem(label="Install default hotkeys", parent=tkMainMenu, command=self.setHotKeys)
         pc.menuItem(label="Toolkit help (v" + self.version + ")", parent=tkMainMenu, command=showHelp)
+        print "showMenu"
+        
 
     def hideMenu(self):
         if pc.menu(MENU_NAME, query=True, exists=True):
@@ -317,3 +329,8 @@ for k in NEEDEDPLUGINS:
         pass
         #print("Can't load Toonkit plugin %s, this could be by design..." % k)
 """
+
+
+
+
+

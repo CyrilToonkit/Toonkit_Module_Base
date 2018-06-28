@@ -286,6 +286,9 @@ PROJECT_INFO = None
 
 TOOL = None
 
+HELP_LIST = []
+
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _   _      _                     
  | | | | ___| |_ __   ___ _ __ ___ 
@@ -5929,3 +5932,122 @@ def emptyDirectory(inPath):
                 shutil.rmtree(file_path)
         except Exception as e:
             print(e)
+"""
+def checkTextValidity(inText):
+
+    
+
+
+    return textValidity
+"""
+
+def search_changed(*args):
+    """Search in the Toolkit Menu
+
+    Input arguments:
+    *args -- keyword enter by user he wants to find in the Toolkit Menu
+
+    Return values:
+
+
+    """
+    
+    #Keyword enter by the user
+    text = args[0]
+    text=text.lower()
+
+    checkBoxR=pc.checkBox("tkSearchToolUnion",query=True, value=True)
+
+
+    #Remove the words
+    wordToRemove = ["in", "of", "and", "to","if", "or", "a", "an", "the", "neither"]
+    textSplit=text.split()
+
+    textCopy = textSplit[:] 
+    for item in wordToRemove:
+        for k in textCopy:
+            if item == k:
+                textSplit.remove(item)
+    
+    
+    pc.setParent("tkSearchTool")
+    try:
+        pc.deleteUI("tkSearchToolButtons")
+    except:
+        pass
+    pc.columnLayout("tkSearchToolButtons")
+
+
+    #It contains all the data from the Toonkit menu
+    resultSearch=False
+    for k in range(len(HELP_LIST)):
+
+        isin=False
+        if HELP_LIST[k] is not None:
+
+            #Search in name, description, menuPath
+            if len(HELP_LIST[k]["menuPath"]) > 1:
+                menuPath=" ".join(HELP_LIST[k]["menuPath"]).lower()
+
+            else:
+                menuPath=HELP_LIST[k]["menuPath"][0].lower()
+
+            researchText = [HELP_LIST[k]["name"].lower(), menuPath, HELP_LIST[k]["desc"].lower()]
+            researchText=" ".join(researchText)
+
+            #Consider keywords union
+            if checkBoxR == True:
+                for item in textSplit:
+
+                    if item in researchText:
+                        isin=True
+                    else:
+                        isin=False
+                        break;
+
+            #Consider keywords independently 
+            else:
+                for item in textSplit:
+                    isin = item in researchText
+
+                    if isin:
+                        break
+
+        if isin:
+            resultSearch=True
+            inter=HELP_LIST[k]["menuPath"][:]
+            inter.append(HELP_LIST[k]["name"])
+            menuPath2=" => ".join(inter)
+            if HELP_LIST[k]["optionBox"]:
+                pc.rowColumnLayout(numberOfColumns=3, cs=[(3,30)])
+                pc.button(label=HELP_LIST[k]["name"], c=HELP_LIST[k]["code"], annotation=HELP_LIST[k]["desc"])
+                pc.button(label="options", c=HELP_LIST[k]["optionBox"], annotation=HELP_LIST[k]["desc"])
+                pc.text(label="(Menu Path: "+ menuPath2+" )")
+                pc.setParent(u=1)
+            else:
+                pc.rowColumnLayout(numberOfColumns=2, cs=[(2,30)])
+                pc.button(label=HELP_LIST[k]["name"], c=HELP_LIST[k]["code"], annotation=HELP_LIST[k]["desc"])
+                pc.text(label="(Menu Path: "+ menuPath2+" )")
+                pc.setParent(u=1)
+
+    if resultSearch is False:
+        pc.text("No results")
+
+def search_changedCallback(*args):
+    value=pc.textFieldGrp("blabla",query=True, text=True)
+    search_changed(value)
+
+def showSearch(*args):
+    
+    #Display the Search menu window
+    if (pc.window("tkSearchTool", q=True, exists=True)):
+        pc.deleteUI("tkSearchTool")
+    pc.window("tkSearchTool", title = "Search")
+    pc.columnLayout()
+    pc.rowColumnLayout(numberOfColumns=2)
+    pc.textFieldGrp("blabla",label='Search in Toonkit Menu', text='', changeCommand=search_changed)
+    pc.checkBox("tkSearchToolUnion", label="Match all words", value=False, changeCommand=search_changedCallback)
+    pc.setParent(u=1)
+    pc.columnLayout("tkSearchToolButtons")
+
+    pc.showWindow()
