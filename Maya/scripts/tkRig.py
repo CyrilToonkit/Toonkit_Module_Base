@@ -4820,12 +4820,12 @@ def keySet(inModel, inSet="All"):
         pc.error("No character selected or key set don't exists ("+ inSet  +") !")
     pc.undoInfo(closeChunk=True)
 
-def resetSel(inParams=True):
+def resetSel(inParams=False):
     pc.undoInfo(openChunk=True)
     tkc.executeFromSelection(tkc.resetAll, 0, 0, 0, 0, "Wrong inputs !", False, inParams)
     pc.undoInfo(closeChunk=True)
 
-def resetAll(inModel, inkeySet="All", inParams=True):
+def resetAll(inModel, inkeySet="All", inParams=False):
     pc.undoInfo(openChunk=True)
 
     ctrls = tkc.getKeyables(inkeySet, [inModel])
