@@ -5611,32 +5611,85 @@ toggleInPlace("Left_Arm_ParamHolder.IkFk", 0.0, IK_To_FK, 1.0, FK_To_IK, ns)
 
 """
 
+def getWorldMat(inObj, inOffset=None):
+    if not inOffset is None:
+        grp = pc.group(empty=True, parent=inObj)
+        grp.t.set(inOffset[0])
+        grp.r.set(inOffset[1])
+        grp.s.set(inOffset[2])
+
+        mat = grp.worldMatrix.get()
+
+        pc.delete(grp)
+
+        return mat
+
+    #Get "ref" world matrix as a starter for computation
+    worldRefMat = inObj.worldMatrix.get()
+
+    #Put the "ref" rotate pivot offset in world space
+    refRp = inObj.rp.get()
+    worldRefRpVec = refRp * worldRefMat
+
+    #Add the "ref" rotate pivot to matrix
+    worldRefMat.a30 += worldRefRpVec.x
+    worldRefMat.a31 += worldRefRpVec.y
+    worldRefMat.a32 += worldRefRpVec.z
+
+    return worldRefMat
+
 def setAttr(inObj, inValue):
     inObj.set(inValue)
 
 def match(inObj, inValue):
-    pc.xform( inObj, worldSpace=True, matrix=inValue )
+    #Put the "target" rotate pivot offset in world space
+    worldTargetMat = inObj.worldMatrix.get()
+
+    targetRp = inObj.rp.get()
+    worldTargetRp = targetRp * worldTargetMat
+
+    targetSp = inObj.sp.get()
+
+    #Add the "ref" rotate pivot and remove "target" rotate pivot to matrix
+    inValue.a30 -= worldTargetRp[0]
+    inValue.a31 -= worldTargetRp[1]
+    inValue.a32 -= worldTargetRp[2]
+
+    #Push matrix result in "target"
+    pc.xform(inObj, worldSpace=True, matrix=inValue)
+    #Reapply rotate pivot and scale pivot
+    pc.xform(inObj, rp=targetRp, sp=targetSp, p=True)
 
 def matchT(inObj, inValue):
     r = inObj.r.get()
     s = inObj.s.get()
+
     match(inObj, inValue)
-    inObj.r.set(r)
-    inObj.s.set(s)
+
+    if inObj.r.isSettable():
+        inObj.r.set(r)
+    if inObj.s.isSettable():
+        inObj.s.set(s)
 
 def matchR(inObj, inValue):
     t = inObj.t.get()
     s = inObj.s.get()
     match(inObj, inValue)
-    inObj.t.set(t)
-    inObj.s.set(s)
+
+    if inObj.t.isSettable():
+        inObj.t.set(t)
+    if inObj.s.isSettable():
+        inObj.s.set(s)
 
 def matchS(inObj, inValue):
     t = inObj.t.get()
     r = inObj.r.get()
     match(inObj, inValue)
-    inObj.t.set(t)
-    inObj.r.set(r)
+
+    if inObj.t.isSettable():
+        inObj.t.set(t)
+    if inObj.r.isSettable():
+        inObj.r.set(r)
 
 def matchPV(inObj, inValue):
     topMat, middleMat, downMat = inValue
@@ -5650,7 +5703,8 @@ def matchPV(inObj, inValue):
 
     target = pc.group(empty=True, world=True)
     tkc.createResPlane(target, topObj, middleObj, downObj)
-    pc.xform(inObj, worldSpace=True, matrix=pc.xform(target, query=True, worldSpace=True, matrix=True ))
+
+    match(inObj, getWorldMat(target))
 
     pc.delete([target, topObj, middleObj, downObj])
 
@@ -5678,7 +5732,7 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
                 #print " -matchRule",matchRule
                 #print " -matchRef",matchRef
                 
-                if matchRule == "check":
+                if matchRule.startswith("check"):
                     if len(matchRef) != 2:
                         raise ValueError("Check function takes two arguments : expression to check and message !")
                     expr, message = matchRef
@@ -5701,10 +5755,22 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
                     if isinstance(matchRef, (list,tuple)):
                         matrices = []
                         for matchRefItem in matchRef:
-                            matrices.append(pc.xform(inNs + matchRefItem, query=True, worldSpace=True, matrix=True ))
+                            offset = None
+
+                            if "+" in matchRefItem:
+                                matchRefItem, strOffset = matchRefItem.split("+")
+                                offset = eval(strOffset.replace(":", ","))
+
+                            matrices.append(getWorldMat(pc.PyNode(inNs + matchRefItem), offset))
                         setAttrs.append((matchRule, matchObj, matrices))
                     else:
-                        setAttrs.append((matchRule, matchObj, pc.xform(inNs + matchRef, query=True, worldSpace=True, matrix=True )))
+                        offset = None
+
+                        if "+" in matchRef:
+                            matchRef, strOffset = matchRef.split("+")
+                            offset = eval(strOffset.replace(":", ","))
+
+                        setAttrs.append((matchRule, matchObj, getWorldMat(pc.PyNode(inNs + matchRef), offset)))
                 else:
                     #Simple "setAttr"
                     attrName = "{0}.{1}".format(matchObj, matchRule)

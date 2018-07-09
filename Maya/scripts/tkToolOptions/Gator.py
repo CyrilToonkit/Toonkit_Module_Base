@@ -27,16 +27,17 @@ import tkMayaCore as tkc
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.0.0.0"
+VERSIONINFO = "1.1.0.0"
 
 class Gator(Tool):
     def __init__(self, inContext=None, inDebug=False):
         super(Gator, self).__init__(inName="Gator (copy skin)", inDescription="Copy skinning across geometries (creating the skinCluster with appropriate influences, using Maya copy skin or direct weights table copy)",
-            inUsage="Select any number of meshes to match first, then the ref mesh", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
+            inUsage="Select any number of meshes to match first, then the ref mesh, or, when using 'Multiple sources' mode, any number of meshes to copy weights from, then the target mesh", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())
         self.options.addOption("CopyMatrices", False, "Match the influences bind poses", "Match bind poses")
         self.options.addOption("DirectCopy", False, "Copy the weights table (or use Maya copy skin)", "Strict copy (weights array)")
+        self.options.addOption("Reversed", False, "Copy the weights from several objects to one", "Multiple sources")
 
         if not self.options.isSaved():
             self.saveOptions()
@@ -48,4 +49,7 @@ class Gator(Tool):
         if len(sel) > 1:
             tkc.gator(sel[:-1], sel[-1], *self.arguments)
         else:
-            self.warning("Please select at least two objects (any number of meshes to receive weights, then a \"Reference\" mesh) !")
+            message = "Please select at least two objects (any number of meshes to receive weights, then a \"Reference\" mesh) !"
+            if self.options["Reversed"]:
+                message = "Please select at least two objects (any number of meshes to copy weights from, then the \"Target\" mesh) !"
+            self.warning()

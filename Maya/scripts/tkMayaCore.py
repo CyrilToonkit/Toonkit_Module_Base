@@ -1401,11 +1401,40 @@ def matchTRS(inTarget, inRef, inTrans=True, inRot=True, inScl=True, inWorldSpace
         scl = inTarget.getScale()
 
     #Match matrices because it's the only approach that always works (negative scaling...)
-    if not inLocalApproach or not inWorldSpace:#But we still have problems with negative scaling and
-        refMatrix = pc.xform(inRef, query=True, worldSpace=inWorldSpace, matrix=True )
-        pc.xform( inTarget, worldSpace=inWorldSpace, matrix=refMatrix )
+    if not inLocalApproach or not inWorldSpace:
+
+        if not inWorldSpace:
+            refMatrix = pc.xform(inRef, query=True, worldSpace=inWorldSpace, matrix=True )
+            pc.xform( inTarget, worldSpace=inWorldSpace, matrix=refMatrix )
+        else:
+            #Get "ref" world matrix as a starter for computation
+            worldRefMat = inRef.worldMatrix.get()
+
+            #Put the "ref" rotate pivot offset in world space
+            refRp = inRef.rp.get()
+            worldRefRpVec = refRp * worldRefMat
+
+            #Put the "target" rotate pivot offset in world space
+            worldTargetMat = inTarget.worldMatrix.get()
+
+            targetRp = inTarget.rp.get()
+            worldTargetRp = targetRp * worldTargetMat
+
+            targetSp = inTarget.sp.get()
+
+            #Add the "ref" rotate pivot and remove "target" rotate pivot to matrix
+            worldRefMat.a30 += worldRefRpVec[0] - worldTargetRp[0]
+            worldRefMat.a31 += worldRefRpVec[1] - worldTargetRp[1]
+            worldRefMat.a32 += worldRefRpVec[2] - worldTargetRp[2]
+
+            #Push matrix result in "target"
+            pc.xform(inTarget, worldSpace=True, matrix=worldRefMat)
+            #Reapply rotate pivot and scale pivot
+            pc.xform(inTarget, rp=targetRp, sp=targetSp, p=True)
+
     else:#After years of fighting, use parent + scale constraint
         #print "New global Match"
+
         refParent = getDirectParent(inRef)
         targetParent = getDirectParent(inTarget)
         refMatcher = inRef
@@ -2415,7 +2444,7 @@ def getDisplay(node):
 
     if(pc.attributeQuery( "size", node=node, exists=True )):
         decorated = True
-        size = pc.getAttr(node.name() + ".OLDsize")
+        size = node.radius.get() if node.type() == "joint" else node.OLDsize.get()
         t = dt.Vector(pc.getAttr(node.name() + ".OLDoffsetDisplayX"),pc.getAttr(node.name() + ".OLDoffsetDisplayY"),pc.getAttr(node.name() + ".OLDoffsetDisplayZ"))
         s = (pc.getAttr(node.name() + ".OLDscaleDisplayX"),pc.getAttr(node.name() + ".OLDscaleDisplayY"),pc.getAttr(node.name() + ".OLDscaleDisplayZ"))
         if pc.attributeQuery( "displayName", node=node, exists=True ):
@@ -3951,7 +3980,7 @@ def getDeformers(inMeshes):
         if skin != None:
             defs.extend(skin.getInfluence())
 
-    return defs
+    return list(set(defs))
 
 def selectDeformers(inObjs=None):
     if inObjs == None:
@@ -3987,52 +4016,76 @@ def combine(inObjects, inMergeUVSets=1, inConstructionHistory=False,  inName="CO
 
     return mesh
 
-def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False):
-    refSkin = getSkinCluster(inRef)
-    if refSkin == None:
-        pc.error("No skinCluster found on ref object " + inRef.name())
-    
-    refSkinName = refSkin.name()
+def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed=False):
+    if inReversed:
+        sourcesSkins = []
+        skinnedSources = []
 
-    storedSkin = None
-    if inDirectCopy:
-        storedSkin = storeSkin(inRef)
+        for source in inSources:
+            sourceSkin = getSkinCluster(source)
+            if sourceSkin == None:
+                pc.warning("No skinCluster found on ref object " + source.name())
+            else:
+                sourcesSkins.append(sourceSkin)
+                skinnedSources.append(source)
 
-    infs = getDeformers([inRef])
-    for source in inSources:
-        if getSkinCluster(source) != None:
-            pc.skinCluster(source,edit=True, unbind=True)
+        infs = getDeformers(skinnedSources)
 
-        skin = pc.skinCluster(source,infs, toSelectedBones=True)
+        if getSkinCluster(inRef) != None:
+            pc.skinCluster(inRef,edit=True, unbind=True)
 
+        skin = pc.skinCluster(inRef,infs, toSelectedBones=True)
+
+        pc.select(skinnedSources)
+        pc.select(inRef, add=True)
+
+        pc.copySkinWeights(surfaceAssociation="closestPoint", influenceAssociation="closestJoint", noMirror=True)
+    else:
+        refSkin = getSkinCluster(inRef)
+        if refSkin == None:
+            pc.error("No skinCluster found on ref object " + inRef.name())
+        
+        refSkinName = refSkin.name()
+
+        storedSkin = None
         if inDirectCopy:
-            skin = loadSkin(storedSkin, inObject=source)
-        else:
-            pc.copySkinWeights(ss=refSkin, ds=skin, surfaceAssociation="closestPoint", influenceAssociation="oneToOne", noMirror=True)
+            storedSkin = storeSkin(inRef)
 
-        skinName = skin.name()
-        if inCopyMatrices:
-            haveChanged = False
-            for inf in infs:
-                refIndex = -1
-                targetIndex = -1
+        infs = getDeformers([inRef])
+        for source in inSources:
+            if getSkinCluster(source) != None:
+                pc.skinCluster(source,edit=True, unbind=True)
 
-                cons = cmds.listConnections(inf.name(), type="skinCluster", plugs=True)
-                for con in cons:
-                    if refSkinName+".matrix[" in con:
-                        refIndex = con[len(refSkinName+".matrix["):-1]
-                    elif skinName+".matrix[" in con:
-                        targetIndex = con[len(skinName+".matrix["):-1]
+            skin = pc.skinCluster(source,infs, toSelectedBones=True)
 
-                if refIndex != -1 and targetIndex != -1:
-                    pc.setAttr(skinName+".bindPreMatrix["+targetIndex+"]",pc.getAttr(refSkinName+".bindPreMatrix["+refIndex+"]"), type="matrix")
-                    haveChanged = True
-                else:
-                    pc.warning("Cannot resolve indices for " + inf + ", " + skinName)
+            if inDirectCopy:
+                skin = loadSkin(storedSkin, inObject=source)
+            else:
+                pc.copySkinWeights(ss=refSkin, ds=skin, surfaceAssociation="closestPoint", influenceAssociation="oneToOne", noMirror=True)
 
-            if pc.versions.current() > 201600:
-                #With maya 2016, binding pre-matrices are cached into skinCluster node so we have to consider the node dirty...
-                pc.dgdirty(skin)
+            skinName = skin.name()
+            if inCopyMatrices:
+                haveChanged = False
+                for inf in infs:
+                    refIndex = -1
+                    targetIndex = -1
+
+                    cons = cmds.listConnections(inf.name(), type="skinCluster", plugs=True)
+                    for con in cons:
+                        if refSkinName+".matrix[" in con:
+                            refIndex = con[len(refSkinName+".matrix["):-1]
+                        elif skinName+".matrix[" in con:
+                            targetIndex = con[len(skinName+".matrix["):-1]
+
+                    if refIndex != -1 and targetIndex != -1:
+                        pc.setAttr(skinName+".bindPreMatrix["+targetIndex+"]",pc.getAttr(refSkinName+".bindPreMatrix["+refIndex+"]"), type="matrix")
+                        haveChanged = True
+                    else:
+                        pc.warning("Cannot resolve indices for " + inf + ", " + skinName)
+
+                if pc.versions.current() > 201600:
+                    #With maya 2016, binding pre-matrices are cached into skinCluster node so we have to consider the node dirty...
+                    pc.dgdirty(skin)
 
 def setRefPose(inDef, inSkins=None, inMatrix=None):
     attrs = pc.listConnections(inDef, type="skinCluster", plugs=True)
