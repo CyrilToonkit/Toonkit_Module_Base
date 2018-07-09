@@ -32,7 +32,7 @@ VERSIONINFO = "1.0.0.0"
 
 class polyReduceComplexity(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        super(polyReduceComplexity, self).__init__(inName="polyReduceComplexity", inDescription="Use polyReduce from Maya or not depending on a threshold",
+        super(polyReduceComplexity, self).__init__(inName="Poly Reduce Complexity", inDescription="Use polyReduce from Maya or not depending on a threshold",
             inUsage="Select a mesh to reduce", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())

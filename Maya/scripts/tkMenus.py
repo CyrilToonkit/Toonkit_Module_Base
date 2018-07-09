@@ -31,6 +31,7 @@ import mayaexecpythonfile
 __author__ = "Cyril GIBAUD - Toonkit"
 
 SEP = False#Indicates if last item was a separator
+LASTPATH = []
 
 SUFFIX_OPTIONBOX = "_optionBox"
 SUFFIX_TOOL = "_tkTool"
@@ -208,6 +209,7 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
     generateMenu(tkSubMenu, folderPath)
 
 def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
+    global LASTPATH
     global SEP#Indicates if last item was a separator
 
     alternatePath = getServerPath(in_scriptsPath)
@@ -233,10 +235,15 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 else:
                     elementsDic[alternateElement].append(os.path.join(alternatePath, alternateElement))
 
+        
         elements = elementsDic.keys()
         elements.sort(key=lambda x:x.lower())
+        
 
         for element in elements:
+
+            elementData = None
+
             elementName, elementExt = os.path.splitext(element)
             if element.endswith(SUFFIX_OPTIONBOX+elementExt):
                 continue
@@ -255,17 +262,25 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                     matchObj = re.match(".*_([A-Za-z]+).*", elementName)
                     if matchObj:
                         pc.menuItem(divider=True, parent=in_parentMenuItem, label=menuFormat(matchObj.groups()[-1], False, True))
+
                     else:
                         pc.menuItem(divider=True, parent=in_parentMenuItem)
                 SEP=True
 
             elif element.endswith(SUFFIX_TOOL+elementExt):#tool subMenu (ends with SUFFIX_TOOL)
                 toolName = menuFormat(element, inMakeNice=False)[:-len(SUFFIX_TOOL)]
+
+
                 CORETOOL = tkc.getTool()
                 tool = CORETOOL.getChildTool(toolName)
 
+                
+
                 if tool:
+                    elementData = {"name":tool.name, "menuPath":LASTPATH, "desc":tool.description, "code":tool.getExecuteCode(), "optionBox":tool.getShowUICode()}
+
                     elementName = tool.name
+
                     if pc.menuItem(elementName + SUFFIX_OPTIONBOX, exists=True):
                         pc.deleteUI(elementName + SUFFIX_OPTIONBOX)
                     if pc.menuItem(elementName + "Item", exists=True):
@@ -289,9 +304,16 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 if pc.menuItem(elementName + "Menu", exists=True):
                     pc.deleteUI(elementName + "Menu")
 
-                tkSubMenu = pc.menuItem(elementName + "Menu", label=menuFormat(element, local, server), parent=in_parentMenuItem, subMenu=True, tearOff=True)
+                folderName = menuFormat(element, local, server)
+
+                tkSubMenu = pc.menuItem(elementName + "Menu", label=folderName, parent=in_parentMenuItem, subMenu=True, tearOff=True)
+                LASTPATH.append(folderName)
+
                 generateMenu(tkSubMenu, fullpath, in_checkServer)
                 SEP=False
+
+
+            
 
             else:#menuItem or optionBox (file)
                 if pc.menuItem(elementName + SUFFIX_OPTIONBOX, exists=True):
@@ -304,7 +326,21 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 with open(fullpath) as myScript:
                     code = myScript.read()
 
-                pc.menuItem(elementName + "Item", label=menuFormat(element, local, server), parent=in_parentMenuItem, aob=True, command=code)
+                itemName = menuFormat(element, local, server)
+                pathcop=LASTPATH[:]
+
+                elementData = {"name":itemName, "menuPath":pathcop,"desc":"", "code":code, "optionBox":""}
+                
+                #Extract description/docstring from code
+                start=code.find('\"\"\"')
+                if start !=-1:
+                    start+=3
+                    
+                    end=code.find('\"\"\"', start)
+                    elementData["desc"]=code[start:end]
+
+                pc.menuItem(elementName + "Item", label=itemName, parent=in_parentMenuItem, aob=True, command=code)
+
                 optionBox = elementName + SUFFIX_OPTIONBOX+elementExt
                 if optionBox in elements:#optionBox (file)
 
@@ -312,5 +348,11 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                     with open(elementsDic[optionBox][0]) as myScript:
                         code = myScript.read()
 
+                    elementData["optionBox"] = code
+
                     pc.menuItem(elementName + SUFFIX_OPTIONBOX, optionBox=True, parent=in_parentMenuItem, command=code)
                 SEP=False
+
+            tkc.HELP_LIST.append(elementData)
+    
+    LASTPATH = []
