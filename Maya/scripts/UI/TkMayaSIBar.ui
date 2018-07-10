@@ -162,9 +162,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-267</y>
+        <y>-243</y>
         <width>398</width>
-        <height>1265</height>
+        <height>1213</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -1768,6 +1768,16 @@
                 </property>
                 <property name="+cc" stdset="0">
                  <string>&quot;tksi.cnsCompClick()&quot;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="selectHierarchyBT">
+                <property name="text">
+                 <string>sel. Hierarchy</string>
+                </property>
+                <property name="+c" stdset="0">
+                 <string>&quot;tksi.selectHierarchyClick()&quot;</string>
                 </property>
                </widget>
               </item>

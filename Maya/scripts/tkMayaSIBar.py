@@ -358,6 +358,15 @@ def setName():
 
 	pc.evalDeferred(selectionChanged)
 
+def selectHierarchyClick():
+	allObjs = []
+
+	for sel in pc.selected():
+		allObjs.append(sel)
+		allObjs.extend(tkc.getChildren(sel, True))
+
+	pc.select(list(set(allObjs)))
+
 def setSelection():
 	print pc.textScrollList("tksiSelectionNamesLV", query=True, selectItem=True)
 
