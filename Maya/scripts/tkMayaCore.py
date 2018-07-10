@@ -650,6 +650,37 @@ def getDuplicates(inPyNodes=None, inLog=False):
             
     return names
 
+def getInstances(inPyNodes=None, inLog=False):
+    if inPyNodes == None:
+        inPyNodes = pc.ls(shapes=True)
+
+    instanciations = []
+
+    instances = {}
+
+    for shape in inPyNodes:
+        parents = pc.listRelatives(shape, ap=True)
+        if len(parents) > 1:
+            shortName = shape.name().split("|")[-1]
+            instanciated = []
+
+            for parent in parents:
+                for parentShape in parent.getShapes():
+                    if parentShape.name().split("|")[-1] == shortName:
+                        instanciated.append(parentShape)
+                        break
+
+            instances[shortName] = instanciated
+            instanciations.extend(parents)
+
+    if inLog:
+        print "{0} instances on {1} transforms".format(len(instances), len(instanciations))
+        print "----------------------------------"
+        for shapeName, curInstances in instances.iteritems():
+            print "{0} *{1}({2})".format(shapeName, len(curInstances),[n.name() for n in curInstances])
+
+    return instances
+
 def getRigName(inName):
     return inName if inName[-len(CONST_ROOTSUFFIX):] != CONST_ROOTSUFFIX else inName[:-len(CONST_ROOTSUFFIX)]
 
