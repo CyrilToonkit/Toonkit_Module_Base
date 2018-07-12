@@ -36,13 +36,15 @@ SHADERTYPES = mc.listNodeTypes('shader')
 
 PREVIZ_COLORS = {}
 
+EXCLUDED_COLOR = (-1,-1,-1)
+
 def to0_255(inColor):
     return (int(inColor[0] * 255), int(inColor[1] * 255), int(inColor[2] * 255))
 
 def to0_1(inColor):
     return (inColor[0] / 255.0, inColor[1] / 255.0, inColor[2] / 255.0)
 
-def assignShader(inMaterial, inObj, inSG=None):
+def assignShader(inMaterial, inObj, inSG=None, inFaces=None):
     #print "assignShader(%s, %s, %s, %s)" % (str(inMaterial), str(inObj), str(inSG), str(inMultiUVs))
     #return None
     shape = inObj
@@ -71,7 +73,10 @@ def assignShader(inMaterial, inObj, inSG=None):
             shadingGroup = mc.sets(renderable=True, noSurfaceShader=True, empty=True, name=inMaterial+"SG")
             mc.connectAttr(inMaterial + ".outColor", shadingGroup + ".surfaceShader", force=True)
 
-    mel.eval("sets -forceElement " + shadingGroup + " " + shape)
+    if inFaces is None:
+        mc.sets(shape, forceElement=shadingGroup)
+    else:
+        mc.sets(["{0}.{1}".format(shape, item) for item in inFaces], forceElement=shadingGroup)
 
     return shadingGroup
 
@@ -94,8 +99,37 @@ def getShaders(inObj, inFirstOnly=True):
                         if inFirstOnly:
                             return shaders
                         break
-    
-    return shaders
+
+    return list(set(shaders))
+
+""" PYMEL VERSION
+def getShaderFaces(inObject, inShader):
+    sgs = mc.listConnections(shaderNode, type="shadingEngine") 
+    if len(sgs) > 0:
+        cons = sgs[0].dagSetMembers.listConnections(plugs=True)
+        for con in cons:
+            if con.node() == objectNode:
+                return con.objectGrpCompList.get()
+
+    return None
+"""
+
+def getShaderFaces(inObject, inShader):
+    faces = []
+
+    sgs = mc.listConnections(inShader, type="shadingEngine")
+    if len(sgs) > 0:
+        attr = "{0}.{1}".format(sgs[0], "dagSetMembers")
+        cons = mc.listConnections(attr, plugs=True)
+        if cons is None:
+
+            return faces
+
+        for con in cons:
+            if con.split(".")[0] == inObject and not ".comp" in con:
+                faces.extend(mc.getAttr("{0}.{1}".format(con, "objectGrpCompList")))
+
+    return faces
 
 def roundColor(inColor):
     return (round(inColor[0], 2), round(inColor[1], 2), round(inColor[2], 2))
@@ -103,48 +137,60 @@ def roundColor(inColor):
 def getShaderName(inColor):
     return "pre_lambert_{0}_{1}_{2}".format(inColor[0], inColor[1], inColor[2])
 
-def assignColor(inMesh, inColor):
+def assignColor(inMesh, inColor, inFaces=None):
+    if inColor[0] == -1:
+        return
+
     shaderName = getShaderName(inColor)
 
     if not mc.objExists(shaderName):
         mc.shadingNode("lambert", asShader=True, name=shaderName)
         mc.setAttr(shaderName + ".color", *[i / 255.0 for i in inColor])
 
-    assignShader(shaderName, inMesh)
+    assignShader(shaderName, inMesh, inFaces=inFaces)
 
 def addColor(rgb, sel):
-    global PREVIZ_COLORS
+    if rgb[0] == -1:
+        return
 
-    if not rgb in PREVIZ_COLORS:
-        PREVIZ_COLORS[rgb] = []
+    selection = []
+    object_faces = {}
 
-    for selObj in sel:
-        shortName = selObj.split(":")[-1]
-        if not shortName in PREVIZ_COLORS[rgb]:
-            PREVIZ_COLORS[rgb].append(shortName)
+    rawSelection = sel
 
-        assignColor(selObj, rgb)
+    for selObj in rawSelection:
+        soloObj = selObj
+        if ".f" in selObj:
+            soloObj = selObj.split(".")[0]
+            if not soloObj in object_faces:
+                object_faces[soloObj] = []
+            object_faces[soloObj].append(selObj.split(".")[1])
 
-        emptyKeys = []
-        for key, value in PREVIZ_COLORS.iteritems():
-            if key != rgb and shortName in value:
-                value.remove(shortName)
-                if len(value) == 0:
-                    emptyKeys.append(key)
-        for key in emptyKeys:
-            del PREVIZ_COLORS[key]
+        selection.append(soloObj)
+
+    for selObj in selection:
+        assignColor(selObj, rgb, object_faces.get(selObj))
+
+    getFromScene(True)
 
 def setColors():
     notFound = []
     for shd_color, meshes in PREVIZ_COLORS.iteritems():
         for mesh in meshes:
+            faces = None
             meshName = mesh
+
+            if "." in mesh:
+                meshName, faces = meshName.split(".")
+                faces = faces.split(";")
+
             if not mc.objExists(meshName):
                 results = mc.ls("*:"+meshName)
                 if len(results) > 0:
                     meshName = results[0]
+
             if mc.objExists(meshName):
-                assignColor(meshName, shd_color)
+                assignColor(meshName, shd_color, faces)
             else:
                 notFound.append(mesh)
                 mc.warning(mesh + " not found !")
@@ -164,9 +210,67 @@ def colorCommand(inColor):
     opaqueColor = to0_255(roundColor(to0_1(opaqueColor)))
 
     addColor(opaqueColor, selection)
-    initUI()
 
     mc.select(selection)
+
+def getFromScene(inManagedOnly=False):
+    global PREVIZ_COLORS
+
+    excluded = PREVIZ_COLORS.get(EXCLUDED_COLOR, [])
+
+    managed = []
+
+    if inManagedOnly:
+        for shd_color, meshes in PREVIZ_COLORS.iteritems():
+            for mesh in meshes:
+                managed.append(mesh.split(".")[0])
+        managed = list(set(managed))
+
+    PREVIZ_COLORS = {}
+
+    meshes = mc.ls(type="mesh")
+
+    for mesh in meshes:
+        if mc.getAttr(mesh + ".intermediateObject"):
+            continue
+        #and (not inManagedOnly or mesh in managed):
+        parents = mc.listRelatives(mesh, parent=True)
+        if parents != None and len(parents) > 0:
+            shortName = parents[0].split(":")[-1]
+
+            if inManagedOnly and not shortName in managed:
+                continue
+
+            if shortName in excluded:
+                if not EXCLUDED_COLOR in PREVIZ_COLORS:
+                    PREVIZ_COLORS[EXCLUDED_COLOR] = []
+                PREVIZ_COLORS[EXCLUDED_COLOR].append(shortName)
+                continue
+
+            shaders = getShaders(mesh, False)
+            if len(shaders) > 0:
+                if len(shaders) > 1:
+                    #print "Multiple shaders",mesh,shaders
+                    for shader in shaders:
+                        faces = getShaderFaces(mesh, shader)
+                        if len(faces) == 0:
+                            mc.warning("Can't get shader faces from {0} on {1}".format(shader, mesh))
+                            continue
+                        color = to0_255(mc.getAttr(shader + ".color")[0])
+                        if not color in PREVIZ_COLORS:
+                            PREVIZ_COLORS[color] = []
+
+                        PREVIZ_COLORS[color].append("{0}.{1}".format(shortName, ";".join(faces)))
+                else:
+                    shader = shaders[0]
+                    color = to0_255(mc.getAttr(shader + ".color")[0])
+                    if not color in PREVIZ_COLORS:
+                        PREVIZ_COLORS[color] = []
+
+                    PREVIZ_COLORS[color].append(shortName)
+
+    initUI()
+    tkc.deleteUnusedNodes()
 
 def palNewClick(*args):
     sel = mc.ls(sl=True)
@@ -182,7 +286,39 @@ def palNewClick(*args):
         rgb = to0_255(values)
 
         addColor(rgb, sel)
-        initUI()
+
+    mc.select(sel)
+
+def palExcludeClick(*args):
+    global PREVIZ_COLORS
+
+    sel = mc.ls(sl=True)
+
+    if len(sel) == 0:
+        mc.warning("Please select some objects to color")
+        return
+
+    selection = []
+    object_faces = {}
+
+    rawSelection = sel
+
+    for selObj in rawSelection:
+        soloObj = selObj
+        if ".f" in selObj:
+            soloObj = selObj.split(".")[0]
+            if not soloObj in object_faces:
+                object_faces[soloObj] = []
+            object_faces[soloObj].append(selObj.split(".")[1])
+
+        selection.append(soloObj)
+
+    if not EXCLUDED_COLOR in PREVIZ_COLORS:
+        PREVIZ_COLORS[EXCLUDED_COLOR] = []
+
+    PREVIZ_COLORS[EXCLUDED_COLOR].extend(selection)
+
+    getFromScene(True)
 
     mc.select(sel)
 
@@ -210,24 +346,44 @@ def palEditClick(*args):
         del PREVIZ_COLORS[oldColor]
         PREVIZ_COLORS[rgb] = objects
 
-        for obj in objects:
-            meshName = obj
+        for mesh in objects:
+            faces = None
+            meshName = mesh
+
+            if "." in mesh:
+                meshName, faces = meshName.split(".")
+                faces = faces.split(";")
+
             if not mc.objExists(meshName):
                 results = mc.ls("*:"+meshName)
                 if len(results) > 0:
                     meshName = results[0]
-            assignColor(meshName, rgb)
+
+            assignColor(meshName, rgb, faces)
 
         initUI()
 
 def palApplyClick(*args):
     global PREVIZ_COLORS
 
-    selection = mc.ls(sl=True)
+    selection = []
+    object_faces = {}
 
-    if len(selection) == 0:
+    rawSelection = mc.ls(sl=True)
+
+    if len(rawSelection) == 0:
         mc.warning("Please select some objects to color")
         return
+
+    for selObj in rawSelection:
+        soloObj = selObj
+        if ".f" in selObj:
+            soloObj = selObj.split(".")[0]
+            if not soloObj in object_faces:
+                object_faces[soloObj] = []
+            object_faces[soloObj].append(selObj.split(".")[1])
+
+        selection.append(soloObj)
 
     sel = mc.textScrollList("tkPalManagedLB", query=True, selectItem=True)
 
@@ -236,22 +392,12 @@ def palApplyClick(*args):
         return
 
     color = eval("("+sel[0].split(" : ")[0]+")")
-    objects = sel[0].split(" : ")[1].split(",")
+    #rawObjects = sel[0].split(" : ")[1].split(",")
 
     for selObj in selection:
-        assignColor(selObj, color)
-        shortName = selObj.split(":")[-1]
-        if not shortName in objects:
-            PREVIZ_COLORS[color].append(shortName)
-        emptyKeys = []
-        for key, value in PREVIZ_COLORS.iteritems():
-            if key != color and shortName in value:
-                value.remove(shortName)
-                if len(value) == 0:
-                    emptyKeys.append(key)
-        for key in emptyKeys:
-            del PREVIZ_COLORS[key]
-    initUI()
+        assignColor(selObj, color, object_faces.get(selObj))
+
+    getFromScene(True)
 
 def palTodoChanged(*args):
     sel = mc.textScrollList("tkPalTodoLB", query=True, selectItem=True)
@@ -267,7 +413,14 @@ def palManagedChanged(*args):
         for selPatterns in rawSel:
             selPatterns = selPatterns.split(" : ")[1].split(",")
             for selPattern in selPatterns:
-                objs = mc.ls(["*:"+selPattern, selPattern], transforms=True)
+                objs = []
+                if "." in selPattern:
+                    selObj, selFaces = selPattern.split(".")
+                    objSolos = mc.ls(["*:"+selObj, selObj], transforms=True)
+                    for objSolo in objSolos:
+                        objs.extend(["{0}.{1}".format(objSolo, face) for face in selFaces.split(";")])
+                else:
+                    objs = mc.ls(["*:"+selPattern, selPattern], transforms=True)
                 sel.extend(objs)
 
         if len(sel) == 0:
@@ -306,28 +459,7 @@ def palApplyAllClick(*args):
     tkc.deleteUnusedNodes()
 
 def palGetFromSceneClick(*args):
-    global PREVIZ_COLORS
-
-    PREVIZ_COLORS = {}
-
-    meshes = mc.ls(type="mesh")
-
-    for mesh in meshes:
-        if not mc.getAttr(mesh + ".intermediateObject"):
-            parents = mc.listRelatives(mesh, parent=True)
-            if parents != None and len(parents) > 0:
-                shaders = getShaders(mesh)
-                if len(shaders) > 0:
-                    shader = shaders[0]
-                    color = to0_255(mc.getAttr(shader + ".color")[0])
-                    if not color in PREVIZ_COLORS:
-                        PREVIZ_COLORS[color] = []
-
-                    PREVIZ_COLORS[color].append(parents[0].split(":")[-1])
-
-    initUI()
-    setColors()
-    tkc.deleteUnusedNodes()
+    getFromScene()
 
 def palRefreshClick(*args):
     initUI()
@@ -343,6 +475,7 @@ def connectControls():
     mc.button("tkPalNewBT", edit=True, c=palNewClick)
     mc.button("tkPalEditBT", edit=True, c=palEditClick)
     mc.button("tkPalApplyBT", edit=True, c=palApplyClick)
+    mc.button("tkPalExcludeBT", edit=True, c=palExcludeClick)
 
     mc.textScrollList("tkPalManagedLB", edit=True, sc=palManagedChanged)
     mc.textScrollList("tkPalTodoLB", edit=True, sc=palTodoChanged)
@@ -361,10 +494,13 @@ def initUI(*args):
     mc.textScrollList("tkPalManagedLB", edit=True, removeAll=True)
 
     for shd_color, meshes in PREVIZ_COLORS.iteritems():
+        if shd_color[0] == -1:
+            continue
+
         mc.textScrollList("tkPalManagedLB", edit=True, append="{0},{1},{2} : {3}".format(shd_color[0], shd_color[1], shd_color[2], ",".join(meshes)))
         for mesh in meshes:
             for meshT in meshesT:
-                if meshT.split(":")[-1] == mesh:
+                if meshT.split(":")[-1] == mesh.split(".")[0]:
                     managedMeshes.append(meshT.split(":")[-1])
                     break
 

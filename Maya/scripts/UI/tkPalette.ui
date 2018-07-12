@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>326</width>
-    <height>700</height>
+    <width>456</width>
+    <height>681</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -123,11 +123,28 @@
        </layout>
       </item>
       <item>
-       <widget class="QPushButton" name="tkPalNewBT">
-        <property name="text">
-         <string>New color on selection</string>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>0</number>
         </property>
-       </widget>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="tkPalNewBT">
+          <property name="text">
+           <string>New color on selection</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="tkPalExcludeBT">
+          <property name="text">
+           <string>Exclude selection</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
        <widget class="QGroupBox" name="groupBox">
