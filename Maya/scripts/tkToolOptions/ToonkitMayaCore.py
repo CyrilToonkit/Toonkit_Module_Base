@@ -246,7 +246,7 @@ class ToonkitMayaCore(Tool):
                 #print("Can't load Toonkit plugin %s, this could be by design..." % k)
 
         if not self.options["hidemenu"]:
-            self.showMenu()
+            pc.evalDeferred(self.showMenu)
 
     def showMenu(self, *args):
         if pc.menu(MENU_NAME, query=True, exists=True):
@@ -261,14 +261,14 @@ class ToonkitMayaCore(Tool):
 
         oscarmodulepath = locationModule.OscarModuleLocation()
         mainMenuPath = os.path.join(oscarmodulepath, "tkMenu")
-        tkMenus.generateMenu(tkMainMenu, mainMenuPath, False)
+
+        tkMenus.generateMenu(tkMainMenu, mainMenuPath, False, tkc.HELP_LIST)
 
         #General/Version
         pc.menuItem(divider=True, parent=tkMainMenu)
         pc.menuItem(label="Toolkit options...", parent=tkMainMenu, command=self.showPrefs)
         pc.menuItem(label="Install default hotkeys", parent=tkMainMenu, command=self.setHotKeys)
         pc.menuItem(label="Toolkit help (v" + self.version + ")", parent=tkMainMenu, command=showHelp)
-        print "showMenu"
         
 
     def hideMenu(self):
