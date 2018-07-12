@@ -3086,6 +3086,42 @@ def setCnsOffset(inCns, t = dt.Vector(0.0,0.0,0.0), r = dt.EulerRotation(0.0,0.0
         pc.setAttr(cnsName + ".offsetY", s[1])
         pc.setAttr(cnsName + ".offsetZ", s[2])
 
+def saveString(inString, inPath):
+    error = None
+
+    f = None
+    try:
+        f = open(inPath, 'w')
+        f.write(inString)
+    except Exception as e:
+        error = e
+    finally:
+        if f != None:
+            f.close()
+
+    if not error is None:
+        raise error
+
+def loadString(inPath):
+    error = None
+    content = ""
+
+    f = None
+    try:
+        f = open(inPath, 'r')
+        content = f.read()
+
+    except Exception as e:
+        error = e
+    finally:
+        if f != None:
+            f.close()
+
+    if not error is None:
+        raise error
+
+    return content
+
 def storeConstraints(inObjects, inRemove=False, inPath=None):
     constraints = []
 
@@ -6108,13 +6144,13 @@ def search_changed(*args):
             inter.append(HELP_LIST[k]["name"])
             menuPath2=" => ".join(inter)
             if HELP_LIST[k]["optionBox"]:
-                pc.rowColumnLayout(numberOfColumns=3, cs=[(3,30)])
+                pc.rowColumnLayout(numberOfColumns=3, cs=[(2,5),(3,20)])
                 pc.button(label=HELP_LIST[k]["name"], c=HELP_LIST[k]["code"], annotation=HELP_LIST[k]["desc"])
                 pc.button(label="options", c=HELP_LIST[k]["optionBox"], annotation=HELP_LIST[k]["desc"])
                 pc.text(label="(Menu Path: "+ menuPath2+" )")
                 pc.setParent(u=1)
             else:
-                pc.rowColumnLayout(numberOfColumns=2, cs=[(2,30)])
+                pc.rowColumnLayout(numberOfColumns=2, cs=[(2,20)])
                 pc.button(label=HELP_LIST[k]["name"], c=HELP_LIST[k]["code"], annotation=HELP_LIST[k]["desc"])
                 pc.text(label="(Menu Path: "+ menuPath2+" )")
                 pc.setParent(u=1)
@@ -6132,11 +6168,15 @@ def showSearch(*args):
     if (pc.window("tkSearchTool", q=True, exists=True)):
         pc.deleteUI("tkSearchTool")
     pc.window("tkSearchTool", title = "Search")
-    pc.columnLayout()
-    pc.rowColumnLayout(numberOfColumns=2)
+    pc.columnLayout(adjustableColumn=True)
+    pc.rowLayout(numberOfColumns=2, adjustableColumn2=1, columnWidth2=(230, 120), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
     pc.textFieldGrp("blabla",label='Search in Toonkit Menu', text='', changeCommand=search_changed)
     pc.checkBox("tkSearchToolUnion", label="Match all words", value=False, changeCommand=search_changedCallback)
     pc.setParent(u=1)
-    pc.columnLayout("tkSearchToolButtons")
+    pc.rowLayout("tkSearchHelpRowLayout", numberOfColumns=2, adjustableColumn2=2, columnWidth2=(50, 300), columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+    pc.text("Help :")
+    pc.helpLine()
+    pc.setParent(u=1)
+    pc.columnLayout("tkSearchToolButtons",adjustableColumn=True)
 
     pc.showWindow()

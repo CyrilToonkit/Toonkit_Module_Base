@@ -3786,6 +3786,48 @@ def loadSimplePose(inPose, inNamespace=None):
             pc.warning("loadSimplePose failed, object \"{0}\" not found".format(objName))
             pass
 
+def exportSimplePose(inPath=None):
+    if inPath == None:
+        inPath = mc.fileDialog2(caption="Save your pose file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
+
+        if inPath != None and len(inPath) > 0:
+            inPath = inPath[0]
+            
+    if inPath == None:
+        pc.warning("Invalid file !")
+        return
+
+    poses = saveSimplePose()
+
+    if len(poses) > 0:
+        tkc.saveString(str(poses), inPath)
+        print "pose successfully saved to '{}'".format(inPath)
+
+def importSimplePose(inPath=None, inNs=None):
+    if inPath == None:
+        inPath = mc.fileDialog2(caption="Load your pose file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
+
+        if inPath != None and len(inPath) > 0:
+            inPath = inPath[0]
+            
+    if inPath == None:
+        pc.warning("Invalid file !")
+        return
+
+    strPose = tkc.loadString(inPath)
+
+    pose = None
+    try:
+        pose = eval(strPose)
+    except:
+        pass
+
+    if not isinstance(pose, dict):
+        pc.warning("Can't read '{}'' as a pose".format(inPath))
+        return
+
+    loadSimplePose(pose, inNamespace=inNs)
+
 def saveSimpleConstraint(inObj=None):
     cns = {}
 
@@ -3869,7 +3911,7 @@ def exportAnim(inObjects=None, inPath=None, inAppend=False, inOverride=True, inI
         inObjects = pc.selected()
     
     if inPath == None:
-        inPath = mc.fileDialog2(caption="Save your animation file", fileFilter="mayaAscii file (*.ma)(*.ma)", dialogStyle=2, fileMode=0)
+        inPath = mc.fileDialog2(caption="Save your animation file", fileFilter="mayaAscii file (*.ma)(*.ma)", dialogStyle=1, fileMode=0)
 
         if inPath != None and len(inPath) > 0:
             inPath = inPath[0]
@@ -4171,7 +4213,7 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
 
 def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=True, addProxies=False, poseName=None):
     if inPath == None:
-        inPath = mc.fileDialog2(caption="Load your animation file", fileFilter="mayaAscii file (*.ma)(*.ma)", dialogStyle=2, fileMode=1)
+        inPath = mc.fileDialog2(caption="Load your animation file", fileFilter="mayaAscii file (*.ma)(*.ma)", dialogStyle=1, fileMode=1)
 
         if inPath != None and len(inPath) > 0:
             inPath = inPath[0]
