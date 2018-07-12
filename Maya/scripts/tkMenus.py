@@ -208,9 +208,13 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
     tkSubMenu = pc.menuItem(elementName + "Menu", label=menuFormat(elementName, inLocal, inServer), parent=in_parentMenuItem, subMenu=True, tearOff=True)
     generateMenu(tkSubMenu, folderPath)
 
-def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
+def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True, inSearchEngine=None, inIsRoot=True):
     global LASTPATH
     global SEP#Indicates if last item was a separator
+
+    #Empty help/search generator
+    if not inSearchEngine is None and inIsRoot:
+        inSearchEngine[:] = []
 
     alternatePath = getServerPath(in_scriptsPath)
 
@@ -277,7 +281,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 
 
                 if tool:
-                    elementData = {"name":tool.name, "menuPath":LASTPATH, "desc":tool.description, "code":tool.getExecuteCode(), "optionBox":tool.getShowUICode()}
+                    elementData = {"name":tool.name, "menuPath":LASTPATH, "desc":"{0} {1}".format(tool.description, tool.usage), "code":tool.getExecuteCode(), "optionBox":tool.getShowUICode()}
 
                     elementName = tool.name
 
@@ -309,11 +313,8 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 tkSubMenu = pc.menuItem(elementName + "Menu", label=folderName, parent=in_parentMenuItem, subMenu=True, tearOff=True)
                 LASTPATH.append(folderName)
 
-                generateMenu(tkSubMenu, fullpath, in_checkServer)
+                generateMenu(tkSubMenu, fullpath, in_checkServer, inSearchEngine=inSearchEngine, inIsRoot=False)
                 SEP=False
-
-
-            
 
             else:#menuItem or optionBox (file)
                 if pc.menuItem(elementName + SUFFIX_OPTIONBOX, exists=True):
@@ -335,7 +336,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                 start=code.find('\"\"\"')
                 if start !=-1:
                     start+=3
-                    
+
                     end=code.find('\"\"\"', start)
                     elementData["desc"]=code[start:end]
 
@@ -353,6 +354,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True):
                     pc.menuItem(elementName + SUFFIX_OPTIONBOX, optionBox=True, parent=in_parentMenuItem, command=code)
                 SEP=False
 
-            tkc.HELP_LIST.append(elementData)
-    
+            if not inSearchEngine is None and not elementData is None:
+                inSearchEngine.append(elementData)
+
     LASTPATH = []
