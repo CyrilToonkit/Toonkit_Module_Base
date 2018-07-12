@@ -1,3 +1,6 @@
+"""
+Exports constraints on selected objects to a *.cns file
+"""
 import tkMayaCore as tkc
 import maya.cmds as mc
 import pymel.core as pc

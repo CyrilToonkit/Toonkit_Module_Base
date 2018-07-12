@@ -1,3 +1,6 @@
+"""
+Import animation from ".ma" file saved with "Export Anim" feature
+"""
 import tkRig
 import pymel.core as pc
 
