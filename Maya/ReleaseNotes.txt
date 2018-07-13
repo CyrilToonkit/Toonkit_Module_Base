@@ -1,0 +1,16 @@
+1.5.21.54
+Updated tkMayaCore.matchTRS to take pivots into account
+Updated tkMayaCore.getDisplay to retrieve joints radius as "Size"
+Updated tkMayaCore.getDeformers to return a unique list
+Updated tkMayaCore.gator and Tool to work the other way around (multiple sources towards one target)
+Updated tkRig.matchInPlace / toggleInPlace to handle offsets
+Added search_changed() that permit to search in the Toonkit Menu
+Added docstring to _100_zvRadialBlendshapes.py
+Modified name display in tkToolOptions/cutSkinnedMeshes.py and tkToolOptions/polyReduceComplexity.py
+Added "Select Hierarchy" button in SIBar
+Added "Instances" related functions in tkMayaCore and its menu entries
+Added the ability to exclude some meshes from palette (to preserve existing shader)
+Added the ability to retrieve and assign shaders to mesh faces
+Cleaned search/help construction to make sure it works with multiple menus, and to break dependency with tkc.HELP_LIST
+Added some descriptions in tkMenu "Animation" tools
+Added import/export simplePose in tkRig and in tkMenu
