@@ -24,6 +24,7 @@
     Geometry colors manager
 """
 import os
+from itertools import izip
 
 import maya.cmds as mc
 import maya.mel as mel
@@ -86,16 +87,33 @@ def getShaders(inObj, inFirstOnly=True):
     if mc.nodeType(inObj) == "transform":
         shapes = mc.listRelatives(inObj, shapes=True)
 
+    #Will store plugs where connections are coming from, to take only the first one into account
+    managedPlugs = []
+
     for shape in shapes:
-        shadingGroups = mc.listConnections(shape, type="shadingEngine")
+        shadingGroups = iter(mc.listConnections(shape, type="shadingEngine", connections=True))
         if shadingGroups != None:
-            for sGroup in shadingGroups:
+            for inputPlug, sGroup in izip(shadingGroups, shadingGroups):
+                isPlugManaged = False
+
                 if "initialParticleSE" in sGroup:
                     continue
+
+                #if a connection exist on a parent plug, just skip
+                for managedPlug in managedPlugs:
+                    if inputPlug.startswith(managedPlug):
+                        isPlugManaged = True
+                        break
+
+                if isPlugManaged:
+                    continue
+
+                #find the shader connected to shading group
                 cons = mc.listConnections(sGroup, destination=False)
                 for con in cons:
                     if mc.nodeType(con) in SHADERTYPES:
                         shaders.append(con)
+                        managedPlugs.append(inputPlug)
                         if inFirstOnly:
                             return shaders
                         break
@@ -138,6 +156,7 @@ def getShaderName(inColor):
     return "pre_lambert_{0}_{1}_{2}".format(inColor[0], inColor[1], inColor[2])
 
 def assignColor(inMesh, inColor, inFaces=None):
+    global PREVIZ_COLORS
     if inColor[0] == -1:
         return
 
@@ -149,7 +168,21 @@ def assignColor(inMesh, inColor, inFaces=None):
 
     assignShader(shaderName, inMesh, inFaces=inFaces)
 
+    if not inColor in PREVIZ_COLORS:
+        PREVIZ_COLORS[inColor] = []
+
+    shortName = inMesh.split(":")[-1]
+
+    PREVIZ_COLORS[inColor].append(shortName)
+
+    if EXCLUDED_COLOR in PREVIZ_COLORS and shortName in PREVIZ_COLORS[EXCLUDED_COLOR]:
+        PREVIZ_COLORS[EXCLUDED_COLOR].remove(shortName)
+
 def addColor(rgb, sel):
+    print "addColor",sel
+
+    global PREVIZ_COLORS
+
     if rgb[0] == -1:
         return
 
@@ -168,8 +201,16 @@ def addColor(rgb, sel):
 
         selection.append(soloObj)
 
+    if not rgb in PREVIZ_COLORS:
+        PREVIZ_COLORS[rgb] = []
+
     for selObj in selection:
         assignColor(selObj, rgb, object_faces.get(selObj))
+
+        PREVIZ_COLORS[rgb].append(selObj)
+
+        if EXCLUDED_COLOR in PREVIZ_COLORS and selObj in PREVIZ_COLORS[EXCLUDED_COLOR]:
+            PREVIZ_COLORS[EXCLUDED_COLOR].remove(selObj)
 
     getFromScene(True)
 
