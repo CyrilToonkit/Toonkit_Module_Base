@@ -304,12 +304,9 @@ def palExcludeClick(*args):
     rawSelection = sel
 
     for selObj in rawSelection:
-        soloObj = selObj
-        if ".f" in selObj:
-            soloObj = selObj.split(".")[0]
-            if not soloObj in object_faces:
-                object_faces[soloObj] = []
-            object_faces[soloObj].append(selObj.split(".")[1])
+        soloObj = selObj.split(":")[-1]
+        if ".f" in soloObj:
+            soloObj = soloObj.split(".")[0]
 
         selection.append(soloObj)
 
