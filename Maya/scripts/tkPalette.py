@@ -91,7 +91,7 @@ def getShaders(inObj, inFirstOnly=True):
     managedPlugs = []
 
     for shape in shapes:
-        shadingGroups = iter(mc.listConnections(shape, type="shadingEngine", connections=True))
+        shadingGroups = iter(mc.listConnections(shape, type="shadingEngine", connections=True) or [])
         if shadingGroups != None:
             for inputPlug, sGroup in izip(shadingGroups, shadingGroups):
                 isPlugManaged = False
@@ -155,7 +155,7 @@ def roundColor(inColor):
 def getShaderName(inColor):
     return "pre_lambert_{0}_{1}_{2}".format(inColor[0], inColor[1], inColor[2])
 
-def assignColor(inMesh, inColor, inFaces=None):
+def assignColor(inMesh, inColor, inFaces=None, inAddToDict=True):
     global PREVIZ_COLORS
     if inColor[0] == -1:
         return
@@ -168,6 +168,9 @@ def assignColor(inMesh, inColor, inFaces=None):
 
     assignShader(shaderName, inMesh, inFaces=inFaces)
 
+    if not inAddToDict:
+        return
+
     if not inColor in PREVIZ_COLORS:
         PREVIZ_COLORS[inColor] = []
 
@@ -179,8 +182,6 @@ def assignColor(inMesh, inColor, inFaces=None):
         PREVIZ_COLORS[EXCLUDED_COLOR].remove(shortName)
 
 def addColor(rgb, sel):
-    print "addColor",sel
-
     global PREVIZ_COLORS
 
     if rgb[0] == -1:
@@ -215,9 +216,32 @@ def addColor(rgb, sel):
     getFromScene(True)
 
 def setColors():
+
+    steps = 0
+    for shd_color, meshes in PREVIZ_COLORS.iteritems():
+        steps += len(meshes)
+
+    gMainProgressBar = None
+
+    if mc.control("palProgressBar", exists=True):
+        mc.control("palProgressBar", edit=True, visible=True)
+        gMainProgressBar = "palProgressBar"
+    else:
+        gMainProgressBar = mc.mel.eval('$tmp = $gMainProgressBar')
+
+    mc.progressBar( gMainProgressBar,
+    edit=True,
+    beginProgress=True,
+    isInterruptable=True,
+    status="Applying colors",
+    maxValue=steps)
+
     notFound = []
     for shd_color, meshes in PREVIZ_COLORS.iteritems():
+        #print shd_color, meshes
         for mesh in meshes:
+            mc.progressBar(gMainProgressBar, edit=True, step=1)
+
             faces = None
             meshName = mesh
 
@@ -231,11 +255,17 @@ def setColors():
                     meshName = results[0]
 
             if mc.objExists(meshName):
-                assignColor(meshName, shd_color, faces)
+                assignColor(meshName, shd_color, faces, False)
+                pass
             else:
                 notFound.append(mesh)
                 mc.warning(mesh + " not found !")
-                
+
+    mc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+    if gMainProgressBar == "palProgressBar":
+        mc.control("palProgressBar", edit=True, visible=False)
+
     if len(notFound) > 0:
         mc.warning("Some meshes were not found :\n" + ",".join(notFound))
 
@@ -309,6 +339,8 @@ def getFromScene(inManagedOnly=False):
                         PREVIZ_COLORS[color] = []
 
                     PREVIZ_COLORS[color].append(shortName)
+            else:
+                mc.warning("Can't get any shader from {0} !".format(mesh))
 
     initUI()
     tkc.deleteUnusedNodes()
@@ -397,7 +429,7 @@ def palEditClick(*args):
                 if len(results) > 0:
                     meshName = results[0]
 
-            assignColor(meshName, rgb, faces)
+            assignColor(meshName, rgb, faces, False)
 
         initUI()
 
