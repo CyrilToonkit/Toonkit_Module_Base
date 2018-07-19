@@ -1,3 +1,6 @@
+1.5.22.29
+Fixed infinite loops in "Apply" and "Edit" in tkPalette
+
 1.5.21.54
 Updated tkMayaCore.matchTRS to take pivots into account
 Updated tkMayaCore.getDisplay to retrieve joints radius as "Size"
