@@ -1464,7 +1464,7 @@ def matchTRS(inTarget, inRef, inTrans=True, inRot=True, inScl=True, inWorldSpace
             #Push matrix result in "target"
             pc.xform(inTarget, worldSpace=True, matrix=worldRefMat)
             #Reapply rotate pivot and scale pivot
-            pc.xform(inTarget, rp=targetRp, sp=targetSp, p=True)
+            pc.xform(inTarget, rp=targetRp, sp=targetSp, rt=[0,0,0], p=True)
 
     else:#After years of fighting, use parent + scale constraint
         #print "New global Match"

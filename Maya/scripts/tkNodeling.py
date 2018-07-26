@@ -271,10 +271,10 @@ def formatScalar(inScalar):
     if isinstance(inScalar, (list,tuple)):
         return "_".join([formatScalar(scl) for scl in inScalar])
 
-    if inScalar <= EPSILON:
+    if abs(inScalar) <= EPSILON:
         return "eps"
-    elif inScalar >= OMEGA:
-        return "omg"
+    elif abs(inScalar) >= OMEGA:
+        return "omg" if inScalar > 0 else "minusOmg"
 
     return str(inScalar).replace(".", "dot").replace("-", "minus")
 
