@@ -1885,7 +1885,7 @@ def getChildren(node, recursive, filterNeutrals=True, filterProps=True, useIgnor
                         curChild = neutralChildren[0]
                 childrenFilteredNodes.append(curChild)
             else:
-                if not isNeutralPose(curChild):
+                if not filterNeutrals or not isNeutralPose(curChild):
                     childrenFilteredNodes.append(curChild)
 
     return childrenFilteredNodes
@@ -4562,7 +4562,7 @@ def getSelectedAttrs():
     if len(sel) > 0:
         attrs = pc.channelBox("mainChannelBox", query=True, sma=True)
     
-        if len(attrs) > 0:
+        if not attrs is None and len(attrs) > 0:
             for selObj in sel:
                 for selAttr in attrs:
                     if pc.attributeQuery(selAttr, node=selObj, exists=True):
@@ -4574,11 +4574,13 @@ def getConnectionsRecur(inNode, inSource=False, inDestination=True, inAlreadyCol
     if inAlreadyCollected is None:
         inAlreadyCollected = []
 
-    cons = [con for con in pc.listConnections(source=inSource, destination=inDestination, plugs=True) if(inAlreadyCollected is None or not con in inAlreadyCollected)]
-
+    cons = [con for con in pc.listConnections(inNode, source=inSource, destination=inDestination) if(inAlreadyCollected is None or not con in inAlreadyCollected)]
+    
+    inAlreadyCollected.extend(cons)
+    
     thisCons = cons[:]
     for con in thisCons:
-        cons.extend(getConnectionsRecur(con, inSource=inSource, inDestination=inDestination, inAlreadyCollected=cons))
+        cons.extend(getConnectionsRecur(con, inSource=inSource, inDestination=inDestination, inAlreadyCollected=inAlreadyCollected))
 
     return cons
 
@@ -4588,7 +4590,7 @@ def graphAttrs(inAttrs=None, inSource=False, inDestination=True, inMaxDepth=100,
 
     if len(inAttrs) == 0:
         pc.warning("No attributes given !")
-        return
+        return []
 
     collectedNodes = []
 
@@ -4605,8 +4607,8 @@ def graphAttrs(inAttrs=None, inSource=False, inDestination=True, inMaxDepth=100,
         
         nodeEd = pc.mel.eval("nodeEditorWindow")
         pc.select(allNodes)
-        pc.nodeEditor(nodeEd, edit=True, traversalDepthLimit=0)
-        pc.nodeEditor(nodeEd, edit=True, addNode="")
+        pc.nodeEditor(nodeEd, edit=True, createTab=[-1], traversalDepthLimit=0)
+        pc.evalDeferred("pc.nodeEditor(\""+nodeEd+"\", edit=True, addNode=\"\")")
         
     return collectedNodes
 
