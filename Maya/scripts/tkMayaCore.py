@@ -4345,6 +4345,7 @@ def removeUnusedInfs(inSkin, inInfs=None):
 type_priority = {
     "blendShape":10,
     "skinCluster":20,
+    "shrinkWrap":25,
     "ffd":30
 }
 
