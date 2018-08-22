@@ -279,7 +279,7 @@ def OscarRemoveControls(inControls, inHide=True, ns="*"):
                     modified = True
                     value = value.replace(foundValue, "")
 
-                    if hide and not control in hidden:
+                    if inHide and not control in hidden:
                         OscarHide(control)
                         hidden.append(control)
 

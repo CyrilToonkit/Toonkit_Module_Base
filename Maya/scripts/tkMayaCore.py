@@ -4987,14 +4987,6 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
                 node = shape
             else:
                 node = node.name()
-
-        """
-        if not pc.getAttr(node + ".overrideEnabled", settable=True):
-            pc.warning(node + ".overrideEnabled already connected !")
-            return
-    
-        pc.setAttr(node + ".overrideEnabled", True)
-        """
     else:
         if not pc.getAttr(node + ".visibility", settable=True):
             pc.warning(node + ".visibility already connected !")
@@ -5015,14 +5007,12 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
                     newCode = oldCodeSplit[0] + "=" + oldCodeSplit[1] + " * " + finalExpr
                     pc.delete(cons[0])
                     pc.expression(s=newCode, name=exprName)
-                    print "setExpression0",newCode
         #else:
             #print "Unknown connection Type " + cons[0].type()
     else:
         if direct:
             if specValue == None:
                 pc.connectAttr(strSourceParam, node + paramName)
-                print "connectAttr0",strSourceParam,node + paramName
             else:
                 condition = pc.createNode("condition", name=node.name() + "_vis_cond")
                 pc.connectAttr(strSourceParam, condition.firstTerm)
@@ -5030,10 +5020,8 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
                 pc.setAttr(condition.colorIfFalse.colorIfFalseR, 0)
                 pc.setAttr(condition.colorIfTrue.colorIfTrueR, 1)
                 pc.connectAttr(condition.outColor.outColorR, node.name() + paramName)
-                print "connectAttr1"
         else:
             setExpression(node + paramName, finalExpr)
-            print "setExpression1",node + paramName,finalExpr
 
 def unLinkVisibility(node):
     shape = node.getShape()
