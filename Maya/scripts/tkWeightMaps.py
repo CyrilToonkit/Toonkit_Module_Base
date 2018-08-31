@@ -130,7 +130,7 @@ def setWeightsMap(inObj, inAttrName, inRefObjects=None, inMode=0, inSetter=0, in
             if i in components:
                 v = opacities[components.index(i)]
                 if inReverse:
-                    v = 1 - (v * -1)
+                    v = 1 + (v * -1)
                 attr[i].set(v)
             else:
                 attr[i].set(1.0 if inReverse else 0.0)

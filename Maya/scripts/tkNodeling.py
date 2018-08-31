@@ -54,6 +54,13 @@ print tkn.compileNodes(expr)
 
 #Expression conversion
 print tkn.convertExpression(pc.selected()[0])
+
+#TODO
+
+multMatrix
+composeMatrix
+decomposeMatrix
+
 """
 
 import os
