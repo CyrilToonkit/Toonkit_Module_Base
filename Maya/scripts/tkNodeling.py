@@ -59,7 +59,6 @@ print tkn.convertExpression(pc.selected()[0])
 
 multMatrix
 composeMatrix
-decomposeMatrix
 
 """
 
@@ -69,7 +68,6 @@ import re
 import logging
 
 import tkExpressions as tke
-
 import pymel.core as pc
 
 import tkMayaCore as tkc
@@ -679,15 +677,33 @@ def div(inAttr1, inAttr2, inName=None, **kwargs):
 @profiled
 def clamp(inAttr, inMin=0.0, inMax=1.0, inName=None, **kwargs):
     inAttr = getNode(inAttr)
+    inMin = getNode(inMin)
+    inMax = getNode(inMax)
 
-    nodeName = inName or reduceName(CLAMP_FORMAT.format(formatAttr(inAttr), formatScalar(inMin), formatScalar(inMax)))
+    inAttrScalar = isinstance(inAttr, (int,float))
+    attrMinScalar = isinstance(inMin, (int,float))
+    attrMaxScalar = isinstance(inMax, (int,float))
+
+    nodeName = inName or reduceName(CLAMP_FORMAT.format(formatScalar(inAttr) if inAttrScalar else formatAttr(inAttr), formatScalar(inMin) if attrMinScalar else formatAttr(inMin), formatScalar(inMax) if attrMaxScalar else formatAttr(inMax)))
     if pc.objExists(nodeName):
         return pc.PyNode(nodeName).outputR
 
     node = create("clamp", nodeName, **kwargs)
-    node.minR.set(inMin)
-    node.maxR.set(inMax)
-    inAttr >> node.inputR
+
+    if attrMinScalar:
+        node.minR.set(inMin)
+    else:
+        inMin >> node.minR
+
+    if attrMaxScalar:
+        node.maxR.set(inMax)
+    else:
+        inMax >> node.maxR
+
+    if inAttrScalar:
+        node.inputR.set(inAttr)
+    else:
+        inAttr >> node.inputR
 
     return node.outputR
 
@@ -768,20 +784,7 @@ def mod(inAttr1, inAttr2, inName=None, **kwargs):
 
 # Vectors / Matrices
 #################################################################################
-
-@profiled
-def decomposeMatrix(inAttr, inName=None, **kwargs):
-    inAttr = getNode(inAttr)
-
-    nodeName = inName or reduceName(DECMAT_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
-        return pc.PyNode(nodeName)
-    
-    node = create("decomposeMatrix", nodeName, **kwargs)
-    inAttr >> node.inputMatrix
-    
-    return node
-
+""" DEPRECATE
 @profiled
 def composeMatrix(inTranslation, inRotation, inName=None, **kwargs):
     inTranslation = getNode(inTranslation)
@@ -796,6 +799,61 @@ def composeMatrix(inTranslation, inRotation, inName=None, **kwargs):
     inRotation >> node.inputRotate
     
     return node.outputMatrix
+"""
+
+@profiled
+def composeMatrix(inT, inR, inS, inScale=[1.0,1.0,1.0], inName=None, **kwargs):
+    inTAttr = getNode(inT)
+    inRAttr = getNode(inR)
+    inSAttr  = getNode(inS)
+
+    inTScalar = isinstance(inTAttr, (list,tuple))
+    inRScalar = isinstance(inRAttr, (list,tuple))
+    inSScalar = isinstance(inSAttr, (list,tuple))
+
+    nodeName = inName
+
+    if inName is None:
+        inTName = formatScalar(inTAttr) if inTScalar else formatAttr(inTAttr)
+        inRName = formatScalar(inRAttr) if inRScalar else formatAttr(inRAttr)
+        inSName = formatScalar(inSAttr) if inSScalar else formatAttr(inSAttr)
+
+        nodeName = reduceName(COMPMAT_FORMAT.format("{0}_{1}_{2}".format(inTName, inRName, inSName)))
+
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName).outputMatrix
+    
+    compose = create("composeMatrix", nodeName, **kwargs)
+
+    if inTScalar:
+        compose.inputTranslate.set(inTAttr)
+    else:
+        inTAttr >> compose.inputTranslate
+
+    if inRScalar:
+        compose.inputRotate.set(inRAttr)
+    else:
+        inRAttr >> compose.inputRotate
+    
+    if inSScalar:
+        compose.inputScale.set(inSAttr)
+    else:
+        inSAttr >> compose.inputScale
+
+    return compose.outputMatrix
+
+@profiled
+def decomposeMatrix(inAttr, inName=None, **kwargs):
+    inAttr = getNode(inAttr)
+
+    nodeName = inName or reduceName(DECMAT_FORMAT.format(formatAttr(inAttr)))
+    if pc.objExists(nodeName):
+        return pc.PyNode(nodeName)
+    
+    node = create("decomposeMatrix", nodeName, **kwargs)
+    inAttr >> node.inputMatrix
+    
+    return node
 
 @profiled
 def worldMatrix(inObj, inName=None, **kwargs):
@@ -1317,7 +1375,7 @@ def createProximitiesSystemOnSelection(inResultObjName="RESULTS", inResultAttrFo
 #################################################################################
 
 EXPR_INSTANCE = None
-RESULT_RE = re.compile("^\s*(.*)\s*=\s*")
+RESULT_RE = re.compile("^\s*([^= ]*)\s*=\s*")
 IF_RE = re.compile("\s*if\s*\(\s*(.*)\s*\)[\S\s]*?({)")
 
 def findEnclosed(inString, inStart, inStartChar ="{", inEndChar ="}"):
@@ -1392,6 +1450,9 @@ def convertIf(inString, inStartChar ="{", inEndChar ="}"):
 
     return inString
 
+def convertNot(inString):
+    return re.sub("!(?!=)", "~", inString)
+
 class NodalTerm(tke.Term):
 
     def __init__(self, value=None):
@@ -1456,7 +1517,6 @@ class NodalExpr(tke.Expr):
     def compile(self, inExpr, inDeleteUnused=False):
         result = None
         regResult = RESULT_RE.match(inExpr)
-
         if not regResult is None:
             result = getNode(regResult.groups()[0])
             inExpr = inExpr[len(regResult.group()):]
@@ -1496,7 +1556,7 @@ def convertExpressionString(inString, inDeleteUnused=False):
     nodes = []
 
     for expr in exprs:
-        nodes.append(compileNodes(expr))
+        nodes.append(compileNodes(convertNot(expr)))
 
     if inDeleteUnused:
         tkc.deleteUnusedNodes()
@@ -1510,9 +1570,29 @@ def convertExpression(inExpr, inDeleteUnused=False):
         pc.warning("Cannot convert {0} to nodes (Not an expression !)".format(inExpr))
         return
 
-    nodes = convertExpressionString(inExpr.getString())
+    exprString = inExpr.getString()
 
-    pc.delete(inExpr)
+    cons = inExpr.output[0].listConnections(plugs=True)
+    if len(cons) != 1:
+        print "Can't convert, no output ! ({0}, '{1}'')".format(inExpr,exprString)
+        return []
+
+    lock = cons[0].isLocked()
+    cons[0].setLocked(False)
+
+    if ".O[0]" in exprString:
+        exprString = exprString.replace(".O[0]", cons[0])
+
+    nodes = []
+
+    try:
+        nodes = convertExpressionString(exprString)
+        pc.delete(inExpr)
+    except Exception as e:
+        pc.warning("Can't convert : '" + exprString + "'\n" + str(e))
+
+    if lock:
+        cons[0].setLocked(True)
 
     if inDeleteUnused:
         tkc.deleteUnusedNodes()

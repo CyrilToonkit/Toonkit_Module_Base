@@ -58,7 +58,6 @@ Expr = tke.Expr
 expr = "(1 + 2) * 3.1416 + TOTO"
 
 print Expr().compile(expr)
-
 """
 import math
 import re
@@ -68,7 +67,8 @@ import sys
 __author__ = "Cyril GIBAUD - Toonkit"
 
 logger = logging.getLogger("tkExpressions")
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.WARNING)
+
 
 # Values
 #################################################################################
@@ -110,6 +110,13 @@ class Term(object):
 
     #Unary
     @verbosed
+    def __invert__(self):
+        if Expr.objectIsNumber(self.value):
+            return self.__class__(not self.value)
+
+        return self.__class__(self.reverse())
+
+    @verbosed
     def __neg__(self):
         if Expr.objectIsNumber(self.value):
             return self.__class__(-self.value)
@@ -124,6 +131,33 @@ class Term(object):
         return self.__class__(self.abs())
 
     #Binary
+
+    #Comparison
+    @verbosed
+    def __eq__(self, other):
+        return self.__class__(self.cond("==", other, self.__class__(1), self.__class__(0)))
+
+    @verbosed
+    def __ne__(self, other):
+        return self.__class__(self.cond("!=", other, self.__class__(1), self.__class__(0)))
+
+    @verbosed
+    def __lt__(self, other):
+        return self.__class__(self.cond("<", other, self.__class__(1), self.__class__(0)))
+
+    @verbosed
+    def __gt__(self, other):
+        return self.__class__(self.cond(">", other, self.__class__(1), self.__class__(0)))
+
+    @verbosed
+    def __le__(self, other):
+        return self.__class__(self.cond("<=", other, self.__class__(1), self.__class__(0)))
+
+    @verbosed
+    def __ge__(self, other):
+        return self.__class__(self.cond(">=", other, self.__class__(1), self.__class__(0)))
+
+    #Operations
     @verbosed
     def __add__(self, other):
         if Expr.objectIsNumber(self.value) and Expr.objectIsNumber(other.value):
@@ -344,7 +378,7 @@ class Term(object):
 
 class Expr(object):
     
-    OPERATORS = ["(", ")", "+", "\\-", "*", "/", ",", ">", "<", "=", "!", "%"]
+    OPERATORS = ["(", ")", "+", "\\-", "*", "/", ",", ">", "<", "=", "!", "%", "~"]
 
     SPLITTER = re.compile("[ " + "".join(OPERATORS) + "]+")
 
@@ -357,6 +391,7 @@ class Expr(object):
 
     WORDS = {
         ".":"Dot",
+        ":":"DDot",
         "0":"Zero",
         "1":"One",
         "2":"Two",
@@ -419,6 +454,7 @@ class Expr(object):
         local_vars = {}
 
         terms = sorted(Expr.getTerms(inExpr), key=lambda x: len(x), reverse=True)
+        #print "terms",terms
         logger.debug("terms:{0}".format(terms))
 
         for term in terms:
