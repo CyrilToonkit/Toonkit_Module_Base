@@ -2715,8 +2715,8 @@ def getConstraintTargets(inCons):
         if len(cons) > 0:
             targets.append(cons[0])
     else:
-        targets = pc.listConnections(inCons.name() + ".target", destination=False, type=["transform","joint","mesh"], exactType=True)
-    
+        targets = [c.node() for c in pc.listConnections(inCons.name() + ".target", destination=False, type=["transform","joint","mesh"], exactType=True, plugs=True) if "matrix" in c.name().lower()]
+
     cleanedTargets = []
     for source in targets:
         if not source in cleanedTargets:

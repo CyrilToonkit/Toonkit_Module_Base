@@ -1,3 +1,6 @@
+import os
+import re
+
 import OscarZmqMayaString as ozms
 
 import pymel.core as pc
@@ -13,6 +16,7 @@ def evaluate(inFrames=100):
 
     return fps
 
+"""
 def createConstraintsBenchmark(inNumber=100):
     objs = []
 
@@ -31,57 +35,158 @@ def createConstraintsBenchmark(inNumber=100):
             fakeConstrain2(obj, objs[i-1])
 
         i += 1
+"""
 
-def matrixConstrain(inTarget, inSource):
+#tkc
+def getAllConnections(inAttr):
+    cons = inAttr.listConnections(source=True, destination=True, plugs=True, connections=True)
+
+    if len(cons) == 0 and inAttr.isCompound():
+        childAttrs = inAttr.children()
+        for childAttr in childAttrs:
+            cons.extend(childAttr.listConnections(source=True, destination=True, plugs=True, connections=True))
+
+    return cons
+
+#tkc
+def getConstraintConnections(inCns):
+    cons = []
+
+    if inCns.type() == "parentConstraint":
+        cons.extend(getAllConnections(inCns.target[0].targetOffsetTranslate))
+        cons.extend(getAllConnections(inCns.target[0].targetOffsetRotate))
+    elif inCns.type() == "scaleConstraint":
+        cons.extend(getAllConnections(inCns.offset))
+
+    return cons
+
+def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=None, inOffsetS=None, inForceOffset=False):
+    createdNodes = []
 
     matrixOut = None
 
-    offset = pc.group(name=inSource + "_offset_MARKER", empty=True)
-    inSource.addChild(offset)
-    tkc.matchTRS(offset, inTarget)
+    offsets = [inOffsetT or [0.0,0.0,0.0], inOffsetR or [0.0,0.0,0.0], inOffsetS or [1.0,1.0,1.0]]
+
+    autodetect = inOffsetT is None or inOffsetR is None or (inScale and inOffsetS is None)
+    if autodetect:
+        offset = pc.group(name=inSource + "_offset_MARKER", empty=True)
+        inSource.addChild(offset)
+        tkc.matchTRS(offset, inTarget)
     
-    offseted = not (tkc.listsBarelyEquals(offset.getTranslation(), [0.0,0.0,0.0]) and
-                tkc.listsBarelyEquals(ozms.getPymelRotation(offset), [0.0,0.0,0.0]) and
-                tkc.listsBarelyEquals(offset.getScale(), [1.0,1.0,1.0]))
+        offsets = [inOffsetT or list(offset.getTranslation()), inOffsetR or list(ozms.getPymelRotation(offset)), inOffsetS or list(offset.getScale())]
+
+        pc.delete(offset)
+
+    offseted = inForceOffset or not (tkc.listsBarelyEquals(offsets[0], [0.0,0.0,0.0]) and
+                tkc.listsBarelyEquals(offsets[1], [0.0,0.0,0.0]) and
+                tkc.listsBarelyEquals(offsets[2], [1.0,1.0,1.0]))
+
+    if not tkc.listsBarelyEquals(offsets[2], [1.0,1.0,1.0]):
+        print inSource,">>",inTarget,"have scale offsets",offsets[2]
 
     if offseted:
-        composeOut = tkn.composeMatrix(list(offset.t.get()), list(offset.r.get()), list(offset.s.get()))
-
-        """
-        offset_Mul = tkn.create("multMatrix", inSource + "_offset_Mul")
-        compose.outputMatrix >> offset_Mul.matrixIn[0]
-        inSource.worldMatrix[0] >> offset_Mul.matrixIn[1]
-        """
+        composeOut = tkn.composeMatrix(offsets[0], offsets[1], offsets[2])
+        createdNodes.append(composeOut.node())
         matrixOut = tkn.mul(composeOut, inSource.worldMatrix[0])#offset_Mul.matrixSum
+        createdNodes.append(matrixOut.node())
     else:
         matrixOut = inSource.worldMatrix[0]
 
-    pc.delete(offset)
+    invertMul = tkn.mul(matrixOut, inTarget.parentInverseMatrix[0])
+    createdNodes.append(invertMul.node())
 
-    """
-    multInvParent = tkn.create("multMatrix", inTarget + "_multInvParent")
-    matrixOut >> multInvParent.matrixIn[0]
-    inTarget.parentInverseMatrix[0] >> multInvParent.matrixIn[1]
-    """
+    decompMatrix = tkn.decomposeMatrix(invertMul)
+    createdNodes.append(decompMatrix)
 
-    decompMatrix = tkn.decomposeMatrix(tkn.mul(matrixOut, inTarget.parentInverseMatrix[0]))#multInvParent.matrixSum)
-    
     decompMatrix.outputTranslate >> inTarget.translate
     decompMatrix.outputRotate >> inTarget.rotate
-    decompMatrix.outputScale >> inTarget.scale
+    if inScale:
+        decompMatrix.outputScale >> inTarget.scale
 
-def replaceConstraint(inConstraint, inTarget, inSource):
+    return createdNodes
+
+CONS_LINKS = {
+    "targetOffsetTranslate":"inputTranslate",
+
+    "targetOffsetTranslateX":"inputTranslateX",
+    "targetOffsetTranslateY":"inputTranslateY",
+    "targetOffsetTranslateZ":"inputTranslateZ",
+
+    "targetOffsetRotate":"inputRotate",
+    "targetOffsetRotateX":"inputRotateX",
+    "targetOffsetRotateY":"inputRotateY",
+    "targetOffsetRotateZ":"inputRotateZ",
+
+    "offset":"inputScale",
+    "offsetX":"inputScaleX",
+    "offsetY":"inputScaleY",
+    "offsetZ":"inputScaleZ"
+}
+
+def replaceConstraint(inConstraint, inTarget=None, inSource=None):
+
+    inSource = inSource or tkc.getConstraintTargets(inConstraint)[0]
+    inTarget = inTarget or tkc.getConstraintOwner(inConstraint)[0]
+
+    offsets = [list(inConstraint.target[0].targetOffsetTranslate.get()), list(inConstraint.target[0].targetOffsetRotate.get()), [1.0,1.0,1.0]]
+
+    cons = getConstraintConnections(inConstraint)
+    sclCons = []
+
     pc.delete(inConstraint)
 
+    haveScale = False
     constraints = tkc.getConstraints(inTarget)
     for constraint in constraints:
         if constraint.type() == "scaleConstraint" and inSource in tkc.getConstraintTargets(constraint):
-            pc.delete(constraint)
+            haveScale = True
+            #Search if weight is not 1.0 and/or connected
+            udParams = tkc.getParameters(constraint)
+            for udParam in udParams:
+                if re.match("^w[0-9]+$", udParam):#It's a weight !
+                    if not tkc.doubleBarelyEquals(constraint.attr(udParam).get(), 1.0) or len(constraint.attr(udParam).listConnections()) > 0: 
+                        haveScale = False
+
+            if haveScale:
+                #offsets[2] = list(constraint.offset.get())
+                sclCons = getConstraintConnections(constraint)
+                pc.delete(constraint)
+
             break
 
-    matrixConstrain(inTarget, inSource)
+    haveConnections = (len(cons) + len(sclCons)) > 0
 
-def replaceConstraints():
+    #createdNodes = matrixConstrain(inTarget, inSource, haveScale, offsets[0], offsets[1], offsets[2], inForceOffset=haveConnections)
+    createdNodes = matrixConstrain(inTarget, inSource, haveScale, inForceOffset=haveConnections)
+
+    #Re-link offset connections
+    if haveConnections:
+        for linkInput, linkOutput in cons:
+            newInput = CONS_LINKS.get(linkInput.split(".")[-1])
+            if not newInput is None:
+                linkOutput >> createdNodes[0].attr(newInput)
+            else:
+                pc.warning("Can't reconnect {0} >> {1}".format(linkOutput, linkInput))
+
+        for linkInput, linkOutput in sclCons:
+            newInput = CONS_LINKS.get(linkInput.split(".")[-1])
+            if not newInput is None:
+                linkOutput >> createdNodes[0].attr(newInput)
+            else:
+                pc.warning("Can't reconnect {0} >> {1}".format(linkOutput, linkInput))
+
+def replaceConstraints(inDebugFolder=None):
+    debugCounter = 0
+
+    if not inDebugFolder is None:
+        if not os.path.isdir(inDebugFolder):
+            os.makedirs(inDebugFolder)
+        else:
+            tkc.emptyDirectory(inDebugFolder)
+        print "DEBUG MODE ACTIVATED ({})".format(inDebugFolder)
+        tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+        debugCounter = debugCounter + 1
+
     parentCons = pc.ls(type="parentConstraint")
     print "parentCons", len(parentCons)
     
@@ -89,15 +194,25 @@ def replaceConstraints():
 
     for parentCon in parentCons:
         owner = tkc.getConstraintOwner(parentCon)[0]
-        
         targets = tkc.getConstraintTargets(parentCon)
-        if len(targets) == 1:
-            replaced.append(owner)
-            replaceConstraint(parentCon, owner, targets[0])
-        else:
-            print "Cannot replace : ",parentCon,"on",owner
 
-    print "replaced",replaced
+        if len(targets) == 1:
+
+            if owner.type() != "joint":
+
+                replaced.append(owner)
+                replaceConstraint(parentCon, owner, targets[0])
+
+                if not inDebugFolder is None:
+                    tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, parentCon.name().replace("|", "("))), start=1, end=1, width=1280, height=720)
+                    debugCounter = debugCounter + 1
+
+            else:
+                print "Cannot replace (owner is scaled joint): ",parentCon,"on",owner
+        else:
+            print "Cannot replace (multiple targets): ",parentCon,"on",owner
+
+    print "replaced",len(replaced),replaced
 
 #EXPRESSION REPLACEMENT
 #---------------------------------------------------
@@ -127,6 +242,6 @@ def convertExpressions():
             replaced.append(expr)
             tkn.convertExpression(expr)
         else:
-            print "Cannot replace : ",expr,exprString
+            print "Cannot replace (invalid item): ",expr,exprString
         
-    print "replaced",replaced
+    print "replaced",len(replaced),replaced
