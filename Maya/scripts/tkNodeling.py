@@ -1578,7 +1578,8 @@ def convertExpression(inExpr, inDeleteUnused=False):
         return []
 
     lock = cons[0].isLocked()
-    cons[0].setLocked(False)
+    if lock:
+        cons[0].setLocked(False)
 
     if ".O[0]" in exprString:
         exprString = exprString.replace(".O[0]", cons[0])

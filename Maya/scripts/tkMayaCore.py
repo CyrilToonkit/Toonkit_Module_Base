@@ -2755,7 +2755,7 @@ def getConstraintsUsing(inObject):
     filteredConstraints = []
     filteredNames = []
 
-    constraints = pc.listConnections(inObject, source=False, type=["constraint", "motionPath"])
+    constraints = pc.listConnections(inObject.attr("parentMatrix"), source=False, type=["constraint", "motionPath"])
 
     #In case of motionTrail the "cns" is on the shape
     shapes = getShapes(inObject)

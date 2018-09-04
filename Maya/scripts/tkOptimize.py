@@ -5,11 +5,65 @@ import OscarZmqMayaString as ozms
 
 import pymel.core as pc
 import tkMayaCore as tkc
+import tkRig
 import tkDevHelpers as tkdev
 import tkNodeling as tkn
 
+"""
+#IN ORDER
+
+#Diagnose
+tko.diagnose()
+
+#Evaluate
+tko.evaluate()
+
+
+
+#ConvertExpressions
+tko.convertExpressions()
+
+#PTTransforms
+tko.deletePTTransforms()
+
+#ConvertConstraints
+tko.replaceConstraints()
+
+#PTAttributes
+tko.deletePTAttributes("(.+_OSCAR_Attributes|.+_TK_CtrlsChannelsDic|.+_TK_CtrlsDic|.+_TK_KeySets|.+_TK_KeySetsTree|.+_TK_ParamsDic)$")
+
+#UselessTransforms
+tko.deleteUselessTransforms("(.+_OSCAR_Attributes|.+_TK_CtrlsChannelsDic|.+_TK_CtrlsDic|.+_TK_KeySets|.+_TK_KeySetsTree|.+_TK_ParamsDic)$")
+
+#UnusedNodes++
+tkc.deleteUnusedNodes()
+"""
+
+
 #BENCHMARKING
 #---------------------------------------------------
+def diagnose(inProps=["Objects",
+        "Transforms",
+        "Locators",
+        "Joints",
+        "Curves",
+        "Expressions",
+        "Expressions Characters",
+        "Constraints",
+        "parentConstraints",
+        "aimConstraints",
+        "orientConstraints",
+        "scaleConstraints",
+        "pointConstraints",
+        "poleVectorConstraints",
+        "motionPaths",
+        "Utilities"]):
+    
+    values = tkdev.Tester("SomeRig", "SomePath").getValues(*inProps)
+
+    for i in range(len(inProps)):
+        print "{0} : {1}".format(inProps[i],values[i])
+
 def evaluate(inFrames=100):
     fps = 100.0 / tkc.benchIt(tkdev.evaluate, inFrames)[0]
     print "{0} fps, {1} ms".format(fps, 1000.0/fps)
@@ -193,6 +247,8 @@ def replaceConstraints(inDebugFolder=None):
     replaced = []
 
     for parentCon in parentCons:
+        conName = parentCon.name().replace("|", "(")
+
         owner = tkc.getConstraintOwner(parentCon)[0]
         targets = tkc.getConstraintTargets(parentCon)
 
@@ -200,11 +256,32 @@ def replaceConstraints(inDebugFolder=None):
 
             if owner.type() != "joint":
 
-                replaced.append(owner)
+                replaced.append(owner.name())
                 replaceConstraint(parentCon, owner, targets[0])
 
+                #Reparent
+                #------------------
+                """
+                constraints = tkc.getConstraints(owner)
+                for constraint in constraints:
+                    if constraint.type() == "scaleConstraint" and targets[0] in tkc.getConstraintTargets(constraint):
+                        pc.delete(constraint)
+                        break
+
+                pc.delete(parentCon)
+
+                #Unlock the Transforms
+                attrs = ["tx","ty", "tz", "rx","ry","rz","sx","sy","sz"]
+                for attr in attrs:
+                   owner.attr(attr).setLocked(False) 
+
+                if owner.getParent() != targets[0]:
+                    targets[0].addChild(owner)
+                """
+                #------------------
+
                 if not inDebugFolder is None:
-                    tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, parentCon.name().replace("|", "("))), start=1, end=1, width=1280, height=720)
+                    tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, conName)), start=1, end=1, width=1280, height=720)
                     debugCounter = debugCounter + 1
 
             else:
@@ -239,9 +316,184 @@ def convertExpressions():
                 break
 
         if valid:
-            replaced.append(expr)
+            replaced.append(expr.name())
             tkn.convertExpression(expr)
         else:
             print "Cannot replace (invalid item): ",expr,exprString
-        
+
     print "replaced",len(replaced),replaced
+
+
+def getUselessTransforms(inExceptPattern=None):
+    uselessTransforms = []
+    
+    ts = pc.ls( exactType=["transform", "joint"])
+    
+    print len(ts)
+    
+    for t in ts:
+        #Pattern
+        if not inExceptPattern is None and re.match(inExceptPattern, t.name()):
+            continue
+
+        #Children
+        if len(t.getChildren()) > 0:
+            continue
+
+        #Connections
+        if len(t.listConnections(source=False, destination=True)) > 0:
+            print t,t.listConnections(source=False, destination=True)
+            continue
+    
+        uselessTransforms.append(t)
+        
+    return uselessTransforms
+
+def deleteUselessTransforms(inExceptPattern=None):
+    MAXITER = 7
+
+    deleted = []
+
+    uts = getUselessTransforms(inExceptPattern)
+    
+    if len(uts) == 0:
+        return 0
+
+    curIter = 0
+
+    while curIter < MAXITER:
+        nUts = len(uts)
+        deleted.extend([n.name() for n in uts])
+        pc.delete(uts)
+        uts = getUselessTransforms(inExceptPattern)
+
+        if nUts == 0:
+            print "deleteUselessTransforms",len(uts),uts
+            return deleted
+
+    print "deleteUselessTransforms",len(deleted),deleted
+    pc.warning("delete useless trasforms : Max iterations reached ({0})".format(MAXITER))
+    return deleted
+
+def deletePTTransforms(inExceptPattern=None):
+    uselessTransforms = []
+    
+    ts = pc.ls(exactType=["transform"])
+    
+    print len(ts)
+    
+    for t in ts:
+        #Pattern
+        if not inExceptPattern is None and re.match(inExceptPattern, t.name()):
+            continue
+
+        #Children
+        if len([c for c in t.getChildren() if not c.type().endswith("Constraint")]) > 0:
+            continue
+
+        #Constraints
+        cons = [c for c in tkc.getConstraints(t) if c.type() in ["parentConstraint", "scaleConstraint"]]
+        otherCons = [c for c in tkc.getConstraintsUsing(t) if c.type() in ["parentConstraint", "scaleConstraint"]]
+        
+        if len(cons) > 0 and len(otherCons) > 0:
+            if len(list(set(t.listConnections()))) != len(list(set(cons + otherCons))):
+                print "PTTransforms : Other connections :",t,list(set(t.listConnections())),list(set(cons + otherCons))
+                continue
+
+            if len(getConstraintConnections(inCns)) > 0:
+                print "PTTransforms : Input connections :",getConstraintConnections(inCns)
+                continue
+
+            outputCons = False
+            for otherCon in otherCons:
+                if len(getConstraintConnections(otherCon)) > 0:
+                    print "PTTransforms : Output connections :",getConstraintConnections(otherCon)
+                    outputCons=True
+                    break
+
+            if outputCons:
+                continue
+
+            uselessTransforms.append(t.name())
+
+    print "deletePTTransforms",len(uselessTransforms),uselessTransforms
+    return uselessTransforms
+
+def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
+    uselessAttributes = []
+    
+    ts = pc.ls(exactType=["transform"])
+    
+    for t in ts:
+        #Pattern
+        if not inExceptPattern is None and re.match(inExceptPattern, t.name()):
+            continue
+
+        uds = tkc.getParameters(t)
+        for ud in uds:
+
+
+            attr = t.attr(ud)
+
+            #Connections
+            cons = [p for p in attr.listConnections(source=True, destination=False, plugs=True) if not p.node().type() == "expression"]
+            otherCons = [p for p in attr.listConnections(source=False, destination=True, plugs=True) if not p.node().type() == "expression"]
+
+            if len(cons) > 0 and len(otherCons) > 0:
+                uselessAttributes.append(attr.name())
+
+                for otherCon in otherCons:
+                    lock = otherCon.isLocked()
+                    if lock:
+                        otherCon.setLocked(False)
+
+                    cons[0] >> otherCon
+
+                    if lock:
+                        otherCon.setLocked(True)
+
+                try:
+                    pc.deleteAttr(attr)
+                    uselessAttributes.append(attr.name())
+                except:
+                    pass
+
+            elif inDropStaticValues and not tkRig.isControl(t):
+                if len(otherCons) > 0:
+                    allSettable = True
+                    #Should be useless to filter expressions because filtered before
+                    """
+                    for otherCon in otherCons:
+                        if otherCon.node().type() == "expression":
+                            allSettable = False
+                            break
+                    """
+
+                    if allSettable:
+                        value = attr.get()
+                        for otherCon in otherCons:
+                            attr.disconnect(otherCon)
+                            otherCon.set(value)
+
+                        try:
+                            pc.deleteAttr(attr)
+                            uselessAttributes.append(attr.name())
+                        except:
+                            pass
+                else:
+                    try:
+                        pc.deleteAttr(attr)
+                        uselessAttributes.append(attr.name())
+                    except:
+                        pass
+
+    print "deletePTAttributes",len(uselessAttributes),uselessAttributes
+
+    return uselessAttributes
+
+"""
+uts = getUselessTransforms("(.+_OSCAR_Attributes|.+_TK_CtrlsChannelsDic|.+_TK_CtrlsDic|.+_TK_KeySets|.+_TK_KeySetsTree|.+_TK_ParamsDic)$")
+print len(uts),uts
+
+print deleteUselessTransforms("(.+_OSCAR_Attributes|.+_TK_CtrlsChannelsDic|.+_TK_CtrlsDic|.+_TK_KeySets|.+_TK_KeySetsTree|.+_TK_ParamsDic)$")
+"""
