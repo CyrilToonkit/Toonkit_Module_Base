@@ -321,7 +321,9 @@ class Tester(object):
             "Utilities":partial(self.filter, inName="Objects", inType=["addDoubleLinear", "blendColors",
                                                                 "condition", "curveInfo", "multDoubleLinear", "multiplyDivide",
                                                                 "reverse", "clamp", "plusMinusAverage", "distanceBetween",
-                                                                "remapValue", "setRange"]),
+                                                                "remapValue", "setRange", "decomposeMatrix", "composeMatrix",
+                                                                "multMatrix", "blendTwoAttr", "nearestPointOnCurve", "pairBlend",
+                                                                "vectorProduct", "distanceBetween", "wtAddMatrix"]),
             "Opening":partial(openNode, inPath=self.path),
             "Performance":partial(evaluateNode, inName=self.name, inPath=self.path)
         }
@@ -521,7 +523,7 @@ def setAnim(inObj, attr="tx", nFrames=100):
         cTime += 1
         pc.setKeyframe( inObj, attribute=attr, value=math.cos(cTime) * 2, t=cTime)
 
-def evaluate(nFrames=100, refresh=False):
+def evaluate(nFrames=100, refresh=True):
     cTime = 0
     for f in range(nFrames):
         cTime += 1

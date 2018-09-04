@@ -12,12 +12,23 @@ import tkNodeling as tkn
 """
 #IN ORDER
 
+import tkMayaCore as tkc
+import tkDevHelpers as tkdev
+import tkNodeling as tkn
+import tkExpressions as tke
+import tkOptimize as tko
+
+reload(tkc)
+reload(tkdev)
+reload(tkn)
+reload(tke)
+reload(tko)
+
 #Diagnose
 tko.diagnose()
 
 #Evaluate
 tko.evaluate()
-
 
 
 #ConvertExpressions
@@ -198,7 +209,8 @@ def replaceConstraint(inConstraint, inTarget=None, inSource=None):
             udParams = tkc.getParameters(constraint)
             for udParam in udParams:
                 if re.match("^w[0-9]+$", udParam):#It's a weight !
-                    if not tkc.doubleBarelyEquals(constraint.attr(udParam).get(), 1.0) or len(constraint.attr(udParam).listConnections()) > 0: 
+                    if not tkc.doubleBarelyEquals(constraint.attr(udParam).get(), 1.0) or len(constraint.attr(udParam).listConnections()) > 1: 
+                        #print "!! haveScale = False",constraint.attr(udParam).get(), tkc.doubleBarelyEquals(constraint.attr(udParam).get(), 1.0), constraint.attr(udParam).listConnections()
                         haveScale = False
 
             if haveScale:
@@ -252,42 +264,58 @@ def replaceConstraints(inDebugFolder=None):
         owner = tkc.getConstraintOwner(parentCon)[0]
         targets = tkc.getConstraintTargets(parentCon)
 
-        if len(targets) == 1:
-
-            if owner.type() != "joint":
-
-                replaced.append(owner.name())
-                replaceConstraint(parentCon, owner, targets[0])
-
-                #Reparent
-                #------------------
-                """
-                constraints = tkc.getConstraints(owner)
-                for constraint in constraints:
-                    if constraint.type() == "scaleConstraint" and targets[0] in tkc.getConstraintTargets(constraint):
-                        pc.delete(constraint)
-                        break
-
-                pc.delete(parentCon)
-
-                #Unlock the Transforms
-                attrs = ["tx","ty", "tz", "rx","ry","rz","sx","sy","sz"]
-                for attr in attrs:
-                   owner.attr(attr).setLocked(False) 
-
-                if owner.getParent() != targets[0]:
-                    targets[0].addChild(owner)
-                """
-                #------------------
-
-                if not inDebugFolder is None:
-                    tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, conName)), start=1, end=1, width=1280, height=720)
-                    debugCounter = debugCounter + 1
-
-            else:
-                print "Cannot replace (owner is scaled joint): ",parentCon,"on",owner
-        else:
+        #TODO : replace anyway
+        if len(targets) > 1:
             print "Cannot replace (multiple targets): ",parentCon,"on",owner
+            continue
+
+        #TODO : replace if joint have no scale ?
+        if owner.type() == "joint":
+            print "Cannot replace (owner is joint): ",parentCon,"on",owner
+            continue
+
+        if not tkc.listsBarelyEquals(list(owner.rp.get()), [0.0,0.0,0.0]):
+            print "Cannot replace (owner have scale pivots): ",parentCon,"on",owner
+            continue
+
+        targetPivots=False
+        for target in targets:
+            if not tkc.listsBarelyEquals(list(target.rp.get()), [0.0,0.0,0.0]):
+                print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner,
+                targetPivots=True
+
+        if targetPivots:
+            continue
+
+        replaced.append(owner.name())
+        replaceConstraint(parentCon, owner, targets[0])
+
+        #Reparent
+        #------------------
+        """
+        constraints = tkc.getConstraints(owner)
+        for constraint in constraints:
+            if constraint.type() == "scaleConstraint" and targets[0] in tkc.getConstraintTargets(constraint):
+                pc.delete(constraint)
+                break
+
+        pc.delete(parentCon)
+
+        #Unlock the Transforms
+        attrs = ["tx","ty", "tz", "rx","ry","rz","sx","sy","sz"]
+        for attr in attrs:
+           owner.attr(attr).setLocked(False) 
+
+        if owner.getParent() != targets[0]:
+            targets[0].addChild(owner)
+        """
+        #------------------
+
+        if not inDebugFolder is None:
+            tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, conName)), start=1, end=1, width=1280, height=720)
+            debugCounter = debugCounter + 1
+
+    #TODO : point constraints ?
 
     print "replaced",len(replaced),replaced
 
