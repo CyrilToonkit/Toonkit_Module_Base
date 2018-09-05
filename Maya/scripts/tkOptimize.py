@@ -81,7 +81,6 @@ def evaluate(inFrames=100):
 
     return fps
 
-"""
 def createConstraintsBenchmark(inNumber=100):
     objs = []
 
@@ -93,14 +92,12 @@ def createConstraintsBenchmark(inNumber=100):
     for obj in objs:
         if i > 0:
             #move
-            obj.tx.set(i*xOffset)
+            #obj.tx.set(i*xOffset)
             
             #parent
-            #tkc.constrain(obj, objs[i-1])
-            fakeConstrain2(obj, objs[i-1])
-
+            tkc.constrain(obj, objs[i-1], "Position")
+            #matrixPointConstrain(obj, objs[i-1], [0.0,0.0,0.0])
         i += 1
-"""
 
 #tkc
 def getAllConnections(inAttr):
@@ -146,9 +143,6 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
                 tkc.listsBarelyEquals(offsets[1], [0.0,0.0,0.0]) and
                 tkc.listsBarelyEquals(offsets[2], [1.0,1.0,1.0]))
 
-    if not tkc.listsBarelyEquals(offsets[2], [1.0,1.0,1.0]):
-        print inSource,">>",inTarget,"have scale offsets",offsets[2]
-
     if offseted:
         composeOut = tkn.composeMatrix(offsets[0], offsets[1], offsets[2])
         createdNodes.append(composeOut.node())
@@ -167,6 +161,47 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
     decompMatrix.outputRotate >> inTarget.rotate
     if inScale:
         decompMatrix.outputScale >> inTarget.scale
+
+    return createdNodes
+
+#Does not work with offsets !!
+def matrixPointConstrain(inTarget, inSource, inOffsetT=None, inForceOffset=False):
+    createdNodes = []
+
+    matrixOut = None
+
+    offset = inOffsetT or [0.0,0.0,0.0]
+
+    autodetect = inOffsetT is None
+    if autodetect:
+        offset = pc.group(name=inSource + "_offset_MARKER", empty=True)
+        offsetChild = pc.group(name=inSource + "_offset_MARKER_CHILD", empty=True)
+
+        offset.addChild(offsetChild)
+        tkc.matchT(offset, inSource)
+        tkc.matchT(offsetChild, inTarget)
+
+        offset = list(offsetChild.getTranslation())
+
+        pc.delete(offset)
+
+    offseted = inForceOffset or not tkc.listsBarelyEquals(offset, [0.0,0.0,0.0])
+
+    if offseted:
+        composeOut = tkn.composeMatrix(offset, [0.0,0.0,0.0], [1.0,1.0,1.0])
+        createdNodes.append(composeOut.node())
+        matrixOut = tkn.mul(composeOut, inSource.worldMatrix[0])#offset_Mul.matrixSum
+        createdNodes.append(matrixOut.node())
+    else:
+        matrixOut = inSource.worldMatrix[0]
+
+    invertMul = tkn.mul(matrixOut, inTarget.parentInverseMatrix[0])
+    createdNodes.append(invertMul.node())
+
+    decompMatrix = tkn.decomposeMatrix(invertMul)
+    createdNodes.append(decompMatrix)
+
+    decompMatrix.outputTranslate >> inTarget.translate
 
     return createdNodes
 
@@ -253,8 +288,8 @@ def replaceConstraints(inDebugFolder=None):
         tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
         debugCounter = debugCounter + 1
 
-    parentCons = pc.ls(type="parentConstraint")
-    print "parentCons", len(parentCons)
+    parentCons = pc.ls(type=["parentConstraint","pointConstraint"])
+    print "Constraints", len(parentCons)
     
     replaced = []
 
@@ -264,31 +299,55 @@ def replaceConstraints(inDebugFolder=None):
         owner = tkc.getConstraintOwner(parentCon)[0]
         targets = tkc.getConstraintTargets(parentCon)
 
-        #TODO : replace anyway
-        if len(targets) > 1:
-            print "Cannot replace (multiple targets): ",parentCon,"on",owner
+        if len(targets) == 0:
+            print "Cannot replace (NO TARGETS): ",parentCon,"on",owner
             continue
 
-        #TODO : replace if joint have no scale ?
-        if owner.type() == "joint":
-            print "Cannot replace (owner is joint): ",parentCon,"on",owner
-            continue
+        if parentCon.type() == "pointConstraint":
+            #TODO : replace anyway
+            if len(targets) > 1:
+                #print "Cannot replace (multiple targets): ",parentCon,"on",owner
+                continue
 
-        if not tkc.listsBarelyEquals(list(owner.rp.get()), [0.0,0.0,0.0]):
-            print "Cannot replace (owner have scale pivots): ",parentCon,"on",owner
-            continue
+            #TODO : replace anyway
+            if len(parentCon.offset.listConnections()) > 0:
+                #print "Cannot replace (position offset with connections): ",parentCon,"on",owner
+                continue
 
-        targetPivots=False
-        for target in targets:
-            if not tkc.listsBarelyEquals(list(target.rp.get()), [0.0,0.0,0.0]):
-                print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner,
-                targetPivots=True
+            #TODO : replace anyway
+            if not tkc.listsBarelyEquals(parentCon.offset.get(), [0.0,0.0,0.0]):
+                #print "Cannot replace (position with offset): ",parentCon,"on",owner
+                continue
 
-        if targetPivots:
-            continue
+            replaced.append(owner.name())
+            pc.delete(parentCon)
+            matrixPointConstrain(owner, targets[0], [0.0,0.0,0.0])
+        elif parentCon.type() == "parentConstraint":
+            #TODO : replace anyway
+            if len(targets) > 1:
+                #print "Cannot replace (multiple targets): ",parentCon,"on",owner
+                continue
 
-        replaced.append(owner.name())
-        replaceConstraint(parentCon, owner, targets[0])
+            #TODO : replace if joint have no scale ?
+            if owner.type() == "joint":
+                #print "Cannot replace (owner is joint): ",parentCon,"on",owner
+                continue
+
+            if not tkc.listsBarelyEquals(list(owner.rp.get()), [0.0,0.0,0.0]):
+                print "Cannot replace (owner have scale pivots): ",parentCon,"on",owner
+                continue
+
+            targetPivots=False
+            for target in targets:
+                if not tkc.listsBarelyEquals(list(target.rp.get()), [0.0,0.0,0.0]):
+                    print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner,
+                    targetPivots=True
+
+            if targetPivots:
+                continue
+
+            replaced.append(owner.name())
+            replaceConstraint(parentCon, owner, targets[0])
 
         #Reparent
         #------------------
@@ -314,8 +373,6 @@ def replaceConstraints(inDebugFolder=None):
         if not inDebugFolder is None:
             tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, conName)), start=1, end=1, width=1280, height=720)
             debugCounter = debugCounter + 1
-
-    #TODO : point constraints ?
 
     print "replaced",len(replaced),replaced
 
@@ -460,12 +517,21 @@ def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
         uds = tkc.getParameters(t)
         for ud in uds:
 
-
             attr = t.attr(ud)
 
             #Connections
-            cons = [p for p in attr.listConnections(source=True, destination=False, plugs=True) if not p.node().type() == "expression"]
-            otherCons = [p for p in attr.listConnections(source=False, destination=True, plugs=True) if not p.node().type() == "expression"]
+            cons = attr.listConnections(source=True, destination=False, plugs=True)
+            otherCons = attr.listConnections(source=False, destination=True, plugs=True)
+
+            haveExpr = False
+            for con in cons + otherCons:
+                if con.node().type() == "expression":
+                    print "Attribute '{0}' still have expression ('{1}') !".format(attr, con.node())
+                    haveExpr = True
+                    break
+
+            if haveExpr:
+                continue
 
             if len(cons) > 0 and len(otherCons) > 0:
                 uselessAttributes.append(attr.name())

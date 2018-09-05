@@ -401,18 +401,24 @@ def add(inAttr1, inAttr2, inName=None, **kwargs):
     inAttr1 = getNode(inAttr1)
     inAttr2 = getNode(inAttr2)
 
-    attr1Scalar = isinstance(inAttr1, (int,float))
-    attr2Scalar = isinstance(inAttr2, (int,float))
+    attr1Vector = isinstance(inAttr1, list)
+    attr2Vector = isinstance(inAttr2, list)
+
+    attr1Scalar = attr1Vector or isinstance(inAttr1, (int,float))
+    attr2Scalar = attr2Vector or isinstance(inAttr2, (int,float))
 
     attr1Matrix = False
 
     ns = ""
     if not attr1Scalar:
         ns = str(inAttr1.node().namespace())
-        if inAttr1.type() is None or inAttr1.type() == "matrix":
-            attr1Matrix = True
+        attr1Vector = inAttr1.type() in ["double3", "float3"]
+        if not attr1Vector:
+            if inAttr1.type() is None or inAttr1.type() == "matrix":
+                attr1Matrix = True
     elif not attr2Scalar:
         ns = str(inAttr2.node().namespace())
+        attr2Vector = inAttr2.type() in ["double3", "float3"]
 
     attr1Name = formatScalar(inAttr1) if attr1Scalar else formatAttr(inAttr1, True)
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
@@ -421,32 +427,53 @@ def add(inAttr1, inAttr2, inName=None, **kwargs):
     if pc.objExists(nodeName):
         if attr1Matrix:
             return pc.PyNode(nodeName).matrixSum
+        elif attr1Vector or attr2Vector:
+            return pc.PyNode(nodeName).output3D
 
         return pc.PyNode(nodeName).output
 
     node = None
     out = None
 
-    if attr1Matrix:
-        node = create("wtAddMatrix", nodeName, **kwargs)
-        out = node.matrixSum
+    if attr1Vector or attr2Vector:
+        node = create("plusMinusAverage", nodeName, **kwargs)
+        node.operation.set(1)#Add
+        out = node.output3D
     else:
-        node = create("addDoubleLinear", nodeName, **kwargs)
-        out = node.output
+        if attr1Matrix:
+            node = create("wtAddMatrix", nodeName, **kwargs)
+            out = node.matrixSum
+        else:
+            node = create("addDoubleLinear", nodeName, **kwargs)
+            out = node.output
+
+    if attr1Matrix:
+        inAttr1 >> node.wtMatrix[0].matrixIn
+        inAttr2 >> node.wtMatrix[1].matrixIn
+
+        return out
 
     if attr1Scalar:
-        node.input1.set(inAttr1)
-    elif attr1Matrix:
-        inAttr1 >> node.wtMatrix[0].matrixIn
+        if attr2Vector:
+            node.input3D[0].set(inAttr1)
+        else:
+            node.input1.set(inAttr1)
     else:
-        inAttr1 >> node.input1
+        if attr2Vector:
+            inAttr1 >> node.input3D[0]
+        else:
+            inAttr1 >> node.input1
 
     if attr2Scalar:
-        node.input2.set(inAttr2)
-    elif attr1Matrix:
-        inAttr2 >> node.wtMatrix[1].matrixIn
+        if attr1Vector:
+            node.input3D[1].set(inAttr2)
+        else:
+            node.input2.set(inAttr2)
     else:
-        inAttr2 >> node.input2
+        if attr1Vector:
+            inAttr2 >> node.input3D[1]
+        else:
+            inAttr2 >> node.input2
 
     return out
 
@@ -563,14 +590,20 @@ def sub(inAttr1, inAttr2, inName=None, **kwargs):
     inAttr1 = getNode(inAttr1)
     inAttr2 = getNode(inAttr2)
 
-    attr1Scalar = isinstance(inAttr1, (int,float))
-    attr2Scalar = isinstance(inAttr2, (int,float))
+    attr1Vector = isinstance(inAttr1, list)
+    attr2Vector = isinstance(inAttr2, list)
+
+    attr1Scalar = attr1Vector or isinstance(inAttr1, (int,float))
+    attr2Scalar = attr2Vector or isinstance(inAttr2, (int,float))
 
     ns = ""
     if not attr1Scalar:
         ns = str(inAttr1.node().namespace())
-    elif not attr2Scalar:
+        attr1Vector = inAttr1.type() in ["double3", "float3"]
+
+    if not attr2Scalar:
         ns = str(inAttr2.node().namespace())
+        attr2Vector = inAttr2.type() in ["double3", "float3"]
 
     attr1Name = formatScalar(inAttr1) if attr1Scalar else formatAttr(inAttr1, True)
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
@@ -578,23 +611,54 @@ def sub(inAttr1, inAttr2, inName=None, **kwargs):
     nodeName = inName or ns + reduceName(SUBSTRACT_FORMAT.format(attr1Name, attr2Name))
     if pc.objExists(nodeName):
         node = pc.PyNode(nodeName)
-        if node.type() == "plusMinusAverage":
-            return node.output3D
+        
+        if attr1Vector or attr2Vector:
+            return pc.PyNode(nodeName).output3D
 
         return node.output
 
-    if not attr1Scalar and inAttr1.type() == "double3":
+    node = None
+    out = None
+
+    #print "attr1Vector",attr1Vector,"attr1Scalar",attr1Scalar
+    #print "attr2Vector",attr2Vector,"attr2Scalar",attr2Scalar
+
+    if attr1Vector or attr2Vector:
         node = create("plusMinusAverage", nodeName, **kwargs)
         node.operation.set(2)#Substract
-        inAttr1 >> node.input3D[0]
-        if attr2Scalar:
-            node.input3D[1].input3Dx.set(inAttr2)
-            node.input3D[1].input3Dy.set(inAttr2)
-            node.input3D[1].input3Dz.set(inAttr2)
-        else:
-            inAttr2 >> node.input3D[1]
+        out = node.output3D
 
-        return node.output3D
+        if attr1Vector:
+            if attr1Scalar:
+                node.input3D[0].input3D.set(inAttr1)
+            else:
+                inAttr1 >> node.input3D[0]
+        else:
+            if attr1Scalar:
+                node.input3D[0].input3Dx.set(inAttr1)
+                node.input3D[0].input3Dy.set(inAttr1)
+                node.input3D[0].input3Dz.set(inAttr1)
+            else:
+                inAttr1 >> node.input3D[0].input3Dx
+                inAttr1 >> node.input3D[0].input3Dy
+                inAttr1 >> node.input3D[0].input3Dz
+
+        if attr2Vector:
+            if attr2Scalar:
+                node.input3D[1].input3D.set(inAttr2)
+            else:
+                inAttr2 >> node.input3D[1]
+        else:
+            if attr2Scalar:
+                node.input3D[1].input3Dx.set(inAttr2)
+                node.input3D[1].input3Dy.set(inAttr2)
+                node.input3D[1].input3Dz.set(inAttr2)
+            else:
+                inAttr2 >> node.input3D[1].input3Dx
+                inAttr2 >> node.input3D[1].input3Dy
+                inAttr2 >> node.input3D[1].input3Dz
+
+        return out
     else:
         mulName = (inName + "_subsMul") if inName else None
         invert2 = mul(inAttr2, -1.0, inName=mulName)
