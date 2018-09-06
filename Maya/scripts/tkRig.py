@@ -1450,18 +1450,7 @@ def lockAttrs(inObj, inLock=True):
                 inObj.attr(subAttr).setKeyable(True)
                 #inObj.attr(subAttr).showInChannelBox(True)
 
-def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin=None, inDontReskin=None, inRemoveFollicles=True, inRemoveLattices=True, inRemoveClusters=True, inDeleteTags=None, inDeleteObjs=None, inReconstrainPost=None, inDebugFolder=None):
-    debugCounter = 0
-
-    if not inDebugFolder is None:
-        if not os.path.isdir(inDebugFolder):
-            os.makedirs(inDebugFolder)
-        else:
-            tkc.emptyDirectory(inDebugFolder)
-        print "DEBUG MODE ACTIVATED ({})".format(inDebugFolder)
-        tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
-        debugCounter = debugCounter + 1
-
+def OscarSplitNodes(inNodesToKeep):
     #split nodes to remove/nodes to keep
     nodes = OscarGetNodes()
 
@@ -1476,6 +1465,40 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             nodesRootToKeep.remove(node)
         else:
             allGivenNodes.remove(nodeName)
+
+    print "allGivenNodes",len(allGivenNodes),allGivenNodes
+
+    return (nodesRootToRemove, nodesRootToKeep, allGivenNodes)
+
+def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin=None, inDontReskin=None, inRemoveFollicles=True, inRemoveLattices=True, inRemoveClusters=True, inDeleteTags=None, inDeleteObjs=None, inReconstrainPost=None, inDebugFolder=None):
+    debugCounter = 0
+
+    if not inDebugFolder is None:
+        if not os.path.isdir(inDebugFolder):
+            os.makedirs(inDebugFolder)
+        else:
+            tkc.emptyDirectory(inDebugFolder)
+        print "DEBUG MODE ACTIVATED ({})".format(inDebugFolder)
+        tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
+        debugCounter = debugCounter + 1
+
+    """
+    #split nodes to remove/nodes to keep
+    nodes = OscarGetNodes()
+
+    allGivenNodes = inNodesToKeep[:]
+    nodesRootToKeep = nodes[:]
+    nodesRootToRemove = []
+
+    for node in nodes:
+        nodeName = getNodeName(node.name())
+        if not nodeName in inNodesToKeep:
+            nodesRootToRemove.append(node)
+            nodesRootToKeep.remove(node)
+        else:
+            allGivenNodes.remove(nodeName)
+    """
+    nodesRootToRemove, nodesRootToKeep, allGivenNodes = OscarSplitNodes(inNodesToKeep)
 
     if len(allGivenNodes) > 0:
         pc.warning("Some given nodes cannot be found in the rig:\n" + "\n".join(allGivenNodes))

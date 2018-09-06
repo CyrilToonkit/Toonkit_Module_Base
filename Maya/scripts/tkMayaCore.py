@@ -2668,7 +2668,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         
     return createdObjects
 
-def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False):
+def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False, inProgress=False):
     externalTargets = []
 
     if not isinstance(inRoot,(list,tuple)):
@@ -2678,6 +2678,18 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
     for root in inRoot:
         allChildren.extend(root.getChildren(allDescendents=True, type="transform"))
     allChildren.extend(inRoot)
+
+    gMainProgressBar = None
+
+    if inProgress:
+        gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+
+        pc.progressBar( gMainProgressBar,
+        edit=True,
+        beginProgress=True,
+        isInterruptable=True,
+        status="Walking contraints",
+        maxValue=len(allChildren))
 
     for child in allChildren:
         targets = []
@@ -2694,6 +2706,12 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
                     targets.append((target, constraint))
 
         externalTargets.extend([target for target in list(set(targets)) if not target[0] in allChildren])
+        
+        if inProgress:
+            pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+    if inProgress:
+        pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
 
     if returnObjects:
         return [t[0] for t in externalTargets]
