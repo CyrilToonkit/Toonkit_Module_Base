@@ -58,6 +58,8 @@ def diagnose(inProps=["Objects",
         "Locators",
         "Joints",
         "Curves",
+        "Meshes",
+        "Meshes Points",
         "Expressions",
         "Expressions Characters",
         "Constraints",
@@ -68,7 +70,15 @@ def diagnose(inProps=["Objects",
         "pointConstraints",
         "poleVectorConstraints",
         "motionPaths",
-        "Utilities"]):
+        "follicles",
+        "Utilities",
+        "Deformers",
+        "skinClusters",
+        "blendshapes",
+        "clusters",
+        "lattices",
+        "wraps",
+        "shrinkWraps"]):
     
     values = tkdev.Tester("SomeRig", "SomePath").getValues(*inProps)
 
@@ -381,7 +391,9 @@ def replaceConstraints(inDebugFolder=None):
 #tkn.convertExpression(inExpr)
 def convertExpressions():
     invalidItems = ["sin(",
-                    "cos("]
+                    "cos(",
+                    "noise(",
+                    "if("]
 
     replaced = []
 

@@ -308,6 +308,8 @@ class Tester(object):
             "Locators":partial(self.filter, inName="Objects", inType="locator"),
             "Joints":partial(self.filter, inName="Objects", inType="joint"),
             "Curves":partial(self.filter, inName="Objects", inType="nurbsCurve"),
+            "Meshes":partial(self.filter, inName="Objects", inType="mesh"),
+            "Meshes Points":partial(self.meshPoints),
             "Expressions":partial(self.filter, inName="Objects", inType="expression"),
             "Expressions Characters":partial(self.exprCharacters),
             "Constraints":partial(pc.ls, type=["constraint","motionPath"]),
@@ -318,12 +320,21 @@ class Tester(object):
             "pointConstraints":partial(self.filter, inName="Constraints", inType="pointConstraint"),
             "poleVectorConstraints":partial(self.filter, inName="Constraints", inType="poleVectorConstraint"),
             "motionPaths":partial(self.filter, inName="Constraints", inType="motionPath"),
+            "follicles":partial(self.filter, inName="Objects", inType="follicle"),
             "Utilities":partial(self.filter, inName="Objects", inType=["addDoubleLinear", "blendColors",
                                                                 "condition", "curveInfo", "multDoubleLinear", "multiplyDivide",
                                                                 "reverse", "clamp", "plusMinusAverage", "distanceBetween",
                                                                 "remapValue", "setRange", "decomposeMatrix", "composeMatrix",
                                                                 "multMatrix", "blendTwoAttr", "nearestPointOnCurve", "pairBlend",
                                                                 "vectorProduct", "distanceBetween", "wtAddMatrix"]),
+            "Deformers":partial(self.filter, inName="Objects", inType=["skinCluster", "blendshape",
+                                                                "cluster", "lattice", "wrap", "shrinkWrap"]),
+            "skinClusters":partial(self.filter, inName="Deformers", inType="skinCluster"),
+            "blendshapes":partial(self.filter, inName="Deformers", inType="blendshape"),
+            "clusters":partial(self.filter, inName="Deformers", inType="cluster"),
+            "lattices":partial(self.filter, inName="Deformers", inType="lattice"),
+            "wraps":partial(self.filter, inName="Deformers", inType="wrap"),
+            "shrinkWraps":partial(self.filter, inName="Deformers", inType="shrinkWrap"),
             "Opening":partial(openNode, inPath=self.path),
             "Performance":partial(evaluateNode, inName=self.name, inPath=self.path)
         }
@@ -362,6 +373,14 @@ class Tester(object):
             nChars += len(expr.getString())
 
         return nChars
+
+    def meshPoints(self, inName="Meshes"):
+        nPoints = 0
+        meshes = self.get(inName)
+        for mesh in meshes:
+            nPoints += pc.polyEvaluate(mesh, vertex=True)
+
+        return nPoints
 
 # *** Objects
 def countObjectsOld():
