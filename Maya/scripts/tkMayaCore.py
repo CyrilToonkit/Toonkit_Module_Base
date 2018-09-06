@@ -2671,9 +2671,14 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
 def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False):
     externalTargets = []
 
-    allChildren = inRoot.getChildren(allDescendents=True, type="transform")
-    allChildren.append(inRoot)
-    
+    if not isinstance(inRoot,(list,tuple)):
+        inRoot = [inRoot]
+
+    allChildren = []
+    for root in inRoot:
+        allChildren.extend(root.getChildren(allDescendents=True, type="transform"))
+    allChildren.extend(inRoot)
+
     for child in allChildren:
         targets = []
 
@@ -2694,6 +2699,81 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
         return [t[0] for t in externalTargets]
 
     return list(set([t[1] for t in externalTargets]))
+
+def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True, inManaged=None, inAllChildren=None):
+    CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint", "aimConstraint"]
+
+    if not inManaged:
+        inManaged = []
+
+    extInputs = []
+    extOutputs = []
+
+    if not isinstance(inRoot,(list,tuple)):
+        inRoot = [inRoot]
+
+    allChildren = []
+    if inChildren:
+        for root in inRoot:
+            allChildren.extend(root.getChildren(allDescendents=True, type="transform"))
+    allChildren.extend(inRoot)
+
+    inManagedBefore = inManaged[:]
+
+    for child in allChildren:
+        if child.type() in CONSTRAINT_TYPES:
+            continue
+
+        if inSource:
+            cons = child.listConnections(source=True, destination=False, plugs=True, connections=True)
+            for con in cons:
+                print child,"inSource",con
+                if con[1].node().type() in CONSTRAINT_TYPES:
+                    continue
+
+                if con[1].node().type() == "transform" and con[1].node() in (inAllChildren or allChildren):
+                    continue
+
+                if con[1].node() in inManaged:
+                    continue
+
+                inManaged.append(con[1].node())
+
+                if con[1].node().type() == "transform":
+                    extInputs.append(con)
+                else:
+                    print "1 inManaged",inManaged
+                    ins, outs = getExternalLinks(con[1].node(), inChildren=False, inSource=True, inDestination=False, inManaged=inManaged, inAllChildren=(inAllChildren or allChildren))
+                    print "2 inManaged",inManaged
+                    for curin in ins:
+                        extInputs.append(curin)
+                    for out in outs:
+                        extOutputs.append(out)
+
+        if inDestination:
+            cons = child.listConnections(source=False, destination=True, plugs=True, connections=True)
+            for con in cons:
+                print child,"inDestination con",con
+                if con[1].node().type() in CONSTRAINT_TYPES:
+                    continue
+
+                if con[1].node().type() == "transform" and con[1].node() in  (inAllChildren or allChildren):
+                    continue
+
+                if con[1].node() in inManagedBefore:
+                    continue
+
+                inManagedBefore.append(con[1].node())
+                if not con[1].node() in inManaged:
+                    inManaged.append(con[1].node())
+
+                if con[1].node().type() == "transform":
+                    extOutputs.append(con)
+                else:
+                    ins, outs = getExternalLinks(con[1].node(), inChildren=False, inSource=False, inDestination=True, inManaged=inManaged, inAllChildren=(inAllChildren or allChildren))
+                    print "inDestination ins", ins, "outs", outs
+
+    return (extInputs, extOutputs)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ____                _             _       _       

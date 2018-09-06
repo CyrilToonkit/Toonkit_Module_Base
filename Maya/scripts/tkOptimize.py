@@ -597,7 +597,118 @@ def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
 
     return uselessAttributes
 
+def setDeactivator(inAttr, inRoots, inDeactivateValue=1):
+    inAttr = tkc.getNode(inAttr)
+
+    cond = tkn.condition(inAttr, inDeactivateValue, "==", 1.0, 0.0)
+    condVis = tkn.condition(inAttr, inDeactivateValue, "==", 1.0, 0.0)
+
+    for root in inRoots:
+        locked = root.v.isLocked()
+        if locked:
+            root.v.setLocked(False)
+
+        #TODO compound condition if already connected (and / or ?)
+        cond >> root.v
+
+        if locked:
+            root.v.setLocked(True)
+
+    cns = tkc.getExternalConstraints(inRoots, inSource=True, inDestination=True)
+    for cn in cns:
+        #TODO compound condition if already connected (and / or ?)
+        cond >> cn.nodeState
 """
+def getExternalLinks(inRoot):
+    CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint"]
+
+    extInputs = []
+    extOutputs = []
+
+    if not isinstance(inRoot,(list,tuple)):
+        inRoot = [inRoot]
+
+    allChildren = []
+    for root in inRoot:
+        allChildren.extend(root.getChildren(allDescendents=True, type="transform"))
+    allChildren.extend(inRoot)
+
+    for child in allChildren:
+        if child.type() in CONSTRAINT_TYPES:
+            continue
+
+        cons = child.listConnections(source=True, destination=False, plugs=True, connections=True)
+        for con in cons:
+            if con[0].type() in CONSTRAINT_TYPES or con[1].type() in CONSTRAINT_TYPES:
+                continue
+
+            if con[1].type() == "transform" and con[1].node() in allChildren:
+                continue
+
+            extInputs.append(con)
+
+        cons = child.listConnections(source=False, destination=True, plugs=True, connections=True)
+        for con in cons:
+            if con[0].type() in CONSTRAINT_TYPES or con[1].type() in CONSTRAINT_TYPES:
+                continue
+
+            if con[0].type() == "transform" and con[0].node() in allChildren:
+                continue
+
+            extOutputs.append(con)
+
+    return (extInputs, extOutputs)
+
+def getExternalLinks3(inRoot):
+    CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint"]
+
+    extInputs = []
+    extOutputs = []
+
+    if not isinstance(inRoot,(list,tuple)):
+        inRoot = [inRoot]
+
+    allChildren = []
+    for root in inRoot:
+        allChildren.extend(root.getChildren(allDescendents=True, type="transform"))
+    allChildren.extend(inRoot)
+
+    for child in allChildren:
+        if child.type() in CONSTRAINT_TYPES:
+            continue
+
+        cons = child.listHistory(future=True)
+        for con in cons:
+            if con.type() in CONSTRAINT_TYPES:
+                continue
+
+            if con.type() == "transform" and con in allChildren:
+                continue
+
+            extInputs.append(con)
+
+        cons = child.listHistory()
+        for con in cons:
+            if con[0].type() in CONSTRAINT_TYPES or con[1].type() in CONSTRAINT_TYPES:
+                continue
+
+            if con[0].type() == "transform" and con[0].node() in allChildren:
+                continue
+
+            extOutputs.append(con)
+
+    return (extInputs, extOutputs)
+
+
+
+setActivator("Left_Hand_ParamHolder_Main_Ctrl.IkFk")
+
+
+
+cns = tkc.getExternalConstraints(pc.selected()[0])
+
+
+
 uts = getUselessTransforms("(.+_OSCAR_Attributes|.+_TK_CtrlsChannelsDic|.+_TK_CtrlsDic|.+_TK_KeySets|.+_TK_KeySetsTree|.+_TK_ParamsDic)$")
 print len(uts),uts
 
