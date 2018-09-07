@@ -1466,8 +1466,6 @@ def OscarSplitNodes(inNodesToKeep):
         else:
             allGivenNodes.remove(nodeName)
 
-    print "allGivenNodes",len(allGivenNodes),allGivenNodes
-
     return (nodesRootToRemove, nodesRootToKeep, allGivenNodes)
 
 def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin=None, inDontReskin=None, inRemoveFollicles=True, inRemoveLattices=True, inRemoveClusters=True, inDeleteTags=None, inDeleteObjs=None, inReconstrainPost=None, inDebugFolder=None):
@@ -3417,6 +3415,28 @@ def convertClusterToSkinning(*args):
         skin.setWeights(skin.getGeometry()[-1], range(lenJoints), weights)
     
     pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+def hammerCenter(inObj, inThreshold=10.0):
+    
+    shape = inObj.getShape()
+    
+    if shape.type() != "mesh":
+        return
+
+    points = shape.getPoints()
+    indices = []
+    i=-1
+    for point in points:
+        i += 1
+        if(point[0] < inThreshold and point[0] > -inThreshold and 
+           point[1] < inThreshold and point[1] > -inThreshold and
+           point[2] < inThreshold and point[2] > -inThreshold):
+            indices.append(i)
+
+    print "indices",len(indices),indices
+    if len(indices) > 0:
+        pc.select(["{0}.vtx[{1}]".format(inObj.name(), index) for index in indices])
+        pc.mel.eval('weightHammerVerts;')
 
 def isControl(inObj):
     prop = tkc.getProperty(inObj, "OSCAR_Attributes")

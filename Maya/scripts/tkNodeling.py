@@ -85,7 +85,7 @@ __author__ = "Cyril GIBAUD - Toonkit"
 EPSILON = sys.float_info.epsilon * 10
 OMEGA = 1.0/EPSILON
 
-MAX_NAME_LEN = 130
+MAX_NAME_LEN = 150
 
 # Words
 #################################################################################
@@ -131,7 +131,7 @@ ACCU_FORMAT = "{0}_Accu"
 
 CURVEINFO_FORMAT = "{0}_Info"
 CLOSESTPOINT_FORMAT = "{0}_{1}_Close"
-CONDITION_FORMAT = "{0}_{1}_{2}_Cond"
+CONDITION_FORMAT = "{0}_{1}_{2}_IFT_{3}_IFF_{4}_Cond"
 
 VELOCITY_FORMAT = "{0}_Vel"
 ANGVELOCITY_FORMAT = "{0}_Angvel"
@@ -324,7 +324,9 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
             raise ValueError("Criterion string '{0}' is not valid (available values : {1}) !".format(inCriterion, tke.CONDITION_NICECRITERIA))
 
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
-    nodeName = inName or reduceName(CONDITION_FORMAT.format(formatAttr(inAttr1), tke.CONDITION_CRITERIA[inCriterion], attr2Name))
+    attrTrueName = "None" if inAttrTrue is None else (formatScalar(inAttrTrue) if isinstance(inAttrTrue, (int,float)) else formatAttr(inAttrTrue, True))
+    attrFalseName = "None" if inAttrFalse is None else (formatScalar(inAttrFalse) if isinstance(inAttrFalse, (int,float)) else formatAttr(inAttrFalse, True))
+    nodeName = inName or reduceName(CONDITION_FORMAT.format(formatAttr(inAttr1), tke.CONDITION_CRITERIA[inCriterion], attr2Name,attrTrueName,attrFalseName))
     if pc.objExists(nodeName):
         return pc.PyNode(nodeName).outColorR
 
@@ -362,6 +364,60 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
                 inAttrFalse >> node.colorIfFalseR
 
     return node.outColorR if not outVectors else node.outColor
+
+@profiled
+def conditionOr(inAttr, inCond):
+    oldCond = None
+    oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
+    if len(oldConds) > 0:
+        print "!!CONNECTION",inAttr,oldConds
+        oldCond = oldConds[0]
+
+    locked = inAttr.isLocked()
+    if locked:
+        inAttr.setLocked(False)
+
+    if not oldCond is None:
+        if oldCond.name() != inCond.node().name():
+            oldCond.outColorR.disconnect(inAttr)
+
+            inCond = condition(inCond.node().firstTerm.listConnections(plugs=True)[0], inCond.node().secondTerm.get(), "!=", inCond.node().colorIfTrueR.get(), oldCond.outColorR)
+            print "in New Cond",inCond
+            inCond >> inAttr
+    else:
+        inCond >> inAttr
+
+    if locked:
+        geo.v.setLocked(True)
+
+    return inCond
+
+@profiled
+def conditionAnd(inAttr, inCond):
+    oldCond = None
+    oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
+    if len(oldConds) > 0:
+        print "!!CONNECTION",inAttr,oldConds
+        oldCond = oldConds[0]
+
+    locked = inAttr.isLocked()
+    if locked:
+        inAttr.setLocked(False)
+
+    if not oldCond is None:
+        if oldCond.name() != inCond.node().name():
+            oldCond.outColorR.disconnect(inAttr)
+
+            inCond = condition(inCond.node().firstTerm.listConnections(plugs=True)[0], inCond.node().secondTerm.get(), "!=", oldCond.outColorR, inCond.node().colorIfFalseR.get())
+            print "in New Cond",inCond
+            inCond >> inAttr
+    else:
+        inCond >> inAttr
+
+    if locked:
+        geo.v.setLocked(True)
+
+    return inCond
 
 # Algebra
 #################################################################################

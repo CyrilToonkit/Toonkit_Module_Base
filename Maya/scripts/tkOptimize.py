@@ -861,9 +861,536 @@ schema_facial_unders = [
     "Right_Under_Eyelid_Top_4_Bot"
 ]
 
-tko.setDeactivator("Global_SRT.Body_LOD", schema_low, inName="body_low", inDeactivateValue=1)
-tko.setDeactivatorOnRemoved("Global_SRT.Facial_LOD", schema_facial_unders, inName="facial_mid", inDeactivateValue=1)
-#tko.setDeactivatorOnRemoved("Global_SRT.Facial_LOD", schema_facial, inName="facial_low", inDeactivateValue=2)
+schema_facial = [  
+    "RootUnder",
+
+    "Bottom_Teeth",
+    "Center_Levator",
+    "Cheek_Scale_Params",
+    "Chin",
+    "Curl_Lowerlip",
+    "Curl_Upperlip",
+    "Depressor_Center",
+    "Eye_Tweak",
+    "Eyebrow_Frown",
+    "Eyebrow_Tweak",
+    "Eyes_Aim_ParentSpace",
+
+    "Eyes",#?
+    "Eyes_Root",#?
+    "Left_Eye_Ref",#?
+    "Left_Eyes_Params",#?
+    "Left_eye",#?
+    "Left_eye_Listen",#?
+    "Left_eye_aim",#?
+    "Left_eyelids",#?
+    "Left_Eye_Dir",#?
+    "Left_eye_aimDeform",#?
+    "Left_eye_iris",#?
+
+    "Left_eye_spec",
+    "Left_Spec_Dir",
+    "Left_Spec_Jnt",
+    "Left_Eyelids_Corner_In_Local",
+    "Left_Eyelids_Corner_In_Listen",
+    "Left_Eyelids_Corner_Out_Local",
+    "Left_UpLid",
+    "Left_DownLid",
+    "Left_Eyelids_Corner_In_Dir",
+    "Left_Eyelids_Corner_Out_Listen",
+    "Left_UpLid_Listen",
+    "Left_DownLid_Listen",
+    "Left_Eyelids_Corner_Out_Dir",
+    "Left_Eyelids_Up_1_5_Cons",
+    "Left_Eyelids_Up_1_5_Dir1",
+    "Left_Eyelids_Up_1_5_Dir2",
+    "Left_Eyelids_Up_1_5_Tangent",
+    "Left_Eyelids_Up_1_5_Ctrl",
+    "Left_Eyelids_Down_1_5_Cons",
+    "Left_Eyelids_Down_1_5_Dir1",
+    "Left_Eyelids_Down_1_5_Dir2",
+    "Left_Eyelids_Down_1_5_Tangent",
+    "Left_Eyelids_Down_1_5_Ctrl",
+    "Left_eyeshaper_0_4_4_ctrl",
+    "Left_eyeshaper_4_4_4_ctrl",
+    "Left_eyeshaper_4_4_3_ctrl",
+    "Left_eyeshaper_4_4_2_ctrl",
+    "Left_eyeshaper_4_4_1_ctrl",
+    "Left_eyeshaper_2_4_4_ctrl",
+    "Left_eyeshaper_2_4_3_ctrl",
+    "Left_eyeshaper_2_4_2_ctrl",
+    "Left_eyeshaper_2_4_1_ctrl",
+    "Left_eyeshaper_1_4_3_ctrl",
+    "Left_eyeshaper_1_4_2_ctrl",
+    "Left_eyeshaper_1_4_1_ctrl",
+    "Left_eyeshaper_1_4_4_ctrl",
+    "Left_eyeshaper_0_4_2_ctrl",
+    "Left_eyeshaper_0_4_1_ctrl",
+    "Left_eyeshaper_0_4_0_ctrl",
+    "Left_eyeshaper_0_4_3_ctrl",
+    "Left_eyeshaper_3_4_4_ctrl",
+    "Left_eyeshaper_3_4_3_ctrl",
+    "Left_eyeshaper_3_4_2_ctrl",
+    "Left_eyeshaper_3_4_1_ctrl",
+    "Left_eyeshaper_0_3_4_ctrl",
+    "Left_eyeshaper_0_3_3_ctrl",
+    "Left_eyeshaper_0_3_2_ctrl",
+    "Left_eyeshaper_0_3_1_ctrl",
+    "Left_eyeshaper_0_1_1_ctrl",
+    "Left_eyeshaper_0_0_5_ctrl",
+    "Left_eyeshaper_0_0_3_ctrl",
+    "Left_eyeshaper_0_0_2_ctrl",
+    "Left_eyeshaper_0_0_1_ctrl",
+    "Left_eyeshaper_0_2_4_ctrl",
+    "Left_eyeshaper_0_2_3_ctrl",
+    "Left_eyeshaper_0_2_2_ctrl",
+    "Left_eyeshaper_0_2_1_ctrl",
+    "Left_eyeshaper_0_1_4_ctrl",
+    "Left_eyeshaper_0_1_3_ctrl",
+    "Left_eyeshaper_0_1_2_ctrl",
+    "Left_eyeshaper_4_3_4_ctrl",
+    "Left_eyeshaper_4_3_3_ctrl",
+    "Left_eyeshaper_4_3_2_ctrl",
+    "Left_eyeshaper_4_3_1_ctrl",
+    "Left_eyeshaper_4_2_4_ctrl",
+    "Left_eyeshaper_4_2_3_ctrl",
+    "Left_eyeshaper_4_2_2_ctrl",
+    "Left_eyeshaper_4_2_1_ctrl",
+    "Left_eyeshaper_4_1_4_ctrl",
+    "Left_eyeshaper_4_1_3_ctrl",
+    "Left_eyeshaper_4_1_2_ctrl",
+    "Left_eyeshaper_4_1_1_ctrl",
+    "Left_eyeshaper_4_0_4_ctrl",
+    "Left_eyeshaper_4_0_3_ctrl",
+    "Left_eyeshaper_4_0_2_ctrl",
+    "Left_eyeshaper_4_0_1_ctrl",
+    "Left_eyeshaper_2_0_4_ctrl",
+    "Left_eyeshaper_2_0_3_ctrl",
+    "Left_eyeshaper_2_0_2_ctrl",
+    "Left_eyeshaper_2_0_1_ctrl",
+    "Left_eyeshaper_1_0_4_ctrl",
+    "Left_eyeshaper_1_0_3_ctrl",
+    "Left_eyeshaper_1_0_2_ctrl",
+    "Left_eyeshaper_1_0_1_ctrl",
+    "Left_eyeshaper_3_0_4_ctrl",
+    "Left_eyeshaper_3_0_3_ctrl",
+    "Left_eyeshaper_3_0_2_ctrl",
+    "Left_eyeshaper_3_0_1_ctrl",
+    "Left_eyeshaper_4_4_0_ctrl",
+    "Left_eyeshaper_3_0_0_ctrl",
+    "Left_eyeshaper_2_4_0_ctrl",
+    "Left_eyeshaper_2_3_0_ctrl",
+    "Left_eyeshaper_2_2_0_ctrl",
+    "Left_eyeshaper_1_4_0_ctrl",
+    "Left_eyeshaper_1_3_0_ctrl",
+    "Left_eyeshaper_1_2_0_ctrl",
+    "Left_eyeshaper_2_1_0_ctrl",
+    "Left_eyeshaper_2_0_0_ctrl",
+    "Left_eyeshaper_0_3_0_ctrl",
+    "Left_eyeshaper_1_1_0_ctrl",
+    "Left_eyeshaper_1_0_0_ctrl",
+    "Left_eyeshaper_0_1_0_ctrl",
+    "Left_eyeshaper_0_0_0_ctrl",
+    "Left_eyeshaper_0_2_0_ctrl",
+    "Left_eyeshaper_4_3_0_ctrl",
+    "Left_eyeshaper_4_2_0_ctrl",
+    "Left_eyeshaper_4_0_0_ctrl",
+    "Left_eyeshaper_3_4_0_ctrl",
+    "Left_eyeshaper_3_3_0_ctrl",
+    "Left_eyeshaper_4_1_0_ctrl",
+    "Left_eyeshaper_3_2_0_ctrl",
+    "Left_eyeshaper_3_1_0_ctrl",
+    "Left_eyeshaper_1_1_4_ctrl",
+    "Left_eyeshaper_2_1_4_ctrl",
+    "Left_eyeshaper_3_1_4_ctrl",
+    "Left_eyeshaper_3_2_4_ctrl",
+    "Left_eyeshaper_3_3_4_ctrl",
+    "Left_eyeshaper_2_3_4_ctrl",
+    "Left_eyeshaper_1_3_4_ctrl",
+    "Left_eyeshaper_1_2_4_ctrl",
+    "Left_eyeshaper_2_2_4_ctrl",
+
+    "Right_Eye_Ref",#?
+    "Right_Eyes_Params",#?
+    "Right_eye",#?
+    "Right_eye_Listen",#?
+    "Right_eye_aim",#?
+    "Right_eyelids",#?
+    "Right_Eye_Dir",#?
+    "Right_eye_aimDeform",#?
+    "Right_eye_iris",#?
+
+    "Right_eye_spec",
+    "Right_Spec_Dir",
+    "Right_Spec_Jnt",
+    "Right_Eyelids_Corner_In_Local",
+    "Right_Eyelids_Corner_In_Listen",
+    "Right_Eyelids_Corner_Out_Local",
+    "Right_UpLid",
+    "Right_DownLid",
+    "Right_Eyelids_Corner_In_Dir",
+    "Right_Eyelids_Corner_Out_Listen",
+    "Right_UpLid_Listen",
+    "Right_DownLid_Listen",
+    "Right_Eyelids_Corner_Out_Dir",
+    "Right_Eyelids_Up_1_5_Cons",
+    "Right_Eyelids_Up_1_5_Dir1",
+    "Right_Eyelids_Up_1_5_Dir2",
+    "Right_Eyelids_Up_1_5_Tangent",
+    "Right_Eyelids_Up_1_5_Ctrl",
+    "Right_Eyelids_Down_1_5_Cons",
+    "Right_Eyelids_Down_1_5_Dir1",
+    "Right_Eyelids_Down_1_5_Dir2",
+    "Right_Eyelids_Down_1_5_Tangent",
+    "Right_Eyelids_Down_1_5_Ctrl",
+    "Right_eyeshaper_0_4_4_ctrl",
+    "Right_eyeshaper_4_4_4_ctrl",
+    "Right_eyeshaper_4_4_3_ctrl",
+    "Right_eyeshaper_4_4_2_ctrl",
+    "Right_eyeshaper_4_4_1_ctrl",
+    "Right_eyeshaper_2_4_4_ctrl",
+    "Right_eyeshaper_2_4_3_ctrl",
+    "Right_eyeshaper_2_4_2_ctrl",
+    "Right_eyeshaper_2_4_1_ctrl",
+    "Right_eyeshaper_1_4_3_ctrl",
+    "Right_eyeshaper_1_4_2_ctrl",
+    "Right_eyeshaper_1_4_1_ctrl",
+    "Right_eyeshaper_1_4_4_ctrl",
+    "Right_eyeshaper_0_4_2_ctrl",
+    "Right_eyeshaper_0_4_1_ctrl",
+    "Right_eyeshaper_0_4_0_ctrl",
+    "Right_eyeshaper_0_4_3_ctrl",
+    "Right_eyeshaper_3_4_4_ctrl",
+    "Right_eyeshaper_3_4_3_ctrl",
+    "Right_eyeshaper_3_4_2_ctrl",
+    "Right_eyeshaper_3_4_1_ctrl",
+    "Right_eyeshaper_0_3_4_ctrl",
+    "Right_eyeshaper_0_3_3_ctrl",
+    "Right_eyeshaper_0_3_2_ctrl",
+    "Right_eyeshaper_0_3_1_ctrl",
+    "Right_eyeshaper_0_1_1_ctrl",
+    "Right_eyeshaper_0_0_5_ctrl",
+    "Right_eyeshaper_0_0_3_ctrl",
+    "Right_eyeshaper_0_0_2_ctrl",
+    "Right_eyeshaper_0_0_1_ctrl",
+    "Right_eyeshaper_0_2_4_ctrl",
+    "Right_eyeshaper_0_2_3_ctrl",
+    "Right_eyeshaper_0_2_2_ctrl",
+    "Right_eyeshaper_0_2_1_ctrl",
+    "Right_eyeshaper_0_1_4_ctrl",
+    "Right_eyeshaper_0_1_3_ctrl",
+    "Right_eyeshaper_0_1_2_ctrl",
+    "Right_eyeshaper_4_3_4_ctrl",
+    "Right_eyeshaper_4_3_3_ctrl",
+    "Right_eyeshaper_4_3_2_ctrl",
+    "Right_eyeshaper_4_3_1_ctrl",
+    "Right_eyeshaper_4_2_4_ctrl",
+    "Right_eyeshaper_4_2_3_ctrl",
+    "Right_eyeshaper_4_2_2_ctrl",
+    "Right_eyeshaper_4_2_1_ctrl",
+    "Right_eyeshaper_4_1_4_ctrl",
+    "Right_eyeshaper_4_1_3_ctrl",
+    "Right_eyeshaper_4_1_2_ctrl",
+    "Right_eyeshaper_4_1_1_ctrl",
+    "Right_eyeshaper_4_0_4_ctrl",
+    "Right_eyeshaper_4_0_3_ctrl",
+    "Right_eyeshaper_4_0_2_ctrl",
+    "Right_eyeshaper_4_0_1_ctrl",
+    "Right_eyeshaper_2_0_4_ctrl",
+    "Right_eyeshaper_2_0_3_ctrl",
+    "Right_eyeshaper_2_0_2_ctrl",
+    "Right_eyeshaper_2_0_1_ctrl",
+    "Right_eyeshaper_1_0_4_ctrl",
+    "Right_eyeshaper_1_0_3_ctrl",
+    "Right_eyeshaper_1_0_2_ctrl",
+    "Right_eyeshaper_1_0_1_ctrl",
+    "Right_eyeshaper_3_0_4_ctrl",
+    "Right_eyeshaper_3_0_3_ctrl",
+    "Right_eyeshaper_3_0_2_ctrl",
+    "Right_eyeshaper_3_0_1_ctrl",
+    "Right_eyeshaper_4_4_0_ctrl",
+    "Right_eyeshaper_3_0_0_ctrl",
+    "Right_eyeshaper_2_4_0_ctrl",
+    "Right_eyeshaper_2_3_0_ctrl",
+    "Right_eyeshaper_2_2_0_ctrl",
+    "Right_eyeshaper_1_4_0_ctrl",
+    "Right_eyeshaper_1_3_0_ctrl",
+    "Right_eyeshaper_1_2_0_ctrl",
+    "Right_eyeshaper_2_1_0_ctrl",
+    "Right_eyeshaper_2_0_0_ctrl",
+    "Right_eyeshaper_0_3_0_ctrl",
+    "Right_eyeshaper_1_1_0_ctrl",
+    "Right_eyeshaper_1_0_0_ctrl",
+    "Right_eyeshaper_0_1_0_ctrl",
+    "Right_eyeshaper_0_0_0_ctrl",
+    "Right_eyeshaper_0_2_0_ctrl",
+    "Right_eyeshaper_4_3_0_ctrl",
+    "Right_eyeshaper_4_2_0_ctrl",
+    "Right_eyeshaper_4_0_0_ctrl",
+    "Right_eyeshaper_3_4_0_ctrl",
+    "Right_eyeshaper_3_3_0_ctrl",
+    "Right_eyeshaper_4_1_0_ctrl",
+    "Right_eyeshaper_3_2_0_ctrl",
+    "Right_eyeshaper_3_1_0_ctrl",
+    "Right_eyeshaper_1_1_4_ctrl",
+    "Right_eyeshaper_2_1_4_ctrl",
+    "Right_eyeshaper_3_1_4_ctrl",
+    "Right_eyeshaper_3_2_4_ctrl",
+    "Right_eyeshaper_3_3_4_ctrl",
+    "Right_eyeshaper_2_3_4_ctrl",
+    "Right_eyeshaper_1_3_4_ctrl",
+    "Right_eyeshaper_1_2_4_ctrl",
+    "Right_eyeshaper_2_2_4_ctrl",
+    "Facial_GUI1",
+    "Facial_GUI_ParentSpace",
+    "Facial_GUI",
+    "Facial_Under_Eye_Visibility_Params",
+    "Facial_Under_Eyebrow_Visibility_Params",
+    "Facial_Under_Mouth_Visibility_Params",
+    "Iris_Spec_Offset_Param",
+    "Jaw_Locals",
+    "Jaw_Move",
+    "Jaw_Open_Params",
+    "Jaw_Open",
+    "Jaw",
+    "Jaw_Slide",
+    "Left_CheekCtrl",
+    "Left_Cheek_Inflate",
+    "Left_Cheek_Switcher",
+    "Left_Cheekbone",
+    "Left_Curl_Corner",
+    "Left_Depressor",
+    "Left_Ear",
+    "Left_Expressions_Params",
+    "Left_Eye_Bulge",
+    "Left_Eye_Direction",
+    "Left_Eye_Global",
+    "Left_Eye_Mid_Wave",
+    "Left_Eye_Pinch",
+    "Left_Eye",
+    "Left_Eye_Target",
+    "Left_Eye_Up_Cheek",
+    "Left_Eye_Wave",
+    "Left_Eyebrow_1",
+    "Left_Eyebrow_2",
+    "Left_Eyebrow_3",
+    "Left_Eyebrow_4",
+    "Left_Eyebrow_Ext_Rot",
+    "Left_Eyebrow_In_UpDown",
+    "Left_Eyebrow_Int_Rot",
+    "Left_Eyebrow_Mid_UpDown",
+    "Left_Eyebrow_Out_UpDown",
+    "Left_Eyebrow",
+    "Left_Iris",
+    "Left_Levator",
+    "Left_Lip_Zip",
+    "Left_Lips_Cheek_Switcher",
+    "Left_LowerBlink",
+    "Left_LowerLid",
+    "Left_Mouth_Lowerlip_1",
+    "Left_Mouth",
+    "Left_Mouth_Upperlip_1",
+    "Left_Nostril",
+    "Left_Nostril_Up",
+    "Left_Orbit_Params",
+    "Left_Pinch_Corner",
+    "Left_Puff",
+    "Left_Pupil",
+    "Left_Riso",
+    "Left_SoftEye_Switcher",
+    "Left_Spec_Direction",
+    "Left_Spec_Target",
+    "Left_Specular",
+    "Left_Specular_SwitcherIP_Patch_1",
+    "Left_Tongue_1",
+    "Left_Tongue_2",
+    "Left_Tongue_3",
+    "Left_Under_Cheek_GeoCns",
+    "Left_Under_Cheek",
+    "Left_Under_Cheekbone_1_GeoCns",
+    "Left_Under_Cheekbone_1",
+    "Left_Under_Cheekbone_2_GeoCns",
+    "Left_Under_Cheekbone_2",
+    "Left_Under_Cheekbone_3_GeoCns",
+    "Left_Under_Cheekbone_3",
+    "Left_Under_Chin_GeoCns",
+    "Left_Under_Chin",
+    "Left_Under_Eye_Bot_1_GeoCns",
+    "Left_Under_Eye_Bot_1",
+    "Left_Under_Eye_Bot_2_GeoCns",
+    "Left_Under_Eye_Bot_2",
+    "Left_Under_Eye_Bot_3_GeoCns",
+    "Left_Under_Eye_Bot_3",
+    "Left_Under_Eye_Ext_GeoCns",
+    "Left_Under_Eye_Ext",
+    "Left_Under_Eye_Int_GeoCns",
+    "Left_Under_Eye_Int",
+    "Left_Under_Eye_Top_1_GeoCns",
+    "Left_Under_Eye_Top_1",
+    "Left_Under_Eye_Top_2_GeoCns",
+    "Left_Under_Eye_Top_2",
+    "Left_Under_Eye_Top_3_GeoCns",
+    "Left_Under_Eye_Top_3",
+    "Left_Under_Eyebrow_Bot_GeoCns",
+    "Left_Under_Eyebrow_Bot",
+    "Left_Under_Eyelid_Top_1_GeoCns",
+    "Left_Under_Eyelid_Top_1",
+    "Left_Under_Eyelid_Top_2_GeoCns",
+    "Left_Under_Eyelid_Top_2",
+    "Left_Under_Eyelid_Top_3_GeoCns",
+    "Left_Under_Eyelid_Top_3",
+    "Left_Under_Eyelid_Top_4_Bot",
+    "Left_Under_Eyelid_Top_4_GeoCns",
+    "Left_Under_Lip_Bot_1_GeoCns",
+    "Left_Under_Lip_Bot_1",
+    "Left_Under_Lip_Bot_2_GeoCns",
+    "Left_Under_Lip_Bot_2",
+    "Left_Under_Lip_Bot_Center_GeoCns",
+    "Left_Under_Lip_Bot_Center",
+    "Left_Under_Lip_Corner_1_GeoCns",
+    "Left_Under_Lip_Corner",
+    "Left_Under_Lip_Top_1_GeoCns",
+    "Left_Under_Lip_Top_1",
+    "Left_Under_Lip_Top_2_GeoCns",
+    "Left_Under_Lip_Top_2",
+    "Left_Under_Lip_Top_Center_GeoCns",
+    "Left_Under_Lip_Top_Center",
+    "Left_Under_Nostril_GeoCns",
+    "Left_Under_Nostril",
+    "Left_UpperBlink",
+    "Left_UpperLid",
+    "Left_Zygo",
+    "Mouth_Lowerlip_Center",
+    "Mouth_Move",
+    "Mouth",
+    "Mouth_Tweak",
+    "Mouth_Upperlip_Center",
+    "NoseTip",
+    "Puff_Lowerlip",
+    "Puff_Upperlip",
+    "Right_AttenuationCheekBone_ParentSwitcher1",
+    "Right_CheekCtrl",
+    "Right_Cheek_Inflate",
+    "Right_Cheek_Switcher",
+    "Right_Cheekbone",
+    "Right_Curl_Corner",
+    "Right_Depressor",
+    "Right_Ear",
+    "Right_Expressions_Params",
+    "Right_Eye_Bulge",
+    "Right_Eye_Direction",
+    "Right_Eye_Global",
+    "Right_Eye_Mid_Wave",
+    "Right_Eye_Pinch",
+    "Right_Eye",
+    "Right_Eye_Target",
+    "Right_Eye_Up_Cheek",
+    "Right_Eye_Wave",
+    "Right_Eyebrow_1",
+    "Right_Eyebrow_2",
+    "Right_Eyebrow_3",
+    "Right_Eyebrow_4",
+    "Right_Eyebrow_Ext_Rot",
+    "Right_Eyebrow_In_UpDown",
+    "Right_Eyebrow_Int_Rot",
+    "Right_Eyebrow_Mid_UpDown",
+    "Right_Eyebrow_Out_UpDown",
+    "Right_Eyebrow",
+    "Right_Iris",
+    "Right_Levator",
+    "Right_Lip_Zip",
+    "Right_Lips_Cheek_Switcher",
+    "Right_LowerBlink",
+    "Right_LowerLid",
+    "Right_Mouth_Lowerlip_1",
+    "Right_Mouth",
+    "Right_Mouth_Upperlip_1",
+    "Right_Nostril",
+    "Right_Nostril_Up",
+    "Right_Orbit_Params",
+    "Right_Pinch_Corner",
+    "Right_Puff",
+    "Right_Pupil",
+    "Right_Riso",
+    "Right_SoftEye_Switcher",
+    "Right_Spec_Direction",
+    "Right_Spec_Target",
+    "Right_Specular",
+    "Right_Specular_SwitcherIP_Patch_1",
+    "Right_Tongue_1",
+    "Right_Tongue_2",
+    "Right_Tongue_3",
+    "Right_Under_Cheek_GeoCns",
+    "Right_Under_Cheek",
+    "Right_Under_Cheekbone_1_GeoCns",
+    "Right_Under_Cheekbone_1",
+    "Right_Under_Cheekbone_2_GeoCns",
+    "Right_Under_Cheekbone_2",
+    "Right_Under_Cheekbone_3_GeoCns",
+    "Right_Under_Cheekbone_3",
+    "Right_Under_Eye_Bot_1_GeoCns",
+    "Right_Under_Eye_Bot_1",
+    "Right_Under_Eye_Bot_2_GeoCns",
+    "Right_Under_Eye_Bot_2",
+    "Right_Under_Eye_Bot_3_GeoCns",
+    "Right_Under_Eye_Bot_3",
+    "Right_Under_Eye_Ext_GeoCns",
+    "Right_Under_Eye_Ext",
+    "Right_Under_Eye_Int_GeoCns",
+    "Right_Under_Eye_Int",
+    "Right_Under_Eye_Top_1_GeoCns",
+    "Right_Under_Eye_Top_1",
+    "Right_Under_Eye_Top_2_GeoCns",
+    "Right_Under_Eye_Top_2",
+    "Right_Under_Eye_Top_3_GeoCns",
+    "Right_Under_Eye_Top_3",
+    "Right_Under_Eyebrow_Bot_GeoCns",
+    "Right_Under_Eyebrow_Bot",
+    "Right_Under_Eyelid_Top_1_GeoCns",
+    "Right_Under_Eyelid_Top_1",
+    "Right_Under_Eyelid_Top_2_GeoCns",
+    "Right_Under_Eyelid_Top_2",
+    "Right_Under_Eyelid_Top_3_GeoCns",
+    "Right_Under_Eyelid_Top_3",
+    "Right_Under_Eyelid_Top_4_Bot",
+    "Right_Under_Eyelid_Top_4_GeoCns",
+    "Right_Under_Lip_Bot_1_GeoCns",
+    "Right_Under_Lip_Bot_1",
+    "Right_Under_Lip_Bot_2_GeoCns",
+    "Right_Under_Lip_Bot_2",
+    "Right_Under_Lip_Corner_1_GeoCns",
+    "Right_Under_Lip_Corner",
+    "Right_Under_Lip_Top_1_GeoCns",
+    "Right_Under_Lip_Top_1",
+    "Right_Under_Lip_Top_2_GeoCns",
+    "Right_Under_Lip_Top_2",
+    "Right_Under_Nostril_GeoCns",
+    "Right_Under_Nostril",
+    "Right_UpperBlink",
+    "Right_UpperLid",
+    "Right_Zygo",
+    "TKUnder",
+    "Spec_Aim_ParentSpace",
+    "Spec_Aim",
+    "Sticky_Lip",
+    "Tongue_1",
+    "Tongue_2",
+    "Tongue_3",
+    "Tongue_FUI",
+    "Tongue_Params",
+    "Tongue",
+    "Top_Teeth",
+]
+
+#tko.setDeactivator("Global_SRT.Body_LOD", inRootsKeep=schema_low, inName="body_low", inDeactivateValue=1)
+#tko.setDeactivator("Global_SRT.Facial_LOD", inRootsRemove=schema_facial_unders, inName="facial_mid", inDeactivateValue=1)
+
+#facial_mid_cond = tkn.condition(pc.PyNode("Global_SRT.Facial_LOD"), 1, "==", 0.0, 1.0, inName="facial_mid_cond")
+#deformers = pc.ls(type=["ffd", "shrinkWrap"])
+#for deform in deformers:
+#    facial_mid_cond >> deform.envelope
+
+#tko.setDeactivator("Global_SRT.Facial_LOD", inRootsRemove=schema_facial, inName="facial_low", inDeactivateValue=2)
 
 #Diagnose
 tko.diagnose()
@@ -1443,27 +1970,44 @@ def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
 
     return uselessAttributes
 
-def setDeactivator(inAttr, inNodesToKeep, inName=None, inDeactivateValue=1, inIgnoreTags=["hd"]):
+"""
+def setDeactivator(inAttr, inNodesToKeep, inName=None, inDeactivateValue=1, inIgnoreTags=["hd"], inHide=True):
     nodesRootToRemove, nodesRootToKeep, allGivenNodes = tkRig.OscarSplitNodes(inNodesToKeep)
 
-    setDeactivatorOnRemoved(inAttr, nodesRootToRemove, inName, inDeactivateValue=inDeactivateValue, inIgnoreTags=inIgnoreTags)
+    setDeactivatorOnRemoved(inAttr, nodesRootToRemove, inName, inDeactivateValue=inDeactivateValue, inIgnoreTags=inIgnoreTags, inHide=inHide)
+"""
+def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inPolyReduceMin=0, inPolyReduceMax=0, inHide=True):
+    if inRootsKeep is None and inRootsRemove is None:
+        raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
 
-def setDeactivatorOnRemoved(inAttr, inRoots, inName=None, inDeactivateValue=1, inIgnoreTags=["hd"]):
-    if len(inRoots) > 0 and isinstance(inRoots[0], basestring):
-        rootsStrs = inRoots[:]
-        inRoots = []
+    inRoots = inRootsKeep or inRootsRemove
+    nodesRootToRemove, nodesRootToKeep, allGivenNodes = [None,None,None]
 
-        notFound = []
+    if not inRootsKeep is None:
+        nodesRootToRemove, nodesRootToKeep, allGivenNodes = tkRig.OscarSplitNodes(inRootsKeep)
+    else:
+        nodesRootToKeep, nodesRootToRemove, allGivenNodes = tkRig.OscarSplitNodes(inRootsRemove)
+        """
+        if len(inRoots) > 0 and isinstance(inRoots[0], basestring):
+            rootsStrs = inRoots[:]
+            inRoots = []
 
-        for rootsStr in rootsStrs:
-            nodeName = tkRig.getNodeName(rootsStr)
-            if pc.objExists(nodeName):
-                inRoots.append(pc.PyNode(nodeName))
-            else:
-                notFound.append(rootsStr)
+            notFound = []
 
-        if len(notFound) > 0:
-            print "Some given nodes cannot be found :",notFound
+            for rootsStr in rootsStrs:
+                nodeName = tkRig.getRootName(rootsStr)
+                if pc.objExists(nodeName):
+                    inRoots.append(pc.PyNode(nodeName))
+                else:
+                    notFound.append(rootsStr)
+
+            if len(notFound) > 0:
+                print "Some given nodes cannot be found :",notFound
+        """
+
+    print "nodesRootToRemove",len(nodesRootToRemove),nodesRootToRemove
+    print "nodesRootToKeep",len(nodesRootToKeep),nodesRootToKeep
+    print "nodesNotFound",len(allGivenNodes),allGivenNodes
 
     inAttr = tkc.getNode(inAttr)
 
@@ -1472,18 +2016,19 @@ def setDeactivatorOnRemoved(inAttr, inRoots, inName=None, inDeactivateValue=1, i
 
     inverseVis = tkn.reverse(condVis)
 
-    for root in inRoots:
-        locked = root.v.isLocked()
-        if locked:
-            root.v.setLocked(False)
+    if inHide:
+        for root in nodesRootToRemove:
+            locked = root.v.isLocked()
+            if locked:
+                root.v.setLocked(False)
 
-        #TODO compound condition if already connected (and / or ?)
-        condVis >> root.v
+            #TODO compound condition if already connected (and / or ?)
+            condVis >> root.v
 
-        if locked:
-            root.v.setLocked(True)
+            if locked:
+                root.v.setLocked(True)
 
-    cns = tkc.getExternalConstraints(inRoots, inSource=True, inDestination=True, inProgress=True)
+    cns = tkc.getExternalConstraints(nodesRootToRemove, inSource=True, inDestination=True, inProgress=True)
     for cn in cns:
         targets = tkc.getConstraintTargets(cn)
 
@@ -1500,7 +2045,7 @@ def setDeactivatorOnRemoved(inAttr, inRoots, inName=None, inDeactivateValue=1, i
 
     removedDeformers = []
     skinClusters = []
-    for nodeRoot in inRoots:
+    for nodeRoot in nodesRootToRemove:
         deformers = nodeRoot.getChildren(allDescendents=True, type='joint')
         removedDeformers.extend(deformers)
 
@@ -1511,48 +2056,120 @@ def setDeactivatorOnRemoved(inAttr, inRoots, inName=None, inDeactivateValue=1, i
     skinClusters = list(set(skinClusters))
     geos = [skin.getGeometry()[0] for skin in skinClusters]
 
+    deformersRemaining = []
+
+    #Find remaining deformers 
+    for nodeRoot in nodesRootToKeep:
+        deformers = nodeRoot.getChildren(allDescendents=True, type='joint')
+        deformersRemaining.extend([n.name() for n in deformers])
+
+    replacingDeformers = []
+
+    if not inReplaceDeformers is None:
+        for replaceDeformer in inReplaceDeformers:
+            if replaceDeformer in deformersRemaining:
+                replacingDeformers.append(pc.PyNode(replaceDeformer))
+
+    print "replacingDeformers",replacingDeformers
+
+    proxies = []
+
     for geo in geos:
-        if inIgnoreTags is None or len(inIgnoreTags) == 0 or len(tkt.getTags([geo], ["hd"])) == 0:
-            #Create geometry proxy
-            #------------------------
-            dupe = tkb.duplicateAndClean(geo, inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False)
-            gator([dupe], geo)
-            dupeSkin = tkc.getSkinCluster(dupe)
-            infs = dupeSkin.getInfluence()
+        print "-",geo,geo.type()
 
-            infsToRemove = []
+        if not geo.type() == "mesh":
+            continue
 
-            for inf in infs:
-                if inf in removedDeformers:
-                    infsToRemove.append(inf)
+        underGeo = None
 
-            if len(infsToRemove) > 0:
-                pc.skinCluster('tunic_geo_skinCluster',e=True,ri=infsToRemove)
+        geoSkin = tkc.getSkinCluster(geo)
+        keptTopInfs = geoSkin.influenceObjects()
 
-            locked = dupe.v.isLocked()
-            if locked:
-                dupe.v.setLocked(False)
+        remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
 
-            inverseVis >> dupe.v
+        otherDeformers = geo.listHistory(type=["blendShape", "wrap"])
 
-            if locked:
-                dupe.v.setLocked(True)
+        isOrphanGeo = len(remainingTopInfs) == 0 and len(otherDeformers) == 0
 
-            #Connect history
-            inverseVis >> dupeSkin.envelope
-            #------------------------
+        print " isOrphanGeo",isOrphanGeo
+
+        if not isOrphanGeo:
+
+            #'Live' blendshape targets
+            #------------------------------------
+            blendShapes = geo.listHistory(type="blendShape")
+            for blendShape in blendShapes:
+                if pc.objExists(blendShape):
+                    cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
+                    for con in cons:
+                        skin = tkc.getSkinCluster(con)
+                        if not skin is None:
+                            BSinfs = skin.influenceObjects()
+                            #Determine if most of the influences are kept or dropped
+                            keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
+
+                            if len(keptInfs) > len(remainingTopInfs):
+                                underGeo = con
+                                break
+
+        print " underGeo",underGeo
+
+        print " inIgnoreTags",len(inIgnoreTags),inIgnoreTags
+        
+        print " len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([geo], inIgnoreTags))
+
+        transform = geo.getParent()
+
+        if inIgnoreTags is None or len(inIgnoreTags) == 0 or len(tkt.getTags([transform], inIgnoreTags)) == 0:
+            if underGeo is None and not isOrphanGeo and transform.v.get():
+                infsToRemove = []
+
+                for inf in keptTopInfs:
+                    if inf in removedDeformers:
+                        infsToRemove.append(inf)
+
+                print " infs",len(keptTopInfs),keptTopInfs
+                print " infsToRemove",len(infsToRemove),infsToRemove
+
+                if len(infsToRemove) > 0:
+                    infsLeft = len(keptTopInfs) - len(infsToRemove);
+
+                    if infsLeft == 0:
+                        print " !! No infs left !!"
+
+                    #Create geometry proxy
+                    #------------------------
+                    dupe = tkc.getNode(tkc.duplicateAndClean(geo.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False))
+                    
+                    if inPolyReduceMin < inPolyReduceMax:
+                        tkc.polyReduceComplexity(dupe, inPolyReduceMin, inPolyReduceMax)
+
+                    proxies.append(dupe)
+                    tkc.gator([dupe], geo)
+                    dupeSkin = tkc.getSkinCluster(dupe)
+                    pc.skinCluster(dupeSkin,e=True,ri=infsToRemove)
+
+                    tkRig.hammerCenter(dupe)
+
+                    if inHide:
+                        locked = dupe.v.isLocked()
+                        if locked:
+                            dupe.v.setLocked(False)
+
+                        inverseVis >> dupe.v
+
+                        if locked:
+                            dupe.v.setLocked(True)
+
+                    #Connect history
+                    inverseVis >> dupeSkin.envelope
+                    #------------------------
 
         #Connect "old" geometry
         #------------------------
-        locked = geo.v.isLocked()
-        if locked:
-            geo.v.setLocked(False)
-
-        #TODO compound condition if already connected (and / or ?)
-        condVis >> geo.v
-
-        if locked:
-            geo.v.setLocked(True)
+        if inHide and underGeo is None:
+            #condition if already connected (or)
+            tkn.conditionAnd(geo.v, condVis)
 
         #Connect history
         #------------------------
@@ -1560,21 +2177,22 @@ def setDeactivatorOnRemoved(inAttr, inRoots, inName=None, inDeactivateValue=1, i
         if defs != None:
             for deformer in defs:
                 if pc.attributeQuery("envelope" , node=deformer, exists=True):
-                    attr = deformer.attr("envelope")
+                    if underGeo is None or deformer.type() != "blendShape":
+                        tkn.conditionAnd(deformer.envelope, condVis)
 
-                    deformerLocked = attr.isLocked()
+        if underGeo is not None:
+            #Connect history
+            #------------------------
+            defs = pc.listHistory(underGeo, gl=True, pdo=True, lf=True, f=False, il=2)
+            if defs != None:
+                for deformer in defs:
+                    if pc.attributeQuery("envelope" , node=deformer, exists=True):
+                        if deformer.type() != "skinCluster":
+                            tkn.conditionAnd(deformer.envelope, condVis)
 
-                    if deformerLocked:
-                        attr.setLocked(False)
-
-                    #TODO compound condition if already connected (and / or ?)
-                    condVis >> attr
-
-                    if deformerLocked:
-                        attr.setLocked(True)
-
-    print "cns",cns
-    print "geos",geos
+    print "cns",len(cns),cns
+    print "geos",len(geos),geos
+    print "proxies",len(proxies),proxies
 """
 def getExternalLinks(inRoot):
     CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint"]

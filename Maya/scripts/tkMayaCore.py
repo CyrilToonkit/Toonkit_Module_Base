@@ -2691,6 +2691,8 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
         status="Walking contraints",
         maxValue=len(allChildren))
 
+    allChildrenStr = [n.name() for n in allChildren]
+
     for child in allChildren:
         targets = []
 
@@ -2705,7 +2707,7 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
                 for target in getConstraintTargets(constraint):
                     targets.append((target, constraint))
 
-        externalTargets.extend([target for target in list(set(targets)) if not target[0] in allChildren])
+        externalTargets.extend([target for target in list(set(targets)) if not target[0].name() in allChildrenStr])
         
         if inProgress:
             pc.progressBar(gMainProgressBar, edit=True, step=1)
@@ -3721,6 +3723,47 @@ def polyReduceComplexity (inObj, inMinComplx, inMaxComplx, inMinPercent = 0, inM
  |____/ \___|_|  \___/|_|  |_| |_| |_|\__,_|\__|_|\___/|_| |_|
                                                               
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def muteDeformers(inMesh):
+    envelopes = {}
+    defs = pc.listHistory(inMesh, gl=True, pdo=True, lf=True, f=False, il=2)
+    if defs != None:
+        for deformer in defs:
+            if pc.attributeQuery("envelope" , node=deformer, exists=True):
+                envelopes[deformer] = deformer.envelope.get()
+                deformer.envelope.set(0.0)
+
+    return envelopes
+
+def restoreDeformers(inMesh, inDeformers):
+    for envelope in inDeformers.keys():
+        if envelope != "":
+            pc.setAttr("{0}.envelope".format(envelope), inDeformers[envelope])
+
+def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=True):
+    #Make sure every deformer is at 0 before duplication
+    envelopes = {}
+    if inMuteDeformers:
+        envelopes = muteDeformers(inSourceMesh)
+    
+    dupe = pc.duplicate(inSourceMesh, rr=True)[0]
+
+    if '$REF' in inTargetName:
+        inTargetName = inTargetName.replace('$REF', inSourceMesh)
+
+    dupe = dupe.rename(inTargetName)
+    
+    shapes = dupe.getShapes()
+    if shapes != None:
+        for shape in shapes:
+            if shape.intermediateObject.get():
+                pc.delete(shape)
+            else:
+                shape.overrideDisplayType.set(0)
+
+    if inMuteDeformers:
+        restoreDeformers(inSourceMesh, envelopes)
+
+    return dupe
 
 def getSkinCluster(inObject):
     shapes = getShapes(inObject)
