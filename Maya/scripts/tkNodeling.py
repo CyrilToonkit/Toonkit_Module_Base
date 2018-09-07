@@ -388,7 +388,7 @@ def conditionOr(inAttr, inCond):
         inCond >> inAttr
 
     if locked:
-        geo.v.setLocked(True)
+        inAttr.setLocked(True)
 
     return inCond
 
@@ -415,7 +415,7 @@ def conditionAnd(inAttr, inCond):
         inCond >> inAttr
 
     if locked:
-        geo.v.setLocked(True)
+        inAttr.setLocked(True)
 
     return inCond
 

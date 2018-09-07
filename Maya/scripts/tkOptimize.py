@@ -1976,6 +1976,38 @@ def setDeactivator(inAttr, inNodesToKeep, inName=None, inDeactivateValue=1, inIg
 
     setDeactivatorOnRemoved(inAttr, nodesRootToRemove, inName, inDeactivateValue=inDeactivateValue, inIgnoreTags=inIgnoreTags, inHide=inHide)
 """
+def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inRecur=0):
+    print " " * inRecur + "DEACTIVATE",inObj,inCond,inCondVis,inExceptTypes
+
+    if isinstance(inObj, pc.nodetypes.Transform):
+        if inCondVis is None:
+            inObj.v.set(0)
+        else:
+            tkn.conditionAnd(inObj.v, inCondVis)
+        
+        for shape in inObj.getShapes():
+            deactivate(shape, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inRecur=inRecur+1)
+
+    elif isinstance(inObj, pc.nodetypes.Mesh):
+        if inCondVis is None:
+            inObj.v.set(0)
+        else:
+            tkn.conditionAnd(inObj.v, inCondVis)
+
+        defs = pc.listHistory(inObj, gl=True, pdo=True, lf=True, f=False, il=2)
+        if defs != None:
+            for deform in defs:
+                if pc.attributeQuery("envelope" , node=deform, exists=True):
+                    if inExceptTypes is None or not deform.type() in inExceptTypes:
+                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inRecur=inRecur+1)
+    else:
+        pc.warning("Don't know how to deactivate {0} of type {1}".format(inObj, type(inObj)))
+
+    if inCond is None:
+        inObj.nodeState.set(2)
+    else:
+        tkn.conditionAnd(inObj.nodeState, inCond)
+
 def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inPolyReduceMin=0, inPolyReduceMax=0, inHide=True):
     if inRootsKeep is None and inRootsRemove is None:
         raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
@@ -2014,29 +2046,25 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     cond = tkn.condition(inAttr, inDeactivateValue, "==", 2.0, 0.0)
     condVis = tkn.condition(inAttr, inDeactivateValue, "!=", 1.0, 0.0)
 
+    inverse = tkn.reverse(cond)
     inverseVis = tkn.reverse(condVis)
 
-    if inHide:
-        for root in nodesRootToRemove:
-            locked = root.v.isLocked()
-            if locked:
-                root.v.setLocked(False)
+    #if inHide:
+    for root in nodesRootToRemove:
+        tkn.conditionAnd(root.v, condVis)
 
-            #TODO compound condition if already connected (and / or ?)
-            condVis >> root.v
+    cns = tkc.getExternalConstraints(nodesRootToRemove, inSource=True, inDestination=True, inReturnAll=True, inProgress=True)
 
-            if locked:
-                root.v.setLocked(True)
+    print "cns", len(cns), cns
 
-    cns = tkc.getExternalConstraints(nodesRootToRemove, inSource=True, inDestination=True, inProgress=True)
     for cn in cns:
         targets = tkc.getConstraintTargets(cn)
 
         if len(targets) > 1:
             pc.warning("BLENDED " + cn.name())
         else:
-            #TODO compound condition if already connected (and / or ?)
-            cond >> cn.nodeState
+            #DEACTTIVATE CONSTRAINT
+            deactivate(cn, cond, condVis)
 
     origGeos = [m.getParent() for m in pc.ls(type="mesh") if len(m.getParent().v.listConnections()) > 0 or m.getParent().v.get()]
 
@@ -2076,10 +2104,10 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     for geo in geos:
         print "-",geo,geo.type()
-
+        """
         if not geo.type() == "mesh":
             continue
-
+        """
         underGeo = None
 
         geoSkin = tkc.getSkinCluster(geo)
@@ -2151,44 +2179,18 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
                     tkRig.hammerCenter(dupe)
 
-                    if inHide:
-                        locked = dupe.v.isLocked()
-                        if locked:
-                            dupe.v.setLocked(False)
-
-                        inverseVis >> dupe.v
-
-                        if locked:
-                            dupe.v.setLocked(True)
-
-                    #Connect history
-                    inverseVis >> dupeSkin.envelope
+                    deactivate(dupe, inverse, inverseVis)
                     #------------------------
 
         #Connect "old" geometry
         #------------------------
-        if inHide and underGeo is None:
-            #condition if already connected (or)
-            tkn.conditionAnd(geo.v, condVis)
-
-        #Connect history
-        #------------------------
-        defs = pc.listHistory(geo, gl=True, pdo=True, lf=True, f=False, il=2)
-        if defs != None:
-            for deformer in defs:
-                if pc.attributeQuery("envelope" , node=deformer, exists=True):
-                    if underGeo is None or deformer.type() != "blendShape":
-                        tkn.conditionAnd(deformer.envelope, condVis)
+        #if inHide and underGeo is None:
+            #DEACTTIVATE GEOMETRY
+        deactivate(geo, cond, condVis, inExceptTypes=(None if underGeo is None else ["blendShape"]))
 
         if underGeo is not None:
-            #Connect history
-            #------------------------
-            defs = pc.listHistory(underGeo, gl=True, pdo=True, lf=True, f=False, il=2)
-            if defs != None:
-                for deformer in defs:
-                    if pc.attributeQuery("envelope" , node=deformer, exists=True):
-                        if deformer.type() != "skinCluster":
-                            tkn.conditionAnd(deformer.envelope, condVis)
+            #DEACTTIVATE GEOMETRY
+            deactivate(underGeo, cond, condVis, inExceptTypes=["skinCluster"])
 
     print "cns",len(cns),cns
     print "geos",len(geos),geos

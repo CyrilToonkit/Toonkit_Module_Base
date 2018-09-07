@@ -2668,7 +2668,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         
     return createdObjects
 
-def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False, inProgress=False):
+def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False, inReturnAll=False, inProgress=False):
     externalTargets = []
 
     if not isinstance(inRoot,(list,tuple)):
@@ -2707,7 +2707,7 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
                 for target in getConstraintTargets(constraint):
                     targets.append((target, constraint))
 
-        externalTargets.extend([target for target in list(set(targets)) if not target[0].name() in allChildrenStr])
+        externalTargets.extend([target for target in list(set(targets)) if inReturnAll or not target[0].name() in allChildrenStr])
         
         if inProgress:
             pc.progressBar(gMainProgressBar, edit=True, step=1)
