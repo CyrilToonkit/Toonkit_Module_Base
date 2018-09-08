@@ -2201,7 +2201,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                 if geo.type() == "mesh":
                     #Create geometry proxy
                     #------------------------
-                    dupe = tkc.getNode(tkc.duplicateAndClean(geo.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False))
+                    dupe = tkc.getNode(tkc.duplicateAndClean(transform.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False))
                     
                     if inPolyReduceMin < inPolyReduceMax:
                         tkc.polyReduceComplexity(dupe, inPolyReduceMin, inPolyReduceMax)
@@ -2257,80 +2257,102 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     print "geos",len(geos),geos
     print "proxies",len(proxies),proxies
 
-def createLazySwitch(inConstrained, inConstrainers, inAttrName="switch"):
-    parent = inConstrained.getParent()
-    
-    if pc.attributeQuery(inAttrName , node=parent, exists=True):
-        pc.deleteAttr(parent.attr(inAttrName))
+def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS"):
+    if inShapeAliases is None:
+        inShapeAliases = {}
 
-    param = tkc.addParameter(parent, inAttrName, "enum;"+":".join([n.name() for n in inConstrainers]))
-    
-    switchAttr = parent.attr(inAttrName)
-    
-    i = 0
-    oldTransform = None
-    for inConstrainer in inConstrainers:
-        name = "{0}_LazyTo_{1}".format(inConstrainer,inConstrained)
-        if pc.objExists(name):
-            pc.delete(name)
+    root = pc.group(empty=True, world=True, name=inName)
+    root.v.set(False)
 
-        constrainedNode = pc.group(name=name, empty=True)
-        parent.addChild(constrainedNode)    
-        tkc.matchTRS(constrainedNode, inConstrained)
-        
-        cns = tkc.constrain(constrainedNode, inConstrainer, "parent")
-        
-        if not oldTransform is None:
-            t, r, s = oldTransform
+    for object, shapes in inShapeConversions.iteritems():
+
+        origName = object
+        if not pc.objExists(object):
+            aliases = inShapeAliases.get(object, [])
+            object = None
+            for alias in aliases:
+                if pc.objExists(alias):
+                    object = alias
+                    break
+
+        if object is None:
+            pc.warning("Can't find object '{0}' (and None of its aliases : {1}) !".format(origName, inShapeAliases.get(origName, [])))
+            continue
+
+        objectRoot = pc.group(empty=True, parent=root, name="{0}_{1}".format(object, inName))
+        for poseName, poseData in shapes.iteritems():
+            channel, value = poseData
+            channelNode = pc.PyNode(channel)
+            channelNiceName = channel.replace(".", "_DOT_")
             
-            #Translation
-            oldCond = None
-            oldConds = inConstrained.t.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
-            print "oldConds",inConstrained.t,oldConds
-            for possibleOldCond in oldConds:
-                if possibleOldCond.type() == "condition":
-                    oldCond = possibleOldCond
-                    break
-                else:
-                    possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
-                    print "possibleOldConds",possibleOldCond.input,possibleOldConds
-                    if len(possibleOldConds) > 0:
-                        oldCond = possibleOldConds[0]
-                        break
+            oldValue = pc.getAttr(channel)
+            
+            pc.setAttr(channel, value)
+            
+            dupe = pc.PyNode(tkb.duplicateAndClean(object, inMuteDeformers=False))
+            dupe.rename("{0}_{1}".format(object, poseName))
+            tkc.addParameter(dupe, channelNiceName, default=value, containerName=inName)
+            
+            objectRoot.addChild(dupe)
+            
+            pc.setAttr(channel, oldValue)
 
-            if oldCond is None:
-                tkn.condition(switchAttr, i, "==", constrainedNode.t, t) >> inConstrained.t
+def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustomMeshSuffix=None):
+    if pc.objExists(inName):
+        root = pc.PyNode(inName)
+
+        for child in root.getChildren():
+            object = child.name()[:-len(inName)-1]
+            objectNodeName = object if inCustomMeshSuffix is None else object + inCustomMeshSuffix
+
+            print "applyShapeConversions searching for :",object,objectNodeName
+
+            if not pc.objExists(objectNodeName):
+                pc.warning("Can't find object '{0}'".format(objectNodeName))
+                continue
+
+            objectNode = pc.PyNode(objectNodeName)
+            
+            bs = child.getChildren()
+
+            bsNode = None
+
+            #Search if a blendShape node already exists
+            bsNodes = objectNode.listHistory(type="blendShape")
+            if len(bsNodes) > 0:
+                bsNode = bsNodes[0]
+
+                #Add targets
+                #First available index
+                indices = bsNode.weightIndexList()
+                index = indices[-1] + 1 if len(indices) > 0 else 0
+                for target in bs:
+                    pc.blendShape(bsNode, edit=True, t=(objectNodeName, index, target, 1.0))
+                    index += 1
             else:
-                print "Old cond for",inConstrained.t,oldCond 
-                tkn.condition(switchAttr, i, "==", constrainedNode.t, oldCond.outColor) >> inConstrained.t
+                #Create new blendShape node
+                bsArgs = bs + [objectNode]
+                print "bsArgs",bsArgs
+                bsNode = pc.blendShape(bsArgs, name="{0}_BS".format(objectNodeName))[0]
+                tkc.reorderDeformers(objectNodeName)
+            
+            for bsObj in bs:
+                channel = tkc.getParameters(bsObj, containerName=inName)[0]
+                controller, attribute = channel.split("_DOT_")
+                value = tkc.getProperty(bsObj, inName).attr(channel).get()
+                minValue = min(0, value)
+                maxValue = max(0, value)
+                
+                rslt = tkn.clamp(pc.PyNode(controller).attr(attribute), minValue, maxValue)
+                
+                if abs(value - 1.0) > 0.001:
+                    rslt = tkn.mul(rslt, 1/value)
 
-            #Rotation
-            oldCond = None
-            oldConds = inConstrained.r.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
-            print "oldConds",inConstrained.r,oldConds
-            for possibleOldCond in oldConds:
-                if possibleOldCond.type() == "condition":
-                    oldCond = possibleOldCond
-                    break
-                else:
-                    possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
-                    print "possibleOldConds",possibleOldCond.input,possibleOldConds
-                    if len(possibleOldConds) > 0:
-                        oldCond = possibleOldConds[0]
-                        break
+                rslt >> bsNode.attr(bsObj.name())
 
-            if oldCond is None:
-                tkn.condition(switchAttr, i, "==", constrainedNode.r, r) >> inConstrained.r
-            else:
-                print "Old cond for",inConstrained.r,oldCond 
-                tkn.condition(switchAttr, i, "==", constrainedNode.r, oldCond.outColor) >> inConstrained.r
+        if inDelete:
+            pc.delete(inName)
 
-        tkn.conditionAnd(cns.nodeState, tkn.condition(switchAttr, i, "!=", 2, 0))
-
-        oldTransform = (constrainedNode.t, constrainedNode.r, constrainedNode.s)
-        i += 1
-
-    return switchAttr
 """
 def getExternalLinks(inRoot):
     CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint"]
