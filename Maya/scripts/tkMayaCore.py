@@ -134,6 +134,7 @@ import OscarZmqString as ozs
 import OscarZmqMayaString as ozms
 import PAlt as palt
 import tkToolOptions.ToonkitMayaCore as ToonkitMayaCore
+import tkNodeling as tkn
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -1004,9 +1005,8 @@ def removeUnknownNodes():
         print "No 'unknown' nodes found"
 
 def deleteUnusedNodes():
-    numDeleted = pc.mel.eval("MLdeleteUnused()")
-    print numDeleted
-    
+    tkn.deleteUnusedNodes()
+
 #todo add an option to consider upwards hierarchy (PyNode.getAllParents())
 def isVisibleAfterAll(inObj, inDownStream=True, inUpStream=True):
     parent = None
@@ -5250,61 +5250,72 @@ def getParamsDictionary(inNode, strName, bidirectionnal=False):
 
     return dic
 
-def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="switch", inRotation=True, inDebug=False):
+def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="switch",inTranslation=True, inRotation=True, inDebug=True):
+    print "createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")"
+
+    inConstrained.t.disconnect()
+    inConstrained.r.disconnect()
+
     parent = inConstrained.getParent()
     
     if inAttr is None and pc.attributeQuery(inAttrName , node=parent, exists=True):
         pc.deleteAttr(parent.attr(inAttrName))
 
-    param = inAttr.shortName() or tkc.addParameter(parent, inAttrName, "enum;"+":".join([n.name() for n in inConstrainers]))
+    switchAttr = inAttr or pc.PyNode(addParameter(parent, inAttrName, "enum;"+":".join([n.name() for n in inConstrainers])))
     
-    switchAttr = parent.attr(inAttrName)
-    
-    i = 0
-    oldTransform = None
     for inConstrainer in inConstrainers:
         name = "{0}_LazyTo_{1}".format(inConstrainer,inConstrained)
         if pc.objExists(name):
             pc.delete(name)
 
+    tkn.deleteUnusedNodes()
+
+    i = 0
+    oldTransform = None
+    for inConstrainer in inConstrainers:
+        name = "{0}_LazyTo_{1}".format(inConstrainer,inConstrained)
+
         constrainedNode = pc.group(name=name, empty=True)
         parent.addChild(constrainedNode)    
-        tkc.matchTRS(constrainedNode, inConstrained)
+        matchTRS(constrainedNode, inConstrained)
         
-        cns = tkc.constrain(constrainedNode, inConstrainer, "parent")
-        if not inRotation:
-            pc.disconnectAttr(cns.name() + ".constraintTranslateX", inConstrainer.name() + ".translateX")
-            pc.disconnectAttr(cns.name() + ".constraintTranslateY", inConstrainer.name() + ".translateY")
-            pc.disconnectAttr(cns.name() + ".constraintTranslateZ", inConstrainer.name() + ".translateZ")
+        cns = constrain(constrainedNode, inConstrainer, "parent")
+
+        if not inTranslation:
+            pc.disconnectAttr(cns.name() + ".constraintTranslateX", constrainedNode.name() + ".translateX")
+            pc.disconnectAttr(cns.name() + ".constraintTranslateY", constrainedNode.name() + ".translateY")
+            pc.disconnectAttr(cns.name() + ".constraintTranslateZ", constrainedNode.name() + ".translateZ")
+
 
         if not oldTransform is None:
             t, r, s = oldTransform
             
             #Translation
-            oldCond = None
-            oldConds = inConstrained.t.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
+            if inTranslation:
+                oldCond = None
+                oldConds = inConstrained.t.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
 
-            if inDebug:
-                print "oldConds",inConstrained.t,oldConds
-
-            for possibleOldCond in oldConds:
-                if possibleOldCond.type() == "condition":
-                    oldCond = possibleOldCond
-                    break
-                else:
-                    possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
-                    if inDebug:
-                        print "possibleOldConds",possibleOldCond.input,possibleOldConds
-                    if len(possibleOldConds) > 0:
-                        oldCond = possibleOldConds[0]
-                        break
-
-            if oldCond is None:
-                tkn.condition(switchAttr, i, "==", constrainedNode.t, t) >> inConstrained.t
-            else:
                 if inDebug:
-                    print "Old cond for",inConstrained.t,oldCond 
-                tkn.condition(switchAttr, i, "==", constrainedNode.t, oldCond.outColor) >> inConstrained.t
+                    print "oldConds",inConstrained.t,oldConds
+
+                for possibleOldCond in oldConds:
+                    if possibleOldCond.type() == "condition":
+                        oldCond = possibleOldCond
+                        break
+                    else:
+                        possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
+                        if inDebug:
+                            print "possibleOldConds",possibleOldCond.input,possibleOldConds
+                        if len(possibleOldConds) > 0:
+                            oldCond = possibleOldConds[0]
+                            break
+
+                if oldCond is None:
+                    tkn.condition(switchAttr, i, "==", constrainedNode.t, t) >> inConstrained.t
+                else:
+                    if inDebug:
+                        print "Old cond for",inConstrained.t,oldCond 
+                    tkn.condition(switchAttr, i, "==", constrainedNode.t, oldCond.outColor) >> inConstrained.t
 
             #Rotation
             if inRotation:
@@ -5343,7 +5354,7 @@ type = "Parent" or "Orient"
 """
 def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=True):
     # take care of switching contraints on "child"
-    #print "applySwitchSpace", strType, strChild, strIndexAttr, listConstrainers
+    print "applySwitchSpace", strType, strChild, strIndexAttr, listConstrainers,inLazy
 
     childNode = pc.PyNode(strChild)
 
@@ -5362,6 +5373,14 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=T
         resetTRS(childNode)
     else:
         parent = addBuffer(childNode, inSuffix="_switchSpacer")
+
+    constrainerNodes = []
+    #Ge real constrainers
+    for contrainer in listConstrainers:
+        if pc.objExists(contrainer):
+            constrainerNodes.append(pc.PyNode(contrainer))
+
+    objectNames = [n.stripNamespace() for n in constrainerNodes]
 
     #Recreate index attr
     inputCons = cmds.listConnections(strIndexAttr, source=True, destination=False, plugs=True)
@@ -5386,28 +5405,19 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=T
         for outputC in outputCons:
             pc.connectAttr(strIndexAttr, outputC, force=True)
 
-    constrainerNodes = []
-    #Ge real constrainers
-    for contrainer in listConstrainers:
-        if pc.objExists(contrainer):
-            constrainerNodes.append(pc.PyNode(contrainer))
-
     if inLazy:
-        createLazySwitch(childNode, constrainerNodes, inAttr=attrHolderNode.attr(param), inRotation=strType == "Parent")
+        #print "tkc.createLazySwitch(tkc.getNode('" + parent.name() + "'), ["+",".join([("tkc.getNode('" + n.name() + "')") for n in constrainerNodes])+"], inAttr=tkc.getNode('" + param + "'), inTranslation="+str(strType == "Parent") + ")"
+        createLazySwitch(parent, constrainerNodes, inAttr=pc.PyNode(param), inTranslation=strType == "Parent")
     else:
-        objectNames = []
         constraints = []
-        for contrainer in listConstrainers:
-            if not pc.objExists(contrainer):
-                continue
-            constrainerNode = pc.PyNode(contrainer)
-            constraints.append(constrain(parent, constrainerNode, "parent"))
-            objectNames.append(constrainerNode.stripNamespace())
+        for contrainerNode in constrainerNodes:
+            cn = constrain(parent, contrainerNode, "parent")
+            constraints.append(cn)
 
-            if strType != "Parent":
-                pc.disconnectAttr(constraints[-1].name() + ".constraintTranslateX", parent.name() + ".translateX")
-                pc.disconnectAttr(constraints[-1].name() + ".constraintTranslateY", parent.name() + ".translateY")
-                pc.disconnectAttr(constraints[-1].name() + ".constraintTranslateZ", parent.name() + ".translateZ")
+        if strType != "Parent":
+            pc.disconnectAttr(constraints[0].name() + ".constraintTranslateX", parent.name() + ".translateX")
+            pc.disconnectAttr(constraints[0].name() + ".constraintTranslateY", parent.name() + ".translateY")
+            pc.disconnectAttr(constraints[0].name() + ".constraintTranslateZ", parent.name() + ".translateZ")
 
         counter = 0
         for constraint in constraints:

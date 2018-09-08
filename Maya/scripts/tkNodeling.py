@@ -70,8 +70,6 @@ import logging
 import tkExpressions as tke
 import pymel.core as pc
 
-import tkMayaCore as tkc
-
 __author__ = "Cyril GIBAUD - Toonkit"
 
 
@@ -236,6 +234,10 @@ def getNode(inObj):
         return pc.PyNode(inObj)
     
     return inObj
+
+def deleteUnusedNodes():
+    numDeleted = pc.mel.eval("MLdeleteUnused()")
+    print numDeleted
 
 def reduceName(inName):
     if inName[0] in tke.Expr.WORDS:
@@ -1654,7 +1656,7 @@ class NodalExpr(tke.Expr):
             output >> result
 
         if inDeleteUnused:
-            tkc.deleteUnusedNodes()
+            deleteUnusedNodes()
 
         return stopProfiling()
 
@@ -1679,7 +1681,7 @@ def convertExpressionString(inString, inDeleteUnused=False):
         nodes.append(compileNodes(convertNot(expr)))
 
     if inDeleteUnused:
-        tkc.deleteUnusedNodes()
+        deleteUnusedNodes()
 
     return nodes
 
@@ -1716,6 +1718,6 @@ def convertExpression(inExpr, inDeleteUnused=False):
         cons[0].setLocked(True)
 
     if inDeleteUnused:
-        tkc.deleteUnusedNodes()
+        deleteUnusedNodes()
 
     return nodes
