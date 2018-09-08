@@ -86,6 +86,7 @@ EPSILON = sys.float_info.epsilon * 10
 OMEGA = 1.0/EPSILON
 
 MAX_NAME_LEN = 150
+SAFE_FACTORISATION = True
 
 # Words
 #################################################################################
@@ -327,7 +328,7 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
     attrTrueName = "None" if inAttrTrue is None else (formatScalar(inAttrTrue) if isinstance(inAttrTrue, (int,float)) else formatAttr(inAttrTrue, True))
     attrFalseName = "None" if inAttrFalse is None else (formatScalar(inAttrFalse) if isinstance(inAttrFalse, (int,float)) else formatAttr(inAttrFalse, True))
     nodeName = inName or reduceName(CONDITION_FORMAT.format(formatAttr(inAttr1), tke.CONDITION_CRITERIA[inCriterion], attr2Name,attrTrueName,attrFalseName))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outColorR
 
     node = create("condition", nodeName, **kwargs)
@@ -428,7 +429,7 @@ def neg(inAttr1,inName=None, **kwargs):
     inAttr1 = getNode(inAttr1)
 
     nodeName = inName or reduceName(NEG_FORMAT.format(formatAttr(inAttr1)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     return mul(inAttr1, -1)
@@ -438,7 +439,7 @@ def nabs(inAttr, inName=None, **kwargs):
     inAttr = getNode(inAttr)
 
     nodeName = inName or reduceName(ABS_FORMAT.format(formatAttr(inAttr.name())))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outColorR
 
     mulName = (inName + "_absMul") if inName else None
@@ -479,7 +480,7 @@ def add(inAttr1, inAttr2, inName=None, **kwargs):
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(ADD_FORMAT.format(attr1Name, attr2Name))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         if attr1Matrix:
             return pc.PyNode(nodeName).matrixSum
         elif attr1Vector or attr2Vector:
@@ -545,7 +546,7 @@ def pointMatrixMul(inPoint, inMat, inName=None, vectorMultiply=False, **kwargs):
 
     nodeName = inName or ns + reduceName(PM_MUL_FORMAT.format(attr1Name, attr2Name))
 
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     node = create("pointMatrixMult", nodeName, **kwargs)
@@ -590,7 +591,7 @@ def mul(inAttr1, inAttr2, inName=None, **kwargs):
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(MUL_FORMAT.format(attr1Name, attr2Name))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         if attr1Matrix:
             return pc.PyNode(nodeName).matrixSum
         return pc.PyNode(nodeName).output
@@ -664,7 +665,7 @@ def sub(inAttr1, inAttr2, inName=None, **kwargs):
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(SUBSTRACT_FORMAT.format(attr1Name, attr2Name))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName)  and (not SAFE_FACTORISATION or not "___" in nodeName):
         node = pc.PyNode(nodeName)
         
         if attr1Vector or attr2Vector:
@@ -738,7 +739,7 @@ def npow(inAttr1, inAttr2=2.0, inName=None, **kwargs):
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(POW_FORMAT.format(attr1Name, attr2Name))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputX
 
     node = create("multiplyDivide", nodeName, **kwargs)
@@ -774,7 +775,7 @@ def div(inAttr1, inAttr2, inName=None, **kwargs):
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(DIVIDE_FORMAT.format(attr1Name, attr2Name))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputX
 
     node = create("multiplyDivide", nodeName, **kwargs)
@@ -804,7 +805,7 @@ def clamp(inAttr, inMin=0.0, inMax=1.0, inName=None, **kwargs):
     attrMaxScalar = isinstance(inMax, (int,float))
 
     nodeName = inName or reduceName(CLAMP_FORMAT.format(formatScalar(inAttr) if inAttrScalar else formatAttr(inAttr), formatScalar(inMin) if attrMinScalar else formatAttr(inMin), formatScalar(inMax) if attrMaxScalar else formatAttr(inMax)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputR
 
     node = create("clamp", nodeName, **kwargs)
@@ -831,7 +832,7 @@ def reverse(inAttr, inName=None, **kwargs):
     inAttr = getNode(inAttr)
 
     nodeName = inName or reduceName(REVERSE_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputX
 
     revNode = create("reverse", nodeName, **kwargs)
@@ -844,7 +845,7 @@ def sin(inAttr, inName=None, **kwargs):
     inAttr = getNode(inAttr)
 
     nodeName = inName or reduceName(SIN_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     node = create("tkSin", nodeName, **kwargs)
@@ -857,7 +858,7 @@ def cos(inAttr, inName=None, **kwargs):
     inAttr = getNode(inAttr)
 
     nodeName = inName or reduceName(COS_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     node = create("tkCos", nodeName, **kwargs)
@@ -883,7 +884,7 @@ def mod(inAttr1, inAttr2, inName=None, **kwargs):
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
 
     nodeName = inName or ns + reduceName(MOD_FORMAT.format(attr1Name, attr2Name))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     node = create("tkMod", nodeName, **kwargs)
@@ -939,7 +940,7 @@ def composeMatrix(inT, inR, inS, inScale=[1.0,1.0,1.0], inName=None, **kwargs):
 
         nodeName = reduceName(COMPMAT_FORMAT.format("{0}_{1}_{2}".format(inTName, inRName, inSName)))
 
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputMatrix
     
     compose = create("composeMatrix", nodeName, **kwargs)
@@ -966,7 +967,7 @@ def decomposeMatrix(inAttr, inName=None, **kwargs):
     inAttr = getNode(inAttr)
 
     nodeName = inName or reduceName(DECMAT_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName)
     
     node = create("decomposeMatrix", nodeName, **kwargs)
@@ -989,7 +990,7 @@ def vector(inSource, inDestination, inWorld=True, inName=None, **kwargs):
     inDestination = getNode(inDestination)
 
     nodeName = inName or reduceName(VECTOR_FORMAT.format(formatAttr(inSource), formatAttr(inDestination, True), WORLD if inWorld else LOCAL))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName)
 
     sourceNode = worldMatrix(inSource) if inWorld else inSource
@@ -1008,7 +1009,7 @@ def vectorMag(inVector, inName=None, **kwargs):
     inVector = getNode(inVector)
 
     nodeName = inName or reduceName(MAGNITUDE_FORMAT.format(formatAttr(inVector)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).distance
 
     node = create("distanceBetween", nodeName, **kwargs)
@@ -1022,7 +1023,7 @@ def distance(inSource, inDestination, inWorld=True, inName=None, **kwargs):
     inDestination = getNode(inDestination)
 
     nodeName = inName or reduceName(DISTANCE_FORMAT.format(formatAttr(inSource), formatAttr(inDestination, True), WORLD if inWorld else LOCAL))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).distance
 
     sourceNode = inSource if not inWorld else worldMatrix(inSource)
@@ -1041,7 +1042,7 @@ def dot(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
     inVec2 = getNode(inVec2)
 
     nodeName = inName or reduceName(DOT_FORMAT.format(formatAttr(inVec1), formatAttr(inVec2, True)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputX
 
     node = create("vectorProduct", nodeName, **kwargs)
@@ -1059,7 +1060,7 @@ def cross(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
     inVec2 = getNode(inVec2)
 
     nodeName = inName or reduceName(CROSS_FORMAT.format(formatAttr(inVec1), formatAttr(inVec2, True)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     node = create("vectorProduct", nodeName, **kwargs)
@@ -1086,7 +1087,7 @@ def pairBlend(inTranslate1, inRotate1, inTranslate2, inRotate2, inWeight=0, inNa
 
     weightName = formatScalar(inWeight) if weightScalar else formatAttr(inWeight, True)
     nodeName = inName or reduceName(BLEND_FORMAT.format(inTranslate1.node().name(), weightName, inTranslate2.node().stripNamespace()))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName)
 
     node = create("pairBlend", nodeName, **kwargs)
@@ -1117,7 +1118,7 @@ def getCurveInfo(inCurve, inName=None, **kwargs):
         inCurve = inCurve.getShape()
         
     nodeName = inName or reduceName(CURVEINFO_FORMAT.format(inCurve.name()))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName)
 
     node = create("curveInfo", nodeName, **kwargs)
@@ -1134,7 +1135,7 @@ def getClosestPoint(inCurve, inPositionNode, inWorld=True, inName=None, **kwargs
         inCurve = inCurve.getShape()
 
     nodeName = inName or reduceName(CLOSESTPOINT_FORMAT.format(inCurve.name(), inPositionNode.stripNamespace()))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName)
 
     node = create("nearestPointOnCurve", nodeName, **kwargs)
@@ -1169,7 +1170,7 @@ def keep(inAttr, inName=None, **kwargs):
         raise ValueError("Unmanaged type {0}".format(inAttr.type()))
 
     nodeName = inName or reduceName(KEEP_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         if valueType == 0:#number
             return pc.PyNode(nodeName).outputX
         elif valueType == 1:#double3
@@ -1209,7 +1210,7 @@ def accu(inAttr, inName=None, **kwargs):
     inAttr = getNode(inAttr)
 
     nodeName = inName or reduceName(ACCU_FORMAT.format(formatAttr(inAttr)))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
     node = create("tkAccu", nodeName, **kwargs)
@@ -1228,7 +1229,7 @@ def accu(inAttr, inName=None, **kwargs):
 @profiled
 def velocity(inObj, **kwargs):
     nodeName = reduceName(VELOCITY_FORMAT.format(inObj.name()))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output3D
 
     keptMat = keep(inObj.worldMatrix[0])
@@ -1242,7 +1243,7 @@ def velocity(inObj, **kwargs):
 @profiled
 def angularVelocity(inObj, **kwargs):
     nodeName = reduceName(ANGVELOCITY_FORMAT.format(inObj.name()))
-    if pc.objExists(nodeName):
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output3D
 
     keptMat = keep(inObj.worldMatrix[0])

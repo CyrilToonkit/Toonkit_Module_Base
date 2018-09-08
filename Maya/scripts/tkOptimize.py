@@ -2293,7 +2293,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttrName="switch"):
                     break
                 else:
                     possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
-                    print "possibleOldConds",possibleOldCond.output,possibleOldConds
+                    print "possibleOldConds",possibleOldCond.input,possibleOldConds
                     if len(possibleOldConds) > 0:
                         oldCond = possibleOldConds[0]
                         break
@@ -2313,7 +2313,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttrName="switch"):
                     oldCond = possibleOldCond
                     break
                 else:
-                    possibleOldConds = possibleOldCond.output.listConnections(type=["condition"], source=True, destination=False)
+                    possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
                     print "possibleOldConds",possibleOldCond.input,possibleOldConds
                     if len(possibleOldConds) > 0:
                         oldCond = possibleOldConds[0]
