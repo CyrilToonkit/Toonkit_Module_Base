@@ -874,19 +874,25 @@ schema_facial = [
     "Eye_Tweak",
     "Eyebrow_Frown",
     "Eyebrow_Tweak",
-    "Eyes_Aim_ParentSpace",
+    #"Eyes_Aim_ParentSpace",
 
-    "Eyes",#?
-    "Eyes_Root",#?
-    "Left_Eye_Ref",#?
-    "Left_Eyes_Params",#?
-    "Left_eye",#?
+    #"Eyes",#?
+    #"Eyes_Root",#?
+
+    #"Left_Eye_Ref",#?
+    #"Left_Eyes_Params",#?
+    #"Left_eye",#?
     "Left_eye_Listen",#?
-    "Left_eye_aim",#?
+    #"Left_eye_aim",#?
     "Left_eyelids",#?
-    "Left_Eye_Dir",#?
-    "Left_eye_aimDeform",#?
+    #"Left_Eye_Dir",#?
+    #"Left_eye_aimDeform",#?
     "Left_eye_iris",#?
+
+    # "Left_Orbit_Params",
+    # "Left_Eye_Global",
+    # "Left_Eye_Target",
+    # "Left_Eye_Direction",
 
     "Left_eye_spec",
     "Left_Spec_Dir",
@@ -1010,15 +1016,20 @@ schema_facial = [
     "Left_eyeshaper_1_2_4_ctrl",
     "Left_eyeshaper_2_2_4_ctrl",
 
-    "Right_Eye_Ref",#?
-    "Right_Eyes_Params",#?
-    "Right_eye",#?
+    #"Right_Eye_Ref",#?
+    #"Right_Eyes_Params",#?
+    #"Right_eye",#?
     "Right_eye_Listen",#?
-    "Right_eye_aim",#?
+    #"Right_eye_aim",#?
     "Right_eyelids",#?
-    "Right_Eye_Dir",#?
-    "Right_eye_aimDeform",#?
+    #"Right_Eye_Dir",#?
+    #"Right_eye_aimDeform",#?
     "Right_eye_iris",#?
+
+    # "Right_Orbit_Params",
+    # "Right_Eye_Global",
+    # "Right_Eye_Target",
+    # "Right_Eye_Direction",
 
     "Right_eye_spec",
     "Right_Spec_Dir",
@@ -1163,12 +1174,9 @@ schema_facial = [
     "Left_Ear",
     "Left_Expressions_Params",
     "Left_Eye_Bulge",
-    "Left_Eye_Direction",
-    "Left_Eye_Global",
     "Left_Eye_Mid_Wave",
     "Left_Eye_Pinch",
     "Left_Eye",
-    "Left_Eye_Target",
     "Left_Eye_Up_Cheek",
     "Left_Eye_Wave",
     "Left_Eyebrow_1",
@@ -1192,7 +1200,6 @@ schema_facial = [
     "Left_Mouth_Upperlip_1",
     "Left_Nostril",
     "Left_Nostril_Up",
-    "Left_Orbit_Params",
     "Left_Pinch_Corner",
     "Left_Puff",
     "Left_Pupil",
@@ -1278,12 +1285,9 @@ schema_facial = [
     "Right_Ear",
     "Right_Expressions_Params",
     "Right_Eye_Bulge",
-    "Right_Eye_Direction",
-    "Right_Eye_Global",
     "Right_Eye_Mid_Wave",
     "Right_Eye_Pinch",
     "Right_Eye",
-    "Right_Eye_Target",
     "Right_Eye_Up_Cheek",
     "Right_Eye_Wave",
     "Right_Eyebrow_1",
@@ -1307,7 +1311,6 @@ schema_facial = [
     "Right_Mouth_Upperlip_1",
     "Right_Nostril",
     "Right_Nostril_Up",
-    "Right_Orbit_Params",
     "Right_Pinch_Corner",
     "Right_Puff",
     "Right_Pupil",
@@ -1976,32 +1979,35 @@ def setDeactivator(inAttr, inNodesToKeep, inName=None, inDeactivateValue=1, inIg
 
     setDeactivatorOnRemoved(inAttr, nodesRootToRemove, inName, inDeactivateValue=inDeactivateValue, inIgnoreTags=inIgnoreTags, inHide=inHide)
 """
-def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inRecur=0):
-    print " " * inRecur + "DEACTIVATE",inObj,inCond,inCondVis,inExceptTypes
+def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVisible=False, inRecur=0):
+    #print " " * inRecur + "DEACTIVATE",inObj,inCond,inCondVis,inExceptTypes
 
     if isinstance(inObj, pc.nodetypes.Transform):
-        if inCondVis is None:
-            inObj.v.set(0)
-        else:
-            tkn.conditionAnd(inObj.v, inCondVis)
+        if not inKeepVisible:
+            if inCondVis is None:
+                inObj.v.set(0)
+            else:
+                tkn.conditionAnd(inObj.v, inCondVis)
         
         for shape in inObj.getShapes():
-            deactivate(shape, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inRecur=inRecur+1)
+            deactivate(shape, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inRecur=inRecur+1)
 
     elif isinstance(inObj, pc.nodetypes.Mesh):
-        if inCondVis is None:
-            inObj.v.set(0)
-        else:
-            tkn.conditionAnd(inObj.v, inCondVis)
+        if not inKeepVisible:
+            if inCondVis is None:
+                inObj.v.set(0)
+            else:
+                tkn.conditionAnd(inObj.v, inCondVis)
 
         defs = pc.listHistory(inObj, gl=True, pdo=True, lf=True, f=False, il=2)
         if defs != None:
             for deform in defs:
                 if pc.attributeQuery("envelope" , node=deform, exists=True):
                     if inExceptTypes is None or not deform.type() in inExceptTypes:
-                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inRecur=inRecur+1)
-    else:
-        pc.warning("Don't know how to deactivate {0} of type {1}".format(inObj, type(inObj)))
+                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inRecur=inRecur+1)
+                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inRecur=inRecur+1)
+    # else:# else:
+    #    pc.warning("Don't know how to deactivate {0} of type {1}".format(inObj, type(inObj)))
 
     if inCond is None:
         inObj.nodeState.set(2)
@@ -2053,18 +2059,32 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     for root in nodesRootToRemove:
         tkn.conditionAnd(root.v, condVis)
 
-    cns = tkc.getExternalConstraints(nodesRootToRemove, inSource=True, inDestination=True, inReturnAll=True, inProgress=True)
+    cns, cnsAll = tkc.getExternalConstraints(nodesRootToRemove, inSource=True, inDestination=True, inReturnAll=True, inProgress=True)
 
-    print "cns", len(cns), cns
+    externalOwners = []
+    print " Constraints :",len(cns),cns
 
-    for cn in cns:
-        targets = tkc.getConstraintTargets(cn)
+    for cn in cnsAll:
+        """
+        if cn in cns:
+            owner = tkc.getConstraintOwner(cn)
+            ownerRoot = tkc.getParent(owner[0], root=True)
 
-        if len(targets) > 1:
-            pc.warning("BLENDED " + cn.name())
-        else:
-            #DEACTTIVATE CONSTRAINT
-            deactivate(cn, cond, condVis)
+            #print "  -cn",cn
+            #print "  -owner",owner
+            #print "  -ownerRoot",ownerRoot
+
+            if not ownerRoot in nodesRootToRemove:
+                externalOwners.append(ownerRoot)
+                if len(tkc.getConstraintTargets(cn)) > 1:
+                    pc.warning("BLENDED " + cn.name())
+                    continue
+        """
+        #DEACTTIVATE CONSTRAINT
+        deactivate(cn, cond, condVis)
+
+    if len(externalOwners) > 0:
+        pc.warning("External Owners : {0} {1}".format(len(externalOwners), externalOwners))
 
     origGeos = [m.getParent() for m in pc.ls(type="mesh") if len(m.getParent().v.listConnections()) > 0 or m.getParent().v.get()]
 
@@ -2095,10 +2115,29 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     if not inReplaceDeformers is None:
         for replaceDeformer in inReplaceDeformers:
+            print " deformersRemaining","replaceDeformer",replaceDeformer, replaceDeformer,"deformersRemaining",len(deformersRemaining),deformersRemaining
             if replaceDeformer in deformersRemaining:
                 replacingDeformers.append(pc.PyNode(replaceDeformer))
 
-    print "replacingDeformers",replacingDeformers
+    print " deformersRemaining",len(deformersRemaining),deformersRemaining
+
+    print " replacingDeformers",len(replacingDeformers),replacingDeformers
+
+    #Find and add "siblings" geo (geo deformed by an existing one)
+    siblingsGeos = []
+    for geo in geos:
+        histos = geo.listHistory(future=True, type="mesh")
+        for histo in histos:
+            """
+            if len([d for d in histo.listHistory() if d.type() in ["blendShape", "skinCluster"]]) > 0:
+                print " siblingsGeo have other deformers :",histo,[d for d in histo.listHistory() if d.type() in ["blendShape", "skinCluster"]]
+                continue
+            """
+            if not histo in siblingsGeos and not histo in geos:
+                siblingsGeos.append(histo)
+                print " siblingsGeo OK :",geo,"=>",histo
+
+    geos.extend(siblingsGeos)
 
     proxies = []
 
@@ -2108,20 +2147,19 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
         if not geo.type() == "mesh":
             continue
         """
+        transform = geo.getParent()
         underGeo = None
+        isOrphanGeo = True
+        keptTopInfs = []
 
         geoSkin = tkc.getSkinCluster(geo)
-        keptTopInfs = geoSkin.influenceObjects()
+        if not geoSkin is None:
+            keptTopInfs = geoSkin.influenceObjects()
 
-        remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
+            remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
 
-        otherDeformers = geo.listHistory(type=["blendShape", "wrap"])
+            otherDeformers = [d for d in geo.listHistory() if d.type() in ["blendShape", "wrap"]]
 
-        isOrphanGeo = len(remainingTopInfs) == 0 and len(otherDeformers) == 0
-
-        print " isOrphanGeo",isOrphanGeo
-
-        if not isOrphanGeo:
 
             #'Live' blendshape targets
             #------------------------------------
@@ -2140,31 +2178,27 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                                 underGeo = con
                                 break
 
+            isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None
+
+        print " isOrphanGeo",isOrphanGeo
         print " underGeo",underGeo
-
         print " inIgnoreTags",len(inIgnoreTags),inIgnoreTags
-        
-        print " len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([geo], inIgnoreTags))
-
-        transform = geo.getParent()
+        print " len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([transform], inIgnoreTags))
+        print " visible",tkc.isVisibleAfterAll(geo)
+        isSafe = False
 
         if inIgnoreTags is None or len(inIgnoreTags) == 0 or len(tkt.getTags([transform], inIgnoreTags)) == 0:
-            if underGeo is None and not isOrphanGeo and transform.v.get():
+            if not isOrphanGeo and tkc.isVisibleAfterAll(geo):
                 infsToRemove = []
 
                 for inf in keptTopInfs:
                     if inf in removedDeformers:
                         infsToRemove.append(inf)
 
-                print " infs",len(keptTopInfs),keptTopInfs
-                print " infsToRemove",len(infsToRemove),infsToRemove
+                #print " infs",len(keptTopInfs),keptTopInfs
+                #print " infsToRemove",len(infsToRemove),infsToRemove
 
-                if len(infsToRemove) > 0:
-                    infsLeft = len(keptTopInfs) - len(infsToRemove);
-
-                    if infsLeft == 0:
-                        print " !! No infs left !!"
-
+                if geo.type() == "mesh":
                     #Create geometry proxy
                     #------------------------
                     dupe = tkc.getNode(tkc.duplicateAndClean(geo.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False))
@@ -2173,28 +2207,130 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                         tkc.polyReduceComplexity(dupe, inPolyReduceMin, inPolyReduceMax)
 
                     proxies.append(dupe)
-                    tkc.gator([dupe], geo)
-                    dupeSkin = tkc.getSkinCluster(dupe)
-                    pc.skinCluster(dupeSkin,e=True,ri=infsToRemove)
+
+                    infsLeft = len(keptTopInfs) - len(infsToRemove)
+
+                    newSkin = None
+                    if not underGeo is None:
+                        print " Proxy",dupe,"created with gator under",underGeo,"approach" 
+                        tkc.gator([dupe], underGeo)
+                        newSkin = tkc.getSkinCluster(dupe)
+                        dupeInfs = newSkin.influenceObjects()
+
+                        infsToRemove = []
+
+                        for inf in dupeInfs:
+                            if inf in removedDeformers:
+                                infsToRemove.append(inf)
+
+                        pc.skinCluster(newSkin,e=True,ri=infsToRemove)
+                    elif infsLeft == 0:
+                        if len(replacingDeformers) > 0:
+                            print " Proxy",dupe,"created with replacingDeformers approach",dupe,replacingDeformers
+                            newSkin = pc.skinCluster(dupe,replacingDeformers, name=dupe.name() + "_skinCluster", toSelectedBones=True)
+                        elif len(deformersRemaining) > 0:
+                            print " Proxy",dupe,"created with deformersRemaining approach" ,dupe,deformersRemaining
+                            newSkin = pc.skinCluster(dupe,deformersRemaining, name=dupe.name() + "_skinCluster", toSelectedBones=True)
+                    else:
+                        print " Proxy",dupe,"created with gator",geo,"approach" 
+                        tkc.gator([dupe], geo)
+                        newSkin = tkc.getSkinCluster(dupe)
+                        pc.skinCluster(newSkin,e=True,ri=infsToRemove)
 
                     tkRig.hammerCenter(dupe)
+                    pc.skinPercent(newSkin, dupe, pruneWeights=0.005 )
+                    removedInfs = tkc.removeUnusedInfs(newSkin)
 
-                    deactivate(dupe, inverse, inverseVis)
+                    deactivate(dupe, inverse, inverseVis, inKeepVisible=not inHide)
                     #------------------------
 
         #Connect "old" geometry
         #------------------------
-        #if inHide and underGeo is None:
-            #DEACTTIVATE GEOMETRY
-        deactivate(geo, cond, condVis, inExceptTypes=(None if underGeo is None else ["blendShape"]))
+        deactivate(geo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(geo))
 
         if underGeo is not None:
             #DEACTTIVATE GEOMETRY
-            deactivate(underGeo, cond, condVis, inExceptTypes=["skinCluster"])
+            deactivate(underGeo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(underGeo))
 
     print "cns",len(cns),cns
+    print "cnsAll",len(cnsAll),cnsAll
     print "geos",len(geos),geos
     print "proxies",len(proxies),proxies
+
+def createLazySwitch(inConstrained, inConstrainers, inAttrName="switch"):
+    parent = inConstrained.getParent()
+    
+    if pc.attributeQuery(inAttrName , node=parent, exists=True):
+        pc.deleteAttr(parent.attr(inAttrName))
+
+    param = tkc.addParameter(parent, inAttrName, "enum;"+":".join([n.name() for n in inConstrainers]))
+    
+    switchAttr = parent.attr(inAttrName)
+    
+    i = 0
+    oldTransform = None
+    for inConstrainer in inConstrainers:
+        name = "{0}_LazyTo_{1}".format(inConstrainer,inConstrained)
+        if pc.objExists(name):
+            pc.delete(name)
+
+        constrainedNode = pc.group(name=name, empty=True)
+        parent.addChild(constrainedNode)    
+        tkc.matchTRS(constrainedNode, inConstrained)
+        
+        cns = tkc.constrain(constrainedNode, inConstrainer, "parent")
+        
+        if not oldTransform is None:
+            t, r, s = oldTransform
+            
+            #Translation
+            oldCond = None
+            oldConds = inConstrained.t.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
+            print "oldConds",inConstrained.t,oldConds
+            for possibleOldCond in oldConds:
+                if possibleOldCond.type() == "condition":
+                    oldCond = possibleOldCond
+                    break
+                else:
+                    possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
+                    print "possibleOldConds",possibleOldCond.output,possibleOldConds
+                    if len(possibleOldConds) > 0:
+                        oldCond = possibleOldConds[0]
+                        break
+
+            if oldCond is None:
+                tkn.condition(switchAttr, i, "==", constrainedNode.t, t) >> inConstrained.t
+            else:
+                print "Old cond for",inConstrained.t,oldCond 
+                tkn.condition(switchAttr, i, "==", constrainedNode.t, oldCond.outColor) >> inConstrained.t
+
+            #Rotation
+            oldCond = None
+            oldConds = inConstrained.r.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
+            print "oldConds",inConstrained.r,oldConds
+            for possibleOldCond in oldConds:
+                if possibleOldCond.type() == "condition":
+                    oldCond = possibleOldCond
+                    break
+                else:
+                    possibleOldConds = possibleOldCond.output.listConnections(type=["condition"], source=True, destination=False)
+                    print "possibleOldConds",possibleOldCond.input,possibleOldConds
+                    if len(possibleOldConds) > 0:
+                        oldCond = possibleOldConds[0]
+                        break
+
+            if oldCond is None:
+                tkn.condition(switchAttr, i, "==", constrainedNode.r, r) >> inConstrained.r
+            else:
+                print "Old cond for",inConstrained.r,oldCond 
+                tkn.condition(switchAttr, i, "==", constrainedNode.r, oldCond.outColor) >> inConstrained.r
+
+        tkn.conditionAnd(cns.nodeState, tkn.condition(switchAttr, i, "!=", 2, 0))
+
+        oldTransform = (constrainedNode.t, constrainedNode.r, constrainedNode.s)
+        i += 1
+
+    return switchAttr
 """
 def getExternalLinks(inRoot):
     CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint"]

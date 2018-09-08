@@ -1008,9 +1008,19 @@ def deleteUnusedNodes():
     print numDeleted
     
 #todo add an option to consider upwards hierarchy (PyNode.getAllParents())
-def isVisibleAfterAll(inObj):
-    visibilites = [inObj.v.get(), not inObj.overrideEnabled.get() or inObj.overrideVisibility.get()]
-    if inObj.type() == "transform":
+def isVisibleAfterAll(inObj, inDownStream=True, inUpStream=True):
+    parent = None
+    if inUpStream:
+        parent = inObj.getParent()
+
+    visibilites = []
+
+    if not parent is None:
+        visibilites = [isVisibleAfterAll(parent, inDownStream=False)]
+
+    visibilites.extend([inObj.v.get(), not inObj.overrideEnabled.get() or inObj.overrideVisibility.get()])
+
+    if inObj.type() == "transform" and inDownStream:
         shapes = inObj.getShapes(noIntermediate=True)
         for shape in shapes:
             visibilites.extend([shape.v.get(), not shape.overrideEnabled.get() or shape.overrideVisibility.get()])
@@ -2669,6 +2679,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
     return createdObjects
 
 def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False, inReturnAll=False, inProgress=False):
+    cnsAll = []
     externalTargets = []
 
     if not isinstance(inRoot,(list,tuple)):
@@ -2707,18 +2718,36 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
                 for target in getConstraintTargets(constraint):
                     targets.append((target, constraint))
 
-        externalTargets.extend([target for target in list(set(targets)) if inReturnAll or not target[0].name() in allChildrenStr])
-        
+        targets = list(set(targets))
+        cnsAll.extend(targets)
+
+        filteredTargets = []
+        for target in targets:
+            if not target[0].name() in allChildrenStr:
+                filteredTargets.append(target)
+
+        externalTargets.extend(filteredTargets)
+
         if inProgress:
             pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     if inProgress:
         pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
 
-    if returnObjects:
-        return [t[0] for t in externalTargets]
+    returnList = []
 
-    return list(set([t[1] for t in externalTargets]))
+    if returnObjects:
+        returnList.append(list(set([t[0] for t in externalTargets])))
+
+    if inReturnAll:
+         returnList.append(list(set([t[1] for t in cnsAll])))
+
+    if len(returnList) == 0:
+         return list(set([t[1] for t in externalTargets]))
+
+    returnList.insert(0, list(set([t[1] for t in externalTargets])))
+
+    return returnList
 
 def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True, inManaged=None, inAllChildren=None):
     CONSTRAINT_TYPES = ["parentConstraint", "pointConstraint", "scaleConstraint", "orientConstraint", "aimConstraint"]
@@ -2828,26 +2857,30 @@ def getConstraintTargets(inCons):
 
 def getConstraintOwner(inCons):
     targets=[]
+    consType = inCons.type()
 
-    if inCons.type() == "motionPath":
-        targets = pc.listConnections(inCons + ".allCoordinates")
+    if consType == "motionPath":
+        targets = inCons.allCoordinates.listConnections()
+
+    elif consType == "follicle":
+        targets = inCons.outTranslate.listConnections()
+
+    elif pc.objExists(inCons + ".constraintTranslateX"):
+        targets = pc.listConnections(inCons + ".constraintTranslateX")
+        if len(targets) == 0:
+            targets = pc.listConnections(inCons + ".constraintTranslate")
+            if len(targets) == 0 and pc.objExists(inCons + ".constraintRotateX"):
+                targets = pc.listConnections(inCons + ".constraintRotateX")
+                if len(targets) == 0:
+                    targets = pc.listConnections(inCons + ".constraintRotate")
+    elif pc.objExists(inCons + ".constraintRotateX"):
+        targets = pc.listConnections(inCons + ".constraintRotateX")
+        if len(targets) == 0:
+            targets = pc.listConnections(inCons + ".constraintRotate")
+    elif pc.objExists(inCons + ".constraintScaleX"):
+        targets = pc.listConnections(inCons + ".constraintScaleX")
     else:
-        if pc.objExists(inCons + ".constraintTranslateX"):
-            targets = pc.listConnections(inCons + ".constraintTranslateX")
-            if len(targets) == 0:
-                targets = pc.listConnections(inCons + ".constraintTranslate")
-                if len(targets) == 0 and pc.objExists(inCons + ".constraintRotateX"):
-                    targets = pc.listConnections(inCons + ".constraintRotateX")
-                    if len(targets) == 0:
-                        targets = pc.listConnections(inCons + ".constraintRotate")
-        elif pc.objExists(inCons + ".constraintRotateX"):
-            targets = pc.listConnections(inCons + ".constraintRotateX")
-            if len(targets) == 0:
-                targets = pc.listConnections(inCons + ".constraintRotate")
-        elif pc.objExists(inCons + ".constraintScaleX"):
-            targets = pc.listConnections(inCons + ".constraintScaleX")
-        else:
-            pc.warning("Can't find " + inCons.name() + " connection !" )
+        pc.warning("Can't find " + inCons.name() + " connection !" )
 
     return targets
 

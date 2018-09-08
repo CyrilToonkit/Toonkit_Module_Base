@@ -397,7 +397,6 @@ def conditionAnd(inAttr, inCond):
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
     if len(oldConds) > 0:
-        print "!!CONNECTION",inAttr,oldConds
         oldCond = oldConds[0]
 
     locked = inAttr.isLocked()
