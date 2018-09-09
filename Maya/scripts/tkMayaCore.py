@@ -5005,6 +5005,7 @@ def addParameter(inobject=None, name="NewParam", inType="double", default=None, 
 PPDTYPES= { "int":"Int32Array",
             "vector":"vectorArray",
             "double":"doubleArray"}
+
 def addPerPointData(inMeshT, inName="PerPointData", value=None, inType="int"):
     prop = getProperty(inMeshT, inName)
     if prop != None:
@@ -5250,14 +5251,20 @@ def getParamsDictionary(inNode, strName, bidirectionnal=False):
 
     return dic
 
-def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="switch",inTranslation=True, inRotation=True, inDebug=True):
-    print "createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")"
+#Does not work in parallel ? Try something else than nodeState=2 ?
+def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="switch",inTranslation=True, inRotation=True, inDebug=False):
+    if inDebug:
+        print "createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")"
 
     inConstrained.t.disconnect()
     inConstrained.r.disconnect()
 
     parent = inConstrained.getParent()
-    
+
+    if parent is None:
+        pc.warning("Can't create a lazy switch from scene root !")
+        return
+
     if inAttr is None and pc.attributeQuery(inAttrName , node=parent, exists=True):
         pc.deleteAttr(parent.attr(inAttrName))
 
@@ -5352,7 +5359,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
 """
 type = "Parent" or "Orient"
 """
-def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=True):
+def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=False):
     # take care of switching contraints on "child"
     print "applySwitchSpace", strType, strChild, strIndexAttr, listConstrainers,inLazy
 

@@ -66,6 +66,9 @@ import os
 import sys
 import re
 import logging
+import base64
+import hashlib
+from string import ascii_lowercase
 
 import tkExpressions as tke
 import pymel.core as pc
@@ -134,6 +137,13 @@ CONDITION_FORMAT = "{0}_{1}_{2}_IFT_{3}_IFF_{4}_Cond"
 
 VELOCITY_FORMAT = "{0}_Vel"
 ANGVELOCITY_FORMAT = "{0}_Angvel"
+
+UTILITY_TYPES = ["addDoubleLinear", "blendColors",
+                "condition", "curveInfo", "multDoubleLinear", "multiplyDivide",
+                "reverse", "clamp", "plusMinusAverage", "distanceBetween",
+                "remapValue", "setRange", "decomposeMatrix", "composeMatrix",
+                "multMatrix", "blendTwoAttr", "nearestPointOnCurve", "pairBlend",
+                "vectorProduct", "distanceBetween", "wtAddMatrix"]
 
 # Output names
 #################################################################################
@@ -257,6 +267,44 @@ def reduceName(inName):
     name = "{0}___{1}".format(name[:MAX_NAME_LEN/2], name[-MAX_NAME_LEN/2:])
 
     return "{0}{1}".format(ns, name)
+
+#Supposed to reduce .ma size, but does not help so much in most cases.
+#May be be usefull if we have to increase the value of MAX_NAME_LEN in case of very deep utility tree
+def hashNodes(inHolder="Global_SRT", inTypes=UTILITY_TYPES):
+    if not pc.objExists(inHolder):
+        return
+
+    holder = pc.PyNode(inHolder)
+    pc.addAttr(holder, longName="nodesHash", dt="stringArray")
+
+    nodes = pc.ls(type=inTypes)
+
+    nodesDic = []
+    nodesKeys = []
+    for node in nodes:
+        name = node.name()
+        hashedName = base64.urlsafe_b64encode(hashlib.md5(name).digest()).rstrip("=").replace("-", "_")
+        if hashedName[0].isdigit():
+            hashedName = ascii_lowercase[int(hashedName[0])] + hashedName[1:]
+
+        if hashedName in nodesKeys:
+            print pc.warning("Duplicate hash " + hashedName) 
+
+        node = node.rename(hashedName)
+        nodesDic.append(node.name() + " " + name)
+
+    holder.nodesHash.set(nodesDic)
+
+#TODO implement
+def unhashNodes(inHolder="Global_SRT", inTypes=UTILITY_TYPES):
+    if not pc.objExists(inHolder):
+        return
+
+    holder = pc.PyNode(inHolder)
+    if not pc.attributeQuery("nodesHash", node=holder, exists=True):
+        return
+
+    print holder.nodesHash.get()
 
 def create(inType, inName, **kwargs):
     node = pc.createNode(inType, name=inName)

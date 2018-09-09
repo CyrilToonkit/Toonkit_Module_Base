@@ -1462,6 +1462,12 @@ def evaluate(inFrames=100):
 
     return fps
 
+def importMultiple(inPath, inNumber=100):
+    pc.openFile(inPath, force=True)
+    
+    for i in range(inNumber-1):
+        pc.importFile(inPath, force=True)
+
 def createConstraintsBenchmark(inNumber=100):
     objs = []
 
@@ -1892,7 +1898,7 @@ def deletePTTransforms(inExceptPattern=None):
     print "deletePTTransforms",len(uselessTransforms),uselessTransforms
     return uselessTransforms
 
-def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
+def deletePTAttributes(inExceptPattern=None, inExceptParams=["ift","smt","dr"], inDropStaticValues=True):
     uselessAttributes = []
     
     ts = pc.ls(exactType=["transform"])
@@ -1905,6 +1911,9 @@ def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
         uds = tkc.getParameters(t)
         for ud in uds:
 
+            if ud in inExceptParams:
+                continue
+
             attr = t.attr(ud)
 
             #Connections
@@ -1914,7 +1923,7 @@ def deletePTAttributes(inExceptPattern=None, inDropStaticValues=True):
             haveExpr = False
             for con in cons + otherCons:
                 if con.node().type() == "expression":
-                    print "Attribute '{0}' still have expression ('{1}') !".format(attr, con.node())
+                    #print "Attribute '{0}' still have expression ('{1}') !".format(attr, con.node())
                     haveExpr = True
                     break
 
