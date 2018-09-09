@@ -1421,6 +1421,74 @@ tko.deleteUselessTransforms("(.+_OSCAR_Attributes|.+_TK_CtrlsChannelsDic|.+_TK_C
 tkc.deleteUnusedNodes()
 """
 
+def refreshFrame():
+    pc.currentTime(pc.currentTime())
+
+#Rigs LOD manipulation
+def setLOD(inValue, inNamespaces=None, inAttrs=["Body_LOD", "Facial_LOD", "LOD"], inSolo=False, inUseSelection=True, inInvalidate=True, inReverse=False):
+    #print "setLOD(",inValue,",", inNamespaces,",",inAttrs,",", inSolo,",", inUseSelection,",", inInvalidate,",", inReverse,",)"
+
+    changed = False
+
+    namespaces = ["*:", ""]
+
+    if inNamespaces is None:
+        if inUseSelection:
+            sel = pc.selected()
+            if len(sel) > 0:
+                namespaces = []
+                for sel in pc.selected():
+                    ns = sel.namespace()
+                    if ns in namespaces:
+                        continue
+
+                    namespaces.append(ns)
+    else:
+        if not inReverse:
+            namespaces = inNamespaces
+
+    #print "namespaces",namespaces
+
+    attrsPatterns = []
+    #Collect attributes
+    for ns in namespaces:
+        attrsPatterns.extend(["{0}*.{1}".format(ns, attr) for attr in inAttrs])
+
+    #print "attrsPatterns",attrsPatterns
+
+    attrs = pc.ls(attrsPatterns)
+
+    for attr in attrs:
+        if inReverse and attr.namespace() in inNamespaces:
+            continue
+
+        thisValue = inValue
+        value = attr.get()
+        minimum = attr.getMin() or 0
+        maximum = attr.getMax() or 2
+
+        if inReverse:
+            if abs(thisValue-minimum) > abs(thisValue-maximum):#Closer to maximum
+                thisValue = minimum
+            else:
+                thisValue = maximum
+
+        #enumValues = pc.attributeQuery(attr, node=outfitsProperty, listEnum=True)[0].split(":")
+
+        attrValue = min(max(thisValue,minimum), maximum)
+        if attrValue != attr.get():
+            attr.set(attrValue)
+            changed = True
+
+    if namespaces != ["*:", ""] and inSolo:
+        if setLOD(inValue, inNamespaces=namespaces, inAttrs=inAttrs, inInvalidate=False, inReverse=True):
+            changed = True
+
+    if changed and inInvalidate:
+        pc.evaluationManager(invalidate=True)
+        pc.evalDeferred(refreshFrame)
+
+    return changed
 
 #BENCHMARKING
 #---------------------------------------------------
@@ -2023,9 +2091,11 @@ def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVis
     else:
         tkn.conditionAnd(inObj.nodeState, inCond)
 
-def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inPolyReduceMin=0, inPolyReduceMax=0, inHide=True):
+def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inKeepOrphans=None, inIgnoreTags=["hd"], inPolyReduceMin=0, inPolyReduceMax=0, inHide=True):
     if inRootsKeep is None and inRootsRemove is None:
         raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
+
+    inKeepOrphans = inKeepOrphans or []
 
     inRoots = inRootsKeep or inRootsRemove
     nodesRootToRemove, nodesRootToKeep, allGivenNodes = [None,None,None]
@@ -2187,7 +2257,10 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                                 underGeo = con
                                 break
 
-            isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None
+            isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None 
+
+        if isOrphanGeo and transform.stripNamespace() in inKeepOrphans:
+            isOrphanGeo  = False
 
         print " isOrphanGeo",isOrphanGeo
         print " underGeo",underGeo
