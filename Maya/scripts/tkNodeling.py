@@ -306,8 +306,12 @@ def unhashNodes(inHolder="Global_SRT", inTypes=UTILITY_TYPES):
 
     print holder.nodesHash.get()
 
-def create(inType, inName, **kwargs):
+def create(inType, inName, inHI=False, **kwargs):
     node = pc.createNode(inType, name=inName)
+
+    if not inHI:
+        node.isHistoricallyInteresting.set(0)
+
     funcName = kwargs.get("func", None)
 
     if funcName:
@@ -421,7 +425,6 @@ def conditionOr(inAttr, inCond):
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
     if len(oldConds) > 0:
-        print "!!CONNECTION",inAttr,oldConds
         oldCond = oldConds[0]
 
     locked = inAttr.isLocked()
@@ -433,7 +436,6 @@ def conditionOr(inAttr, inCond):
             oldCond.outColorR.disconnect(inAttr)
 
             inCond = condition(inCond.node().firstTerm.listConnections(plugs=True)[0], inCond.node().secondTerm.get(), "!=", inCond.node().colorIfTrueR.get(), oldCond.outColorR)
-            print "in New Cond",inCond
             inCond >> inAttr
     else:
         inCond >> inAttr
@@ -459,7 +461,6 @@ def conditionAnd(inAttr, inCond):
             oldCond.outColorR.disconnect(inAttr)
 
             inCond = condition(inCond.node().firstTerm.listConnections(plugs=True)[0], inCond.node().secondTerm.get(), "!=", oldCond.outColorR, inCond.node().colorIfFalseR.get())
-            print "in New Cond",inCond
             inCond >> inAttr
     else:
         inCond >> inAttr
@@ -1733,7 +1734,7 @@ def convertExpressionString(inString, inDeleteUnused=False):
 
     return nodes
 
-def convertExpression(inExpr, inDeleteUnused=False):
+def convertExpression(inExpr, inDeleteUnused=False, inVerbose=False):
     inExpr = getNode(inExpr)
 
     if inExpr.type() != "expression":
@@ -1744,7 +1745,8 @@ def convertExpression(inExpr, inDeleteUnused=False):
 
     cons = inExpr.output[0].listConnections(plugs=True)
     if len(cons) != 1:
-        print "Can't convert, no output ! ({0}, '{1}'')".format(inExpr,exprString)
+        if inVerbose:
+            print "Can't convert, no output ! ({0}, '{1}'')".format(inExpr,exprString)
         return []
 
     lock = cons[0].isLocked()
@@ -1760,7 +1762,8 @@ def convertExpression(inExpr, inDeleteUnused=False):
         nodes = convertExpressionString(exprString)
         pc.delete(inExpr)
     except Exception as e:
-        pc.warning("Can't convert : '" + exprString + "'\n" + str(e))
+        if inVerbose:
+            pc.warning("Can't convert : '" + exprString + "'\n" + str(e))
 
     if lock:
         cons[0].setLocked(True)

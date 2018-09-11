@@ -464,6 +464,83 @@ def compileLists(l1, l2, l1items, l2items):
         
     return lst
 
+
+"""
+print "all_body",len(all_body),all_body
+dupes = getDuplicates(all_body)
+print "all_body dupes",len(dupes),dupes
+
+print "schema_low",len(schema_low),schema_low
+dupes = getDuplicates(schema_low)
+print "schema_low dupes",len(dupes),dupes
+
+delta = getElementsDelta(schema_low, all_body)
+print "delta",len(delta[0]),len(delta[1]),delta
+
+print "-"*75
+
+print "Facial_High",len(Template.Facial_High),Template.Facial_High
+
+print "schema_facial_mid_remove",len(schema_facial_mid_remove),schema_facial_mid_remove
+
+delta = getElementsDelta(schema_facial_mid_remove, Template.Facial_High)
+print "delta",len(delta[0]),len(delta[1]),delta
+
+print "-"*75
+
+all_facial = Template.Facial_High + Template.Facial_Mid
+
+print "all_facial",len(all_facial),all_facial
+
+print "schema_facial",len(schema_facial),schema_facial
+
+delta = getElementsDelta(schema_facial, all_facial)
+print "delta",len(delta[0]),len(delta[1]),delta
+
+"""
+
+def unique(a):
+    """ return the list with duplicate elements removed """
+    return list(set(a))
+
+def intersect(a, b):
+    """ return the intersection of two lists """
+    return list(set(a) & set(b))
+
+def union(a, b):
+    """ return the union of two lists """
+    return list(set(a) | set(b))
+
+def getDuplicates(inList):
+    uniqueList = list(set(inList))
+
+    if len(uniqueList) < len(inList):
+        dupes = []
+        for item in inList:
+            if item in dupes:
+                continue
+
+            count = inList.count(item)
+
+            if count > 1:
+                dupes.extend((count-1) * [item])
+
+        return dupes
+    return []
+
+def getElementsDelta(inList1, inList2):
+    rslt = [[],[]]
+    
+    for item in inList1:
+        if not item in inList2:
+            rslt[0].append(item)
+
+    for item in inList2:
+        if not item in inList1:
+            rslt[1].append(item)
+
+    return rslt
+
 def pickLog(inText="", inHelpLineDelay=0):
     log(inText, 3, True, inHelpLineDelay=inHelpLineDelay)
 
@@ -3772,7 +3849,19 @@ def restoreDeformers(inMesh, inDeformers):
         if envelope != "":
             pc.setAttr("{0}.envelope".format(envelope), inDeformers[envelope])
 
-def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=True):
+def removeFromSets(inObjects):
+    if not isinstance(inObjects, (list, tuple)):
+        inObjects = [inObjects]
+
+    allSets = [s for s in pc.ls(type="objectSet") if pc.mel.eval("setFilterScript " + s.name())]
+    for thisSet in allSets:
+        for obj in inObjects:
+            if pc.sets(thisSet, im=obj):
+                pc.sets(thisSet, rm=obj)
+
+def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=True, inResetDisplayType=True, inRemoveFromSets=True):
+    inSourceMesh = getNode(inSourceMesh)
+
     #Make sure every deformer is at 0 before duplication
     envelopes = {}
     if inMuteDeformers:
@@ -3780,8 +3869,11 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
     
     dupe = pc.duplicate(inSourceMesh, rr=True)[0]
 
+    if inRemoveFromSets:
+        removeFromSets(dupe)
+
     if '$REF' in inTargetName:
-        inTargetName = inTargetName.replace('$REF', inSourceMesh)
+        inTargetName = inTargetName.replace('$REF', inSourceMesh.name())
 
     dupe = dupe.rename(inTargetName)
     
@@ -3790,7 +3882,7 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
         for shape in shapes:
             if shape.intermediateObject.get():
                 pc.delete(shape)
-            else:
+            elif inResetDisplayType:
                 shape.overrideDisplayType.set(0)
 
     if inMuteDeformers:
@@ -4070,6 +4162,58 @@ def getWeights(inObject, inInfluence=None, old=False):
                 infWeights[vertValueId * nVerts + i] = vertsValues[vertValueId] * 100.0
 
     return infWeights
+
+def limitDeformers(inObj, inMax=4, inVerbose=False):
+    inObj = pc.PyNode(inObj)
+    skinCls = getSkinCluster(inObj)
+    
+    influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
+    
+    pointsN = pc.polyEvaluate(inObj, vertex=True)
+    
+    for i in range(pointsN):
+        values = pc.skinPercent( skinCls, '{0}.vtx[{1}]'.format(inObj, i), query=True, value=True)
+        
+        inf_vals = []
+        for j in range(len(values)):
+            inf_vals.append([influences[j], values[j]])
+
+        #sort by value
+        inf_vals.sort(key=lambda v: -v[1])
+        
+        counter = 1
+        remainingWeight = 0
+        
+        for inf_val in inf_vals:
+            if inf_val[1] <= 0.0:
+                break
+                
+            if counter > inMax:
+                remainingWeight += inf_val[1]
+                inf_val[1] = 0
+
+            counter += 1
+
+        if remainingWeight >= 0.0001:
+            if inVerbose:
+                print "{0} have {1} deformers on vertex {2} ({3} to remove)".format(inObj, counter, i, counter - inMax)
+
+            currentTotal = 1.0 - remainingWeight
+            mul = 1.0 / currentTotal
+            
+            for inf_val in inf_vals:
+                if inf_val[1] <= 0.0:
+                    break
+    
+                inf_val[1] = inf_val[1] * mul
+            
+            #resort
+            inf_vals.sort(key=lambda v: influences.index(v[0]))
+            
+            pc.skinPercent( skinCls, '{0}.vtx[{1}]'.format(inObj, i), transformValue=inf_vals)
+
+for selObj in pc.selected():
+    limitDeformers(selObj)
 
 def storeSkin(inObject):
     skin = getSkinCluster(inObject)
@@ -4501,9 +4645,13 @@ def removeUnusedInfs(inSkin, inInfs=None):
 
     weightedInfluences = cmds.skinCluster(inSkin, query=True, wi=True)
         
-    #Set skinCluster to HasNoEffect so it won't process after each removal
-    oldState = cmds.getAttr("{0}.nodeState".format(inSkin))
-    cmds.setAttr("{0}.nodeState".format(inSkin), 1)
+    #Set skinCluster to HasNoEffect so it won't process after each removal (if we can !)
+    oldState = None
+    stateAttrname = "{0}.nodeState".format(inSkin)
+
+    if len(pc.listConnections(stateAttrname)) == 0:
+        oldState = cmds.getAttr(stateAttrname)
+        cmds.setAttr(stateAttrname, 1)
 
     for inf in inInfs:
         if not inf in weightedInfluences:
@@ -4512,7 +4660,8 @@ def removeUnusedInfs(inSkin, inInfs=None):
             removedInfluences.append(inf)
 
     #restore the old node state
-    cmds.setAttr("{0}.nodeState".format(inSkin), oldState)
+    if not oldState is None:
+        cmds.setAttr(stateAttrname, oldState)
 
     return removedInfluences
 
