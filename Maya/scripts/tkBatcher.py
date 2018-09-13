@@ -327,26 +327,17 @@ def batcherSaveClick(*args):
     mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
     mc.textField("batcherFilePathLE", edit=True, text=pyFilePath[0])
 
-def batcherOpenClick(*args):
-    oldPath = mc.textField("batcherFilePathLE", query=True, text=True)
-    dirname, filename = os.path.split(oldPath)
-
-    startingDirectory = dirname
-
-    pyFilePath = mc.fileDialog2(caption="Select a .py batch file", fileFilter="Python (*.py)(*.py)", startingDirectory=startingDirectory, dialogStyle=1, fileMode=1)
-    if pyFilePath == None:
-        return
-
+def batcherInit(inPath):
     content = ""
 
-    with open(pyFilePath[0]) as pyFile:
+    with open(inPath) as pyFile:
         content = pyFile.read()
 
-    dirname, filename = os.path.split(os.path.abspath(pyFilePath[0]))
+    dirname, filename = os.path.split(os.path.abspath(inPath))
 
     mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
     mc.textField("batcherCodeInputLE", edit=True, text=content)
-    mc.textField("batcherFilePathLE", edit=True, text=pyFilePath[0])
+    mc.textField("batcherFilePathLE", edit=True, text=inPath)
 
     optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
     if os.path.isfile(optionsPath):
@@ -359,6 +350,18 @@ def batcherOpenClick(*args):
         mc.textField("batcherLogSavepathLE", edit=True, text=options["logSavePath"])
         if "loadRefs" in options:
             mc.checkBox("batcherLoadReferencesCB", edit=True, value=options["loadRefs"])
+
+def batcherOpenClick(*args):
+    oldPath = mc.textField("batcherFilePathLE", query=True, text=True)
+    dirname, filename = os.path.split(oldPath)
+
+    startingDirectory = dirname
+
+    pyFilePath = mc.fileDialog2(caption="Select a .py batch file", fileFilter="Python (*.py)(*.py)", startingDirectory=startingDirectory, dialogStyle=1, fileMode=1)
+    if pyFilePath == None:
+        return
+
+    batcherInit(pyFilePath)
 
 def batcherSelectSuccessClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)
@@ -484,7 +487,7 @@ def initUI(*args):
         RESULTS[fullPath] = result[1]
         pc.textScrollList("batcherNodesLB", edit=True, append="{0} ({1})".format(fileName, fullPath))
 
-def showUI(*args):
+def showUI(inPath=None):
     if (mc.window('tkBatcherUI', q=True, exists=True)):
         mc.deleteUI('tkBatcherUI')
 
@@ -498,3 +501,6 @@ def showUI(*args):
 
     mc.textField("batcherCodeLE", edit=True, visible=False)
     mc.control("batcherProgressBar", edit=True, visible=False)
+
+    if not inPath is None:
+        batcherInit(inPath)

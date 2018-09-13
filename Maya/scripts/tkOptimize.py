@@ -501,12 +501,10 @@ def convertExpressions(inVerbose=False):
 
     return replaced
 
-def getUselessTransforms(inExceptPattern=None):
+def getUselessTransforms(inExceptPattern=None, inVerbose=False):
     uselessTransforms = []
     
     ts = pc.ls( exactType=["transform", "joint"])
-    
-    print len(ts)
     
     for t in ts:
         #Pattern
@@ -519,7 +517,8 @@ def getUselessTransforms(inExceptPattern=None):
 
         #Connections
         if len(t.listConnections(source=False, destination=True)) > 0:
-            print t,t.listConnections(source=False, destination=True)
+            if inVerbose:
+                print t,t.listConnections(source=False, destination=True)
             continue
     
         uselessTransforms.append(t)
@@ -599,7 +598,9 @@ def deletePTTransforms(inExceptPattern=None):
     print "deletePTTransforms",len(uselessTransforms),uselessTransforms
     return uselessTransforms
 
-def deletePTAttributes(inExceptPattern=None, inExceptParams=["ift","smt","dr"], inDropStaticValues=True, inVerbose=False):
+def deletePTAttributes(inExceptPattern=None, inExceptParamsPattern=None, inDropStaticValues=True, inVerbose=False):
+    exceptParams=["ift","smt","dr"]
+
     uselessAttributes = []
     
     ts = pc.ls(exactType=["transform"])
@@ -612,7 +613,7 @@ def deletePTAttributes(inExceptPattern=None, inExceptParams=["ift","smt","dr"], 
         uds = tkc.getParameters(t)
         for ud in uds:
 
-            if ud in inExceptParams:
+            if ud in exceptParams or (not inExceptParamsPattern is None and re.match(inExceptParamsPattern, ud)):
                 continue
 
             attr = t.attr(ud)
@@ -802,14 +803,6 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     print " replacingDeformers",len(replacingDeformers),replacingDeformers
 
-    #Find and hide "forcedProxies"
-    if not inForceProxy is None:
-        for forcedProxy in inForceProxy:
-            if pc.objExists(forcedProxy):
-                forcedProxyNode = tkc.getNode(forcedProxy).getShape()
-                if not forcedProxyNode in geos:
-                    geos.append(forcedProxyNode)
-
     #Find and add "siblings" geo (geo deformed by an existing one)
     siblingsGeos = []
     for geo in geos:
@@ -821,6 +814,16 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     geos.extend(siblingsGeos)
 
+    #Find and hide "forcedProxies"
+    if not inForceProxy is None:
+        for forcedProxy in inForceProxy:
+            if pc.objExists(forcedProxy):
+                node = tkc.getNode(forcedProxy)
+                if node.type() == "transform":
+                    node = node.getShape()
+                if not node in geos:
+                    geos.append(node)
+
     proxies = []
 
     for geo in geos:
@@ -829,6 +832,10 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
         if not geo.type() == "mesh":
             continue
         """
+        if not isinstance(geo, pc.nodetypes.DagNode):
+            deactivate(geo, cond, condVis)
+            continue
+
         transform = geo.getParent()
         underGeo = None
         isOrphanGeo = True

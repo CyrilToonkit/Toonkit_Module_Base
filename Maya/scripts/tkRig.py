@@ -49,7 +49,7 @@ import tkSIGroups
 import PAlt as palt
 import tkNodeling as tkn
 import tkExpressions
-import tkTagTool
+import tkProjects.tkContext as context
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -237,7 +237,10 @@ def OscarHide(inControls, ns="*"):
             attrs = pc.ls(toHide.namespace() + "*.RigStuff")
             if len(attrs) > 0:
                 #connect
-                attrs[0] >> toHide.v
+                shape = toHide
+                if shape.type() == "transform":
+                    shape = toHide.getShape() or toHide
+                attrs[0] >> shape.v
 
 def OscarRemoveControls(inControls, inHide=True, ns="*"):
     if isinstance(inControls, basestring):
@@ -2337,6 +2340,18 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
             add.output3D >> neutralInput
         else:
             output >> neutralInput
+
+def applyDeltas(inPattern="{type:[a-z]{2}}_{name}-{variation}_hig_v{version:[0-9]{3}}{suffix}.ma", inDeltaPattern="{name}_delta.ma", inPath=None):
+    if inPath is None:
+        inPath = pc.system.sceneName()
+
+    if inPath is None or "untitled" in inPath:
+        pc.warning("No valid path given !")
+        return
+
+    folderPath, fileName = os.path.split(inPath) 
+
+    print folderPath, fileName
 
 #Frequency = 0.075
 #Length = 0.5
