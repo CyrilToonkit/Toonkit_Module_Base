@@ -2341,9 +2341,60 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
         else:
             output >> neutralInput
 
-def applyDeltas(inPattern="{type:[a-z]{2}}_{name}-{variation}_hig_v{version:[0-9]{3}}{suffix}.ma", inDeltaPattern="{name}_delta.ma", inPath=None):
+def applyDeltas(inDeltaPattern="{name}_delta.ma", inPattern="{type:[a-z]{2}}_{name}-{variation}_hig_v{version:[0-9]{3}}{suffix}.ma", inPath=None):
+    filePath = inPath
+
+    deltaPath = inDeltaPattern
+
+    if not os.path.isfile(deltaPath):
+        pc.warning("Can't find a delta scene '{0}' !".format(deltaPath))
+        return False
+
+    if inPath is None:
+        #Save scene in a temporary file
+        tmpFile = tempfile.NamedTemporaryFile(prefix='applyDeltas',suffix='.ma', delete=False)
+        tmpFile.close()
+        filePath = tmpFile.name
+        pc.system.saveAs(filePath, force=True)
+
+    #Open delta file
+    pc.openFile(deltaPath, force=True, prompt=False, loadReferenceDepth='none')
+
+    #load the good reference
+    ref = None
+    
+    refs = pc.system.listReferences()
+    if len(refs) > 0:
+        ref = refs[0]
+    else:
+        pc.warning("Can't find a reference in the delta scene '{0}' !".format(deltaPath))
+        return False
+    
+    ref.load(newFile=baseModPath)
+
+    #import reference
+
+    #Reset All ?
+
+    #Mesh overrides to True
+
+    #Deformer visibilities to False
+
+    #LOD to high all ?
+
+    #Delete orphans
+
+    #Remove namespace
+
+    #Delete temporary file
+    if inPath is None:
+        os.remove(tmpFileName)
+
+    """
     if inPath is None:
         inPath = pc.system.sceneName()
+    else:
+        pass
 
     if inPath is None or "untitled" in inPath:
         pc.warning("No valid path given !")
@@ -2352,6 +2403,10 @@ def applyDeltas(inPattern="{type:[a-z]{2}}_{name}-{variation}_hig_v{version:[0-9
     folderPath, fileName = os.path.split(inPath) 
 
     print folderPath, fileName
+    """
+    
+    return True
+
 
 #Frequency = 0.075
 #Length = 0.5
