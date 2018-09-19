@@ -4212,9 +4212,6 @@ def limitDeformers(inObj, inMax=4, inVerbose=False):
             
             pc.skinPercent( skinCls, '{0}.vtx[{1}]'.format(inObj, i), transformValue=inf_vals)
 
-for selObj in pc.selected():
-    limitDeformers(selObj)
-
 def storeSkin(inObject):
     skin = getSkinCluster(inObject)
     
@@ -4306,10 +4303,19 @@ def loadSkin(inSkin, inObject=None):
         
         skin = getSkinCluster(obj)
         
+        cons = []
+
         if skin != None:
+            cons = getNodeConnections(skin, "nodeState")
             pc.skinCluster(skin,edit=True, ub=True)
 
-        return setWeights(obj, infs, weights)
+        newSkin = setWeights(obj, infs, weights)
+
+        if len(cons) > 0:
+            #print "cons", str(cons)
+            setNodeConnections(newSkin, cons)
+
+        return newSkin
     else:
         pc.warning("No influences given !")
         return None
@@ -4422,7 +4428,7 @@ def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed
         if getSkinCluster(inRef) != None:
             pc.skinCluster(inRef,edit=True, unbind=True)
 
-        skin = pc.skinCluster(inRef,infs, toSelectedBones=True)
+        skin = pc.skinCluster(inRef,infs, toSelectedBones=True, name=inRef.name() + "_skinCluster")
 
         pc.select(skinnedSources)
         pc.select(inRef, add=True)
@@ -4444,7 +4450,7 @@ def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed
             if getSkinCluster(source) != None:
                 pc.skinCluster(source,edit=True, unbind=True)
 
-            skin = pc.skinCluster(source,infs, toSelectedBones=True)
+            skin = pc.skinCluster(source,infs, toSelectedBones=True, name=source.name() + "_skinCluster")
 
             if inDirectCopy:
                 skin = loadSkin(storedSkin, inObject=source)
@@ -5029,6 +5035,38 @@ def disconnect(inParam):
         return False
 
     return True
+
+def getAllConnections(inAttr):
+    cons = inAttr.listConnections(source=True, destination=True, plugs=True, connections=True)
+
+    if len(cons) == 0 and inAttr.isCompound():
+        childAttrs = inAttr.children()
+        for childAttr in childAttrs:
+            cons.extend(childAttr.listConnections(source=True, destination=True, plugs=True, connections=True))
+
+    return cons
+
+def getNodeConnections(inNode, *args):
+    cons = []
+    for arg in args:
+        cons.extend(getAllConnections(inNode.attr(arg)))
+
+    baked = str(cons)
+    return cons
+
+def setNodeConnections(inNode, inCons):
+    for linkInput, linkOutput in inCons:
+        inputName = linkInput.split(".")[-1]
+
+        if not pc.attributeQuery(inputName, node=inNode, exists=True):
+            pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), inputName))
+            continue
+
+        if len(inNode.attr(inputName).listConnections()) > 0:
+            pc.warning("Can't 'setNodeConnections', '{0}.{1}' already connected !".format(inNode.name(), inputName))
+            continue
+
+        linkOutput >> inNode.attr(inputName)
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":

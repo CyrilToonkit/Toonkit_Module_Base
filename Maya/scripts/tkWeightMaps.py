@@ -38,7 +38,7 @@ def setWeightsMap(inObj, inAttrName, inRefObjects=None, inMode=0, inSetter=0, in
 
     Arguments :
     inMode                  -- 0 = Flood,    1 = Add,                            2 = Remove
-    inSetter                -- 0 = Radius,   1 = Interval (Cylinder/Capsules)    2 = Selection
+    inSetter                -- 0 = Radius,   1 = Interval (Cylinder/Capsules)    2 = Selection      3 = Angular     4 = Existing map(s)
     inInterp                -- 0 = Linear,   1 = Hermite,                        2 = Cosine
     inExtrap (Start/End)    -- 0 = None,     1 = Flood,                          2 = Capsule
 

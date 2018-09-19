@@ -37,6 +37,7 @@ import json
 import re
 import math
 import operator
+import tempfile
 
 import pymel.core as pc
 import maya.cmds as mc
@@ -288,6 +289,75 @@ def OscarRemoveControls(inControls, inHide=True, ns="*"):
 
             if modified:
                 prop.attr(attr).set(value)
+
+def refreshFrame():
+    pc.currentTime(pc.currentTime())
+
+#Rigs LOD manipulation
+def setLOD(inValue, inNamespaces=None, inAttrs=["Body_LOD", "Facial_LOD", "LOD"], inSolo=False, inUseSelection=True, inInvalidate=True, inReverse=False):
+    #print "setLOD(",inValue,",", inNamespaces,",",inAttrs,",", inSolo,",", inUseSelection,",", inInvalidate,",", inReverse,",)"
+
+    changed = False
+
+    namespaces = ["*:", ""]
+
+    if inNamespaces is None:
+        if inUseSelection:
+            sel = pc.selected()
+            if len(sel) > 0:
+                namespaces = []
+                for sel in pc.selected():
+                    ns = sel.namespace()
+                    if ns in namespaces:
+                        continue
+
+                    namespaces.append(ns)
+    else:
+        if not inReverse:
+            namespaces = inNamespaces
+
+    #print "namespaces",namespaces
+
+    attrsPatterns = []
+    #Collect attributes
+    for ns in namespaces:
+        attrsPatterns.extend(["{0}*.{1}".format(ns, attr) for attr in inAttrs])
+
+    #print "attrsPatterns",attrsPatterns
+
+    attrs = pc.ls(attrsPatterns)
+
+    for attr in attrs:
+        if inReverse and attr.namespace() in inNamespaces:
+            continue
+
+        thisValue = inValue
+        value = attr.get()
+        minimum = attr.getMin() or 0
+        maximum = attr.getMax() or 2
+
+        if inReverse:
+            if abs(thisValue-minimum) > abs(thisValue-maximum):#Closer to maximum
+                thisValue = minimum
+            else:
+                thisValue = maximum
+
+        #enumValues = pc.attributeQuery(attr, node=outfitsProperty, listEnum=True)[0].split(":")
+
+        attrValue = min(max(thisValue,minimum), maximum)
+        if attrValue != attr.get():
+            attr.set(attrValue)
+            changed = True
+
+    if namespaces != ["*:", ""] and inSolo:
+        if setLOD(inValue, inNamespaces=namespaces, inAttrs=inAttrs, inInvalidate=False, inReverse=True):
+            changed = True
+
+    if changed and inInvalidate:
+        pc.evaluationManager(invalidate=True)
+        pc.evalDeferred(refreshFrame)
+
+    return changed
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ____            _             _   _                              
@@ -2341,10 +2411,9 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
         else:
             output >> neutralInput
 
-def applyDeltas(inDeltaPattern="{name}_delta.ma", inPattern="{type:[a-z]{2}}_{name}-{variation}_hig_v{version:[0-9]{3}}{suffix}.ma", inPath=None):
+def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None):
     filePath = inPath
-
-    deltaPath = inDeltaPattern
+    deltaPath = inDeltaPath
 
     if not os.path.isfile(deltaPath):
         pc.warning("Can't find a delta scene '{0}' !".format(deltaPath))
@@ -2368,45 +2437,38 @@ def applyDeltas(inDeltaPattern="{name}_delta.ma", inPattern="{type:[a-z]{2}}_{na
         ref = refs[0]
     else:
         pc.warning("Can't find a reference in the delta scene '{0}' !".format(deltaPath))
+        pc.openFile(filePath, force=True, prompt=False, loadReferenceDepth='none')
         return False
     
-    ref.load(newFile=baseModPath)
+    ref.load(newFile=filePath)
 
     #import reference
+    ref.importContents(removeNamespace=ref.namespace != ":")
 
-    #Reset All ?
+    #import skinnings
+    if not inSkinFiles is None:
+        for skinfile in inSkinFiles:
+            tkc.loadSkins(skinfile)
+
+    #Reset All
+    resetAll("")
 
     #Mesh overrides to True
+    setMeshesOverrides(True)
 
     #Deformer visibilities to False
+    setDeformers(False)
 
-    #LOD to high all ?
+    #LOD to high all
+    setLOD(0)
 
-    #Delete orphans
-
-    #Remove namespace
+    #Delete orphans ?
 
     #Delete temporary file
     if inPath is None:
-        os.remove(tmpFileName)
-
-    """
-    if inPath is None:
-        inPath = pc.system.sceneName()
-    else:
-        pass
-
-    if inPath is None or "untitled" in inPath:
-        pc.warning("No valid path given !")
-        return
-
-    folderPath, fileName = os.path.split(inPath) 
-
-    print folderPath, fileName
-    """
+        os.remove(filePath)
     
     return True
-
 
 #Frequency = 0.075
 #Length = 0.5
@@ -6008,14 +6070,36 @@ def toggleDeformers(*args):
         for rigStuff in rigStuffs:
             rigStuff.set(not oldVal)
 
+def setDeformers(inValue, inNs=None):
+    ns = ""
+
+    basePattern = "*.Deformers"
+    pattern = None
+
+    if not inNs is None:
+        pattern = [inNs+basePattern]
+    else:
+        pattern = ["*:"+basePattern,basePattern]
+
+    rigStuffs = pc.ls(pattern)
+
+    for rigStuff in rigStuffs:
+        rigStuff.set(inValue)
+
 def toggleMeshesOverrides(*args):
-    import pymel.core as pc
     meshes = pc.ls(type="mesh")
 
     if len(meshes) > 0:
         oldVal = meshes[0].overrideEnabled.get()
         for mesh in meshes:
             mesh.overrideEnabled.set(not oldVal)
+
+def setMeshesOverrides(inValue, inNs=None):
+    meshes = pc.ls(type="mesh")
+
+    for mesh in meshes:
+        mesh.overrideEnabled.set(inValue)
+        mesh.overrideDisplayType.set(2)
 
 def toggleRigStuff(*args):
     sel = pc.selected()
