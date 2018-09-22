@@ -4675,6 +4675,7 @@ type_priority = {
     "blendShape":10,
     "skinCluster":20,
     "shrinkWrap":25,
+    "nonLinear":27,
     "ffd":30
 }
 
