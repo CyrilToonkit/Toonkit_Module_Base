@@ -2442,6 +2442,17 @@ def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None):
     
     ref.load(newFile=filePath)
 
+    #Delete orphans
+    nodesToClean = pc.ls(assemblies=True)
+    nodesToClean.extend([s for s in pc.ls(type="objectSet") if pc.mel.eval("setFilterScript " + s.name())])
+
+    for node in nodesToClean:
+        if not pc.referenceQuery( node, isNodeReferenced=True ):
+            try:
+                pc.delete(node)
+            except:
+                pass
+
     #import reference
     ref.importContents(removeNamespace=ref.namespace != ":")
 
@@ -2461,8 +2472,6 @@ def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None):
 
     #LOD to high all
     setLOD(0)
-
-    #Delete orphans ?
 
     #Delete temporary file
     if inPath is None:
