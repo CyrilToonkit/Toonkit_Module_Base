@@ -969,6 +969,18 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
             pc.warning("Can't find object '{0}' (and None of its aliases : {1}) !".format(origName, inShapeAliases.get(origName, [])))
             continue
 
+        #Here we may have existing blendShape targets in conflict that will be disconnected
+        toDisconnects = []
+        #Get blendShape targets attributes at 0 that are connected to something
+        bsAttrs = []
+        for bs in pc.listHistory(object, type="blendShape"):
+            arrayAttrs = pc.listAttr("{0}.weight".format(bs), multi=True)
+
+            for arrayAttr in arrayAttrs:
+                bsAttr = bs.attr(arrayAttr)
+                if bsAttr.get() < 0.001 and len(bsAttr.listConnections()) > 0:
+                    bsAttrs.append(bsAttr)
+
         objectRoot = pc.group(empty=True, parent=root, name="{0}_{1}".format(object, inName))
         for poseName, poseData in shapes.iteritems():
             channel, value = poseData
@@ -979,6 +991,11 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
             
             pc.setAttr(channel, value)
             
+            #Verify if some of our blendShapes get activated
+            for bsAttr in bsAttrs:
+                if bsAttr.get() >= 0.1:
+                    toDisconnects.append(bsAttr)
+
             dupe = pc.PyNode(tkc.duplicateAndClean(object, inMuteDeformers=False, inResetDisplayType=False))
             dupe.rename("{0}_{1}".format(object, poseName))
             tkc.addParameter(dupe, channelNiceName, default=value, containerName=inName)
@@ -986,6 +1003,10 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
             objectRoot.addChild(dupe)
             
             pc.setAttr(channel, oldValue)
+
+        #We are done with the object, disconnect conflicting blendShapes
+        for toDisconnect in toDisconnects:
+            toDisconnect.disconnect()
 
 def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustomMeshSuffix=None):
     if pc.objExists(inName):
@@ -1042,3 +1063,213 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
 
         if inDelete:
             pc.delete(inName)
+
+def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inShapeAliases=None):
+    if not pc.objExists(inDefaultReskin):
+        pc.warning("Can't find 'inDefaultReskin' " + inDefaultReskin)
+        return
+
+    storeShapeConversions(inShapeConversions, inShapeAliases=inShapeAliases)
+
+    inNodesToRemove = tkc.getNodes(inNodesToRemove)
+
+    deformersToReplace = []
+    #Find deformers to replace
+    for nodeRoot in inNodesToRemove:
+        deformersToReplace.extend(nodeRoot.getChildren(allDescendents=True, type='joint'))
+        #Here we may have to check if joint is not under a controller we want to keep !
+
+    defaultReskin = inDefaultReskin
+
+    skinningReplacements = {}
+
+    for deformerToReplace in deformersToReplace:
+        reskinner = defaultReskin
+        if not inReskin is None and deformerToReplace.name() in inReskin and pc.objExists(inReskin[deformerToReplace.name()]):
+            reskinner = inReskin[deformerToReplace.name()]
+        if reskinner in skinningReplacements:
+            skinningReplacements[reskinner].append(deformerToReplace)
+        else:
+            skinningReplacements[reskinner] = [deformerToReplace]
+
+    if len(skinningReplacements) > 0:
+        #Filter skinClusters that affects meshes
+        skins = pc.ls(type="skinCluster")
+        meshSkins = [skin for skin in skins if len(skin.getGeometry()) > 0 and skin.getGeometry()[0].type() == "mesh"]
+
+        gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+
+        pc.progressBar( gMainProgressBar,
+        edit=True,
+        beginProgress=True,
+        isInterruptable=True,
+        status="Replacing deformers",
+        maxValue=len(skinningReplacements))
+
+        for newDef, oldDefs in skinningReplacements.iteritems():
+            pc.progressBar(gMainProgressBar, edit=True, step=1)
+            tkc.replaceDeformers(oldDefs, tkc.getNode(newDef), inSkins=meshSkins)
+
+        pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+    for nodeToRemove in inNodesToRemove:
+        pc.delete(nodeToRemove)
+
+    #ApplyShapeConversions
+    applyShapeConversions()
+
+    tkc.deleteUnusedNodes()
+
+"""
+#We're losing:
+#Left_Lip_Zip
+#Right_Lip_Zip
+#Sticky_Lip
+
+mouth_shape_aliases = {
+    "head_under_geo":         ["body_under_geo"],
+}
+
+mouth_conversions = {
+    "head_under_geo":
+        {
+            "Upperlip_Center_Up"    :("Mouth_Upperlip_Center.ty", 1),
+
+            "Upperlip_Center_Up_Left":("Left_Mouth_Upperlip_1.ty", 1),
+
+            "Upperlip_Center_Up_Right":("Right_Mouth_Upperlip_1.ty", 1),
+
+
+            "Lowerlip_Center_Up"    :("Mouth_Lowerlip_Center.ty", 1),
+
+            "Lowerlip_Center_Up_Left":("Left_Mouth_Lowerlip_1.ty", 1),
+
+            "Lowerlip_Center_Up_Right":("Right_Mouth_Lowerlip_1.ty", 1),
+
+
+            "Bulge_Upperlip_Pos"     :("Mouth_Bulge_Upperlip.tx", 1),
+            "Bulge_Upperlip_Neg"     :("Mouth_Bulge_Upperlip.tx", -1),
+
+            "Bulge_Lowerlip_Pos"     :("Mouth_Bulge_Lowerlip.tx", 1),
+            "Bulge_Lowerlip_Neg"     :("Mouth_Bulge_Lowerlip.tx", -1),
+
+
+            "Jaw_Up"                :("Jaw_Move.ty", 1),
+            "Jaw_Down"              :("Jaw_Move.ty", -1),
+            "Jaw_Left"              :("Jaw_Move.tx", 1),
+            "Jaw_Right"             :("Jaw_Move.tx", -1),
+
+
+            "Left_Smile"            :("Left_Mouth.ty", 1),
+            "Left_Frown"            :("Left_Mouth.ty", -1),
+            "Left_Wide"             :("Left_Mouth.tx", 1),
+            "Left_Narrow"           :("Left_Mouth.tx", -1),
+
+
+            "Right_Smile"            :("Right_Mouth.ty", 1),
+            "Right_Frown"            :("Right_Mouth.ty", -1),
+            "Right_Wide"             :("Right_Mouth.tx", 1),
+            "Right_Narrow"           :("Right_Mouth.tx", -1),
+
+
+            "Mouth_Up"                :("Mouth_Move.ty", 1),
+            "Mouth_Down"              :("Mouth_Move.ty", -1),
+            "Mouth_Left"              :("Mouth_Move.tx", 1),
+            "Mouth_Right"             :("Mouth_Move.tx", -1),
+
+            "Curl_Upperlip_Out"       :("Curl_Upperlip.tx", 1),
+            "Curl_Upperlip_In"        :("Curl_Upperlip.tx", -1),
+
+            "Curl_Lowerlip_Out"       :("Curl_Lowerlip.tx", 1),
+            "Curl_Lowerlip_In"        :("Curl_Lowerlip.tx", -1),
+
+
+            "Puff_Upperlip_Out"       :("Puff_Upperlip.tx", 1),
+            "Puff_Upperlip_In"        :("Puff_Upperlip.tx", -1),
+
+            "Puff_Lowerlip_Out"       :("Puff_Lowerlip.tx", 1),
+            "Puff_Lowerlip_In"        :("Puff_Lowerlip.tx", -1),
+
+
+            "Left_Pinch_Corner_Up"    :("Left_Pinch_Corner.ty", 1),
+            "Left_Pinch_Corner_Dwn"   :("Left_Pinch_Corner.ty", -1),
+
+            "Right_Pinch_Corner_Up"    :("Right_Pinch_Corner.ty", 1),
+            "Right_Pinch_Corner_Dwn"   :("Right_Pinch_Corner.ty", -1),
+
+
+            "Left_Curl_Corner_Up"    :("Left_Curl_Corner.ty", 1),
+            "Left_Curl_Corner_Dwn"   :("Left_Curl_Corner.ty", -1),
+
+            "Right_Curl_Corner_Up"    :("Right_Curl_Corner.ty", 1),
+            "Right_Curl_Corner_Dwn"   :("Right_Curl_Corner.ty", -1),
+
+
+            "Left_Cheek_Inflate_Up"    :("Left_Cheek_Inflate.ty", 1),
+            "Left_Cheek_Inflate_Dwn"   :("Left_Cheek_Inflate.ty", -1),
+
+            "Right_Cheek_Inflate_Up"    :("Right_Cheek_Inflate.ty", 1),
+            "Right_Cheek_Inflate_Dwn"   :("Right_Cheek_Inflate.ty", -1),
+
+
+            "Left_Puff_Up"    :("Left_Puff.ty", 1),
+            "Left_Puff_Dwn"   :("Left_Puff.ty", -1),
+
+            "Right_Puff_Up"    :("Right_Puff.ty", 1),
+            "Right_Puff_Dwn"   :("Right_Puff.ty", -1),
+
+
+            "Mouth_Up_Lat_Left"       :("Left_Mouth_Lat_Upperlip_Ctrl.ty", 1),
+
+            "Mouth_Down_Lat_Left"     :("Left_Mouth_Lat_Lowerlip_Ctrl.ty", 1),
+
+            "Mouth_Up_Lat_Right"       :("Right_Mouth_Lat_Upperlip_Ctrl.ty", 1),
+
+            "Mouth_Down_Lat_Right"     :("Right_Mouth_Lat_Lowerlip_Ctrl.ty", 1),
+        }
+}
+
+controlsToMove = ["Right_Mouth_Deform","Right_Mouth_Down_2_Deform","Right_Mouth_Up_2_Deform",
+                    "Right_Mouth_Up_1_Deform","Right_Mouth_Down_1_Deform","Right_Mouth_Up_0_Deform",
+                    "Right_Mouth_Down_0_Deform","Center_Down_Deform","Center_Up_Deform",
+                    "Left_Mouth_Down_0_Deform","Left_Mouth_Up_0_Deform","Left_Mouth_Up_1_Deform",
+                    "Left_Mouth_Down_1_Deform","Left_Mouth_Down_2_Deform","Left_Mouth_Up_2_Deform",
+                    "Left_Mouth_Deform"]
+
+defaultReplaceDeformer = "TK_Head_Ctrl_0_Deform"
+
+remove_roots = [    "TK_Mouth_Root",
+                    "TK_Chin_Root",
+                    "TK_Depressor_Center_Root",
+                    "TK_Center_Levator_Root",
+
+                    "TK_Left_Cheekbone_Root",
+                    "TK_Left_UpperLid_Root",
+                    "TK_Left_Riso_Root",
+                    "TK_Left_Zygo_Root",
+                    "TK_Left_Levator_Root",
+                    "TK_Left_Depressor_Root",
+                    "TK_Left_CheekCtrl_Root",
+                    "TK_Left_Lips_Cheek_Switcher_Root",
+                    "TK_Left_Cheek_Switcher_Root",
+                    "TK_AttenuationCheekBone_ParentSwitcher_Root",
+
+                    "TK_Right_Cheekbone_Root",
+                    "TK_Right_UpperLid_Root",
+                    "TK_Right_Riso_Root",
+                    "TK_Right_Zygo_Root",
+                    "TK_Right_Levator_Root",
+                    "TK_Right_Depressor_Root",
+                    "TK_Right_CheekCtrl_Root",
+                    "TK_Right_Lips_Cheek_Switcher_Root",
+                    "TK_Right_Cheek_Switcher_Root",
+                    "TK_Right_AttenuationCheekBone_ParentSwitcher1_Root",
+                ]
+
+import tkOptimize as tko
+import tkNodeling as tkn
+
+reload(tko)
+
+tko.convertToBlendShapes(mouth_conversions, remove_roots, inDefaultReskin="TK_Head_Ctrl_0_Deform", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inShapeAliases=None)
+"""
