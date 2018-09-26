@@ -5117,7 +5117,7 @@ booleanType : 0 = Enum, 1 = Int, 2= Bool
 """
 def addParameter(inobject=None, name="NewParam", inType="double", default=None, min=None, max = None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True):
     objectName = ""
-    if isinstance(inobject, str):
+    if isinstance(inobject, basestring):
         objectName = inobject
     else:
         objectName = inobject.name()
@@ -5130,7 +5130,7 @@ def addParameter(inobject=None, name="NewParam", inType="double", default=None, 
         else:
             inobject = addProperty(inobject, containerName)
 
-        if isinstance(inobject, str):
+        if isinstance(inobject, basestring):
             objectName = inobject
         else:
             objectName = inobject.name()

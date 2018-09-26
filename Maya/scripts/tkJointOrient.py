@@ -361,7 +361,7 @@ def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChild
         for child in inTransform.getChildren():
             orientJointPreset(child, inDefaultPreset=inDefaultPreset, inOrientChildren=True)
 
-def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inRotate=True, inLockCenter=True, inConsiderHierarchy=True, invertX=True):
+def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inRotate=True, inLockCenter=0, inConsiderHierarchy=True, invertX=True, invertY=False, invertZ=False):
     if inObjects is None:
         inObjects = pc.selected()
     elif not isinstance(inObjects, (list, tuple)):
@@ -385,39 +385,48 @@ def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPatte
                 otherNode = pc.PyNode(otherSide)
                 
                 obj.tx.disconnect(destination=False)
+                obj.ty.disconnect(destination=False)
+                obj.tz.disconnect(destination=False)
+
                 if invertX:
                     tkn.mul(otherNode.tx, -1.0) >>  obj.tx
-                    
-                    if inRotate:
-                        obj.rx.disconnect(destination=False)
-                        otherNode.rx >>  obj.rx
-                        
-                        obj.ry.disconnect(destination=False)
-                        tkn.mul(otherNode.ry, -1.0) >>  obj.ry
-                        
-                        obj.rz.disconnect(destination=False)
-                        tkn.mul(otherNode.rz, -1.0) >>  obj.rz
                 else:
                     otherNode.tx >>  obj.tx
-                    
-                    if inRotate:
-                        obj.rx.disconnect(destination=False)
+
+                if invertY:
+                    tkn.mul(otherNode.ty, -1.0) >>  obj.ty
+                else:
+                    otherNode.ty >>  obj.ty
+
+                if invertZ:
+                    tkn.mul(otherNode.tz, -1.0) >>  obj.tz
+                else:
+                    otherNode.tz >>  obj.tz
+
+
+                if inRotate:
+                    obj.rx.disconnect(destination=False)
+                    obj.ry.disconnect(destination=False)
+                    obj.rz.disconnect(destination=False)
+
+                    if invertX and not invertY and not invertZ:
                         otherNode.rx >>  obj.rx
                         
-                        obj.ry.disconnect(destination=False)
                         tkn.mul(otherNode.ry, -1.0) >>  obj.ry
                         
-                        obj.rz.disconnect(destination=False)
                         tkn.mul(otherNode.rz, -1.0) >>  obj.rz
-                    
-                obj.ty.disconnect(destination=False)
-                otherNode.ty >>  obj.ty
-                
-                obj.tz.disconnect(destination=False)
-                otherNode.tz >>  obj.tz
+                    else:
+                        otherNode.rx >>  obj.rx
+                        otherNode.ry >>  obj.ry
+                        otherNode.rz >>  obj.rz
+        else:
+            attrs = ["tx", "ty", "tz"]
+            for attr in attrs:
+                obj.attr(attr).setLocked(False)
 
-        elif inLockCenter:
-            obj.tx.setLocked(True)
+            if not inLockCenter is None:
+                obj.attr(attrs[inLockCenter]).setLocked(True)
+
 #createSymmetry()
 
 def disconnectSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inConsiderHierarchy=True):
@@ -448,6 +457,10 @@ def disconnectSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryP
             obj.rz.disconnect(destination=False)
         else:
             obj.tx.setLocked(False)
+            obj.ty.setLocked(False)
+            obj.tz.setLocked(False)
+
+    tkc.deleteUnusedNodes()
 #disconnectSymmetry()
 
 def UIVisChanged(args):
