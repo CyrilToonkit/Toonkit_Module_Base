@@ -51,6 +51,8 @@ from maya.mel import eval as meval
 import re
 import sys
 
+import tkMayaCore as tkc
+
 kPluginCmdName = 'extractDeltas'
 
 
@@ -144,10 +146,11 @@ class extractDeltas(OpenMayaMPx.MPxCommand):
 				OpenMaya.MGlobal.displayError(shapes[0] + ' is not a mesh object.')
 				return
 			elif i == 0 and len(shapes) > 1:
-				skin = cmds.listConnections(shapes[0], type = 'skinCluster')
+				skin = tkc.getSkinCluster(tkc.getNode(shapes[0]))
 				if skin == None:
 					OpenMaya.MGlobal.displayError(shapes[0] + ' is not bound to a skin cluster.')
 					return
+				skin = skin.name()
 				if cmds.getAttr(shapes[1] + '.intermediateObject'):
 					shapeList.append(shapes[1])
 				else:

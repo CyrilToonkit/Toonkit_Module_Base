@@ -3849,6 +3849,12 @@ def restoreDeformers(inMesh, inDeformers):
         if envelope != "":
             pc.setAttr("{0}.envelope".format(envelope), inDeformers[envelope])
 
+def getSets(inObj):
+    allSets = [s for s in pc.ls(type="objectSet") if pc.mel.eval("setFilterScript " + s.name())]
+    objSets = inObj.listConnections(type="objectSet")
+    
+    return [s for s in objSets if s in allSets]
+
 def removeFromSets(inObjects):
     if not isinstance(inObjects, (list, tuple)):
         inObjects = [inObjects]
@@ -3858,6 +3864,14 @@ def removeFromSets(inObjects):
         for obj in inObjects:
             if pc.sets(thisSet, im=obj):
                 pc.sets(thisSet, rm=obj)
+
+def matchSets(inObj, inRef):
+    removeFromSets(inObj)
+    
+    allSets = getSets(inRef)
+    for thisSet in allSets:
+        pc.sets(thisSet, forceElement=inObj)
+
 
 def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=True, inResetDisplayType=True, inRemoveFromSets=True):
     inSourceMesh = getNode(inSourceMesh)
@@ -4211,6 +4225,27 @@ def limitDeformers(inObj, inMax=4, inVerbose=False):
             inf_vals.sort(key=lambda v: influences.index(v[0]))
             
             pc.skinPercent( skinCls, '{0}.vtx[{1}]'.format(inObj, i), transformValue=inf_vals)
+
+def getInfluencedPoints(inObj, inInfluences):
+    points = []
+
+    skin = getSkinCluster(inObj)
+    infs = skin.getInfluence()
+    
+    infNodes = []
+    
+    for inf in inInfluences:
+        if pc.objExists(inf):
+            infNode = getNode(inf)
+            if infNode in infs:
+                infNodes.append(infNode)
+
+    for infNode in infNodes:
+        weights = getWeights(inObj, infNode)
+        
+        points.extend([i for i in range(len(weights)) if weights[i] > 0.01])
+
+    return ["{0}.vtx[{1}]".format(inObj, i) for i in list(set(points))]
 
 def storeSkin(inObject):
     skin = getSkinCluster(inObject)
