@@ -4177,6 +4177,90 @@ def getWeights(inObject, inInfluence=None, old=False):
 
     return infWeights
 
+def addWeights(inObj, inInfluences, inWeights):
+    if not isinstance(inInfluences, (list, tuple)):
+        inInfluences = [inInfluences]
+        
+    if not isinstance(inWeights[0], (list, tuple)):
+        inWeights = [inWeights]
+
+    skin = getSkinCluster(inObj)
+    
+    if skin is None:
+        pc.warning("No skinning found on " + inObj.name())
+        return
+
+    infs = skin.influenceObjects()
+    nVerts = pc.polyEvaluate(inObj, vertex=True)
+    
+    weights = getWeights(inObj)
+    
+    newInfs = infs[:]
+    newWeights = weights[:]
+    
+    #Add weight to weightArray
+    i = 0
+    kepsIndices = []
+    for newInf in inInfluences:
+        if not newInf in infs:
+            newInfs.append(newInf)
+            kepsIndices.append(len(newInfs) - 1)
+            #New influence, extend weights
+            newWeights.extend(inWeights[i])
+        else:
+            index = infs.index(newInf)
+            kepsIndices.append(index)
+            #Existing influence, add weights
+            j = 0
+            for w in inWeights[i]:
+                newWeights[nVerts*index + j] += w
+                j += 1
+        i += 1
+
+    #print "newInfs",len(newInfs),newInfs
+    #print "verts",nVerts
+    #print "newWeights",len(newWeights)
+    #print "nVerts * nInfs",nVerts * len(newInfs)
+
+    #Normalize keeping added influences
+    for i in range(nVerts):
+        totalWeight = 0.0
+        totalWeight2 = 0.0
+        for j in range(len(newInfs)):
+            w = newWeights[nVerts*j + i]
+            if not j in kepsIndices:
+                totalWeight2 += w
+            totalWeight += w
+
+        if totalWeight == 100.0:
+            continue
+
+        lockedWeights = 0.0
+        for keptIndex in kepsIndices:
+            lockedWeights += newWeights[nVerts*keptIndex + i]
+
+        #pre-normalize locked
+        if lockedWeights > 100.0:
+            #print "pre-normalize",lockedWeights
+            factor = 100.0 / lockedWeights
+            lockedWeights = 100.0
+
+            for keptIndex in kepsIndices:
+                newWeights[nVerts*keptIndex + i] *= factor
+
+        #actually normalize        
+        remainingWeight = 100.0 - lockedWeights
+        factor = remainingWeight / totalWeight2
+
+        for j in range(len(newInfs)):
+            if j in kepsIndices:
+                continue
+            newWeights[nVerts*j + i] *= factor
+    
+    #Finally set weights
+    setWeights(inObj, [n.name() for n in newInfs], newWeights)
+
+
 def limitDeformers(inObj, inMax=4, inVerbose=False):
     inObj = pc.PyNode(inObj)
     skinCls = getSkinCluster(inObj)
@@ -5103,6 +5187,9 @@ def setNodeConnections(inNode, inCons):
             continue
 
         linkOutput >> inNode.attr(inputName)
+
+def matchConnections(inNode, inRefNode, *args):
+    setNodeConnections(inNode, getNodeConnections(inRefNode, *args))
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":

@@ -9,7 +9,7 @@ import tkRig
 import tkDevHelpers as tkdev
 import tkNodeling as tkn
 import tkTagTool as tkt
-
+import tkBlendShapes as tkb
 """
 #IN ORDER
 
@@ -947,12 +947,40 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     print "geos",len(geos),geos
     print "proxies",len(proxies),proxies
 
-def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS", inDisconnectConflicting=False):
+def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS", inDisconnectConflicting=False, inRecut=True, inRecutTreshold=2.0):
     if inShapeAliases is None:
         inShapeAliases = {}
 
     root = pc.group(empty=True, world=True, name=inName)
     root.v.set(False)
+
+    if inRecut:
+        for object, shapes in inShapeConversions.iteritems():
+            newDict = {}
+            orphans = []
+            for poseName, poseData in shapes.iteritems():
+                if "Right" in poseName:
+                    if poseName in orphans:
+                        orphans.remove(poseName)
+                    else:
+                        orphans.append(poseName)
+
+                elif "Left" in poseName:
+                    otherName = poseName.replace("Left", "Right")
+                    if otherName in shapes:
+                        newDict["TKRECUT_"+poseName] = [poseData, shapes[otherName]]
+                        if otherName in orphans:
+                            orphans.remove(otherName)
+                        else:
+                            orphans.append(otherName)
+                else:
+                    newDict[poseName] = poseData
+
+            for orphan in orphans:
+                #print "orphan",orphan
+                newDict[orphan] = shapes[orphan]
+
+            inShapeConversions[object] = newDict
 
     for object, shapes in inShapeConversions.iteritems():
 
@@ -984,44 +1012,119 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
 
         objectRoot = pc.group(empty=True, parent=root, name="{0}_{1}".format(object, inName))
         for poseName, poseData in shapes.iteritems():
-            channel = None
-            value = None
-            outputChannel = None
-            outputValue = None
 
-            #print "poseData",len(poseData),poseData
+            poseNames = [poseName]
+            poseDatas = [poseData]
 
-            if len(poseData) == 2:
-                channel, value = poseData
-                outputChannel = channel
-                outputValue = value
-            else:
-                channel, value, outputChannel, outputValue = poseData
+            isRecut = False
+            refObj = None
+            if poseName.startswith("TKRECUT_"):
+                isRecut = True
+                poseNames = [poseName[8:], poseName[8:].replace("Left", "Right")]
+                poseDatas = [poseData[0], poseData[1]]
+                refObj = tkc.duplicateAndClean(object, inMuteDeformers=True, inResetDisplayType=False)
 
-            channelNode = pc.PyNode(channel)
-            channelNiceName = outputChannel.replace(".", "_DOT_")
-            
-            #print "channelNiceName",channelNiceName
-            #print "outputValue",outputValue
+            i = 0
+            oldValues = {}
+            channelNiceNames = {}
+            outputValues = {}
+            channels = {}
+            values = {}
+            for poseName in poseNames:
+                poseData = poseDatas[i]
+                i += 1
 
-            oldValue = pc.getAttr(channel)
-            
-            pc.setAttr(channel, value)
-            
-            #Verify if some of our blendShapes get activated
-            for bsAttr in bsAttrs:
-                if bsAttr.get() >= 0.1:
-                    toDisconnects.append(bsAttr)
+                channel = None
+                value = None
+                outputChannel = None
+                outputValue = None
 
-            dupe = pc.PyNode(tkc.duplicateAndClean(object, inMuteDeformers=False, inResetDisplayType=False))
-            dupe.rename("{0}_{1}".format(object, poseName))
-            tkc.addParameter(dupe, channelNiceName, default=outputValue, containerName=inName)
-            if len(poseData) == 4:
-                tkc.addParameter(dupe, channel.replace(".", "_DOT_"), default=value, containerName=inName)
+                #print "poseData",len(poseData),poseData
 
-            objectRoot.addChild(dupe)
-            
-            pc.setAttr(channel, oldValue)
+                if len(poseData) == 2:
+                    channel, value = poseData
+                    outputChannel = channel
+                    outputValue = value
+                else:
+                    channel, value, outputChannel, outputValue = poseData
+
+                channelNode = pc.PyNode(channel)
+                channelNiceName = outputChannel.replace(".", "_DOT_")
+
+                channelNiceNames[poseName] = channelNiceName
+                outputValues[poseName] = outputValue
+                channels[poseName] = channel
+                values[poseName] = value
+                #print "channelNiceName",channelNiceName
+                #print "outputValue",outputValue
+
+                oldValue = pc.getAttr(channel)
+                if not channel in oldValues:
+                    oldValues[channel] = oldValue
+
+                pc.setAttr(channel, value)
+
+                if not isRecut:
+                    #Verify if some of our blendShapes get activated
+                    for bsAttr in bsAttrs:
+                        if bsAttr.get() >= 0.1:
+                            toDisconnects.append(bsAttr)
+
+                    dupe = pc.PyNode(tkc.duplicateAndClean(object, inMuteDeformers=False, inResetDisplayType=False))
+                    dupe.rename("{0}_{1}".format(object, poseName))
+                    tkc.addParameter(dupe, channelNiceName, default=outputValue, containerName=inName)
+                    if len(poseData) == 4:
+                        tkc.addParameter(dupe, channel.replace(".", "_DOT_"), default=value, containerName=inName)
+
+                    objectRoot.addChild(dupe)
+                    
+                    pc.setAttr(channel, oldValue)
+
+            if isRecut:
+                #Verify if some of our blendShapes get activated
+                for bsAttr in bsAttrs:
+                    if bsAttr.get() >= 0.1:
+                        toDisconnects.append(bsAttr)
+                
+                dupe = pc.PyNode(tkc.duplicateAndClean(object, inMuteDeformers=False, inResetDisplayType=False))
+                tkb.cutLeftRight(refObj, dupe, treshold=inRecutTreshold)
+
+                node = pc.PyNode(dupe.name() + "_Left")
+                node.rename("{0}_{1}".format(object, poseNames[0]))
+                tkc.addParameter(node, channelNiceNames[poseNames[0]], default=outputValues[poseNames[0]], containerName=inName)
+                if len(poseDatas[0]) == 4:
+                    tkc.addParameter(node, channels[poseNames[0]].replace(".", "_DOT_"), default=values[poseNames[0]], containerName=inName)
+                objectRoot.addChild(node)
+
+                node = pc.PyNode(dupe.name() + "_Right")
+                node.rename("{0}_{1}".format(object, poseNames[1]))
+                tkc.addParameter(node, channelNiceNames[poseNames[1]], default=outputValues[poseNames[1]], containerName=inName)
+                if len(poseDatas[1]) == 4:
+                    tkc.addParameter(node, channels[poseNames[1]].replace(".", "_DOT_"), default=values[poseNames[1]], containerName=inName)
+                objectRoot.addChild(node)
+                
+                pc.delete(dupe)
+
+                i = 0
+                for poseName in poseNames:
+                    poseData = poseDatas[i]
+                    i += 1
+
+                    channel = None
+                    value = None
+                    outputChannel = None
+                    outputValue = None
+
+                    if len(poseData) == 2:
+                        channel, value = poseData
+                        outputChannel = channel
+                        outputValue = value
+                    else:
+                        channel, value, outputChannel, outputValue = poseData
+
+                    pc.setAttr(channel, oldValues[channel])
+
+                pc.delete(refObj)
 
         #We are done with the object, disconnect conflicting blendShapes
         for toDisconnect in toDisconnects:
@@ -1122,15 +1225,7 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
         if inDelete:
             pc.delete(inName)
 
-def moveControl(inControl, inJoint, inSkinData, inNewSkinCluster, inContainerName="TK_ConvertedBullets"):
-    parentGroup = None
-
-    if pc.objExists(inContainerName):
-        parentGroup = pc.PyNode(inContainerName)
-    else:
-        parentGroup = pc.group(empty=True, name="TK_ConvertedBullets")
-        pc.PyNode("TKRig").addChild(parentGroup)
-
+def moveControl(inControl, inJoint, inSurfaceMesh, inRoot):
     newNodeName = inControl.name() + "_REPLACING"
 
     relativeDeformerPath = os.path.join(tkc.oscarmodulepath, r"Standalones\OSCAR\Data\Rigs\RelativeDeformer\RelativeDeformer.ma")
@@ -1157,7 +1252,7 @@ def moveControl(inControl, inJoint, inSkinData, inNewSkinCluster, inContainerNam
     setupParams.RelativeDeformer_initSy.set(root.sy.get())
     setupParams.RelativeDeformer_initSz.set(root.sz.get())
 
-    parentGroup.addChild(root)
+    inRoot.addChild(root)
 
     ctrlName = inControl.name()
     inControl.rename(ctrlName + "_REPLACED")
@@ -1171,21 +1266,24 @@ def moveControl(inControl, inJoint, inSkinData, inNewSkinCluster, inContainerNam
     origShape = newControl.getShape()
     if not origShape is None:
         pc.delete(origShape)
-        
+
     pc.parent(inControl.getShape(), newControl, shape=True, add=True)
+
+    #Transform
+    tkc.matchConnections(newControl, inControl, "visibility", "drawOverride", "overrideVisibility")
+
+    #Deformer
+    tkc.matchConnections(newDeformer, inJoint, "visibility", "drawOverride", "overrideVisibility")
 
     #Sets
     tkc.matchSets(newControl, inControl)
 
-    #Skin
-    #inNewSkin
-
     #Create surface constraint
-    under = inSkinData.keys()[0].getParent()
+    under = tkc.getNode(inSurfaceMesh)
 
     rootConstrainer = pc.group(empty=True, name=root.name() + "_Constrainer")
     tkc.matchTRS(rootConstrainer, root)
-    parentGroup.addChild(rootConstrainer)
+    inRoot.addChild(rootConstrainer)
 
     tkc.constrain(rootConstrainer, under, 'Surface')
     tkc.constrain(root, rootConstrainer)
@@ -1196,10 +1294,18 @@ def moveControl(inControl, inJoint, inSkinData, inNewSkinCluster, inContainerNam
 
     pc.namespace(removeNamespace=newNodeName, mergeNamespaceWithRoot=True)
 
-def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1):
+    return (newControl, newDeformer)
+
+def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1):
     if not pc.objExists(inDefaultReskin):
         pc.warning("Can't find 'inDefaultReskin' " + inDefaultReskin)
         return
+
+    if not pc.objExists(inRootParent):
+        pc.warning("Can't find 'inRootParent' " + inRootParent)
+        return
+
+    inRootParent = tkc.getNode(inRootParent)
 
     storeShapeConversions(inShapeConversions, inShapeAliases=inShapeAliases, inDisconnectConflicting=True)
 
@@ -1297,24 +1403,70 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
         pc.select(points)
         for i in range(inPostSmoothGrows):
             pc.mel.eval("GrowPolygonSelectionRegion")
-        pc.ngSkinRelax(numSteps=50, stepSize=0.3)
+
+        try:
+            pc.ngSkinRelax(numSteps=50, stepSize=0.3)
+        except:
+            pass
 
     pc.select(clear=True)
 
     #Move controls
+    addSkinData = {}
+
+    neededTransforms = []
+
+    root = None
+    TerriblyArbitraryTmpName = "TerriblyArbitraryTmpName"
+    if pc.objExists(TerriblyArbitraryTmpName):
+        root = pc.PyNode(TerriblyArbitraryTmpName)
+    else:
+        root = pc.group(empty=True, name=TerriblyArbitraryTmpName)
+        inRootParent.addChild(root)
+
     for control, jointData in controlsToMove.iteritems():
         joint, meshesData = jointData
+        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root)
 
-        pc.parent(control, world=True)
-        print "moveControl",control,joint,meshesData
-        moveControl(control, joint, meshesData, newSkinCluster)
+        #Add source transforms in neededTransforms
+        neededTransforms.extend(list(set(controller.listHistory(type="transform") + controller.getShape().listHistory(type="transform"))))
 
+        for mesh, weights in meshesData.iteritems():
+            if not mesh in addSkinData:
+                addSkinData[mesh] = [[deformer], [weights]]
+            else:
+                addSkinData[mesh][0].append(deformer)
+                addSkinData[mesh][1].append(weights)
+
+    nVertsNewSkinCluster = pc.polyEvaluate(newSkinCluster, vertex=True)
+
+    for mesh, jointData in addSkinData.iteritems():
+        if pc.polyEvaluate(mesh, vertex=True) == nVertsNewSkinCluster:
+            tkc.addWeights(newSkinCluster, jointData[0], jointData[1])
+            break
+
+    #before removing make sure we carry on what we need
+    allRemovedTrans = []
     for nodeToRemove in inNodesToRemove:
-        pass
-        #pc.delete(nodeToRemove)
+        allRemovedTrans.extend([t for t in nodeToRemove.getChildren(allDescendents=True, type="transform")])
+
+    neededTransforms = list(set(neededTransforms))
+    allRemovedTrans = list(set(allRemovedTrans))
+
+    #Reparent needed objects
+    for neededTransform in neededTransforms:
+        if neededTransform in allRemovedTrans:
+            root.addChild(neededTransform)
+
+    #actually delete
+    for nodeToRemove in inNodesToRemove:
+        pc.delete(nodeToRemove)
 
     #ApplyShapeConversions
     applyShapeConversions()
+
+    if not inRootName is None:
+        root.rename(inRootName)
 
     tkc.deleteUnusedNodes()
 
@@ -1354,8 +1506,8 @@ mouth_conversions = {
 
             "Jaw_Up"                :("Jaw_Move.ty", 1),
             "Jaw_Down"              :("Jaw_FK.rz", -33, "TK_Jaw_Open_Params_Root_SetupParameters.Jaw_Open_Params_Jaw_Open", 1),
-            "Jaw_Left"              :("Jaw_Move.tx", 1),
-            "Jaw_Right"             :("Jaw_Move.tx", -1),
+            "Jaw_L"                 :("Jaw_Move.tx", 1),
+            "Jaw_R"                 :("Jaw_Move.tx", -1),
 
 
             "Left_Smile"            :("Left_Mouth.ty", 1),
@@ -1372,8 +1524,8 @@ mouth_conversions = {
 
             "Mouth_Up"                :("Mouth_Move.ty", 1),
             "Mouth_Down"              :("Mouth_Move.ty", -1),
-            "Mouth_Left"              :("Mouth_Move.tx", 1),
-            "Mouth_Right"             :("Mouth_Move.tx", -1),
+            "Mouth_L"                 :("Mouth_Move.tx", 1),
+            "Mouth_R"                 :("Mouth_Move.tx", -1),
 
 
             "Cheek_Up_Left"            :("Left_Eye_Up_Cheek.ty", 1),
@@ -1488,9 +1640,11 @@ remove_roots = [    "TK_Mouth_Root",
                     "TK_Right_AttenuationCheekBone_ParentSwitcher1_Root",
                 ]
 
+import tkMayaCore as tkc
 import tkOptimize as tko
 import tkNodeling as tkn
 
+reload(tkc)
 reload(tko)
 
 #Edit the template in term of jaw opening
@@ -1499,7 +1653,7 @@ exprString = pc.PyNode("Jaw_Open_Params_Root_SetupParameters_Jaw_Open_Params_Jaw
 divisor = None
 divisorPattern = r"\/\s*(-*\s*[0-9]+)\s*;"
 
-matches = re.finditer(regex, test_str, re.MULTILINE)
+matches = re.finditer(divisorPattern, exprString, re.MULTILINE)
 
 for matchNum, match in enumerate(matches):
     divisor = int(match.groups(0)[0])
@@ -1516,8 +1670,7 @@ else:
     pc.warning("Can't get mouth opening divisor from 'Jaw_Open_Params_Root_SetupParameters_Jaw_Open_Params_Jaw_Open_Expr'")
 
 smoothInfs = reskin.keys()
-addInfs = ["TK_Mouth_Left_Deform", "TK_Mouth_Right_Deform", "TK_Mouth_Left_Up_2_Deform", "TK_Mouth_Right_Up_2_Deform", "TK_Mouth_Left_Up_1_Deform", "TK_Mouth_Right_Up_1_Deform"]
-
+addInfs = ["TK_Mouth_Left_Deform", "TK_Mouth_Right_Deform", "TK_Mouth_Left_Up_1_Deform", "TK_Mouth_Right_Up_1_Deform", "TK_Mouth_Left_Up_0_Deform", "TK_Mouth_Right_Up_0_Deform"]
 for addInf in addInfs:
     if not addInf in smoothInfs:
         smoothInfs.append(addInf)
@@ -1525,5 +1678,8 @@ for addInf in addInfs:
 postSmooths = {"head_under_geo":smoothInfs,
                 "body_under_geo":smoothInfs}
 
-tko.convertToBlendShapes(mouth_conversions, remove_roots, inDefaultReskin="TK_Head_Ctrl_0_Deform", inReskin=reskin, inControlsToMove=controlsToMove, inNewSkinCluster=["head_geo", "body_geo"], inShapeAliases=None, inPostSmooths=postSmooths)
+tko.convertToBlendShapes(mouth_conversions, remove_roots, "TK_Head_Ctrl_0_Deform", "TKRig", inRootName="TK_Mouth_Root", inReskin=reskin, inControlsToMove=controlsToMove, inNewSkinCluster=["head_geo", "body_geo"], inShapeAliases=None, inPostSmooths=postSmooths)
+
+#ADD CHEEKS
+
 """
