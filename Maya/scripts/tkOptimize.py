@@ -1225,7 +1225,7 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
         if inDelete:
             pc.delete(inName)
 
-def moveControl(inControl, inJoint, inSurfaceMesh, inRoot):
+def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset=None):
     newNodeName = inControl.name() + "_REPLACING"
 
     relativeDeformerPath = os.path.join(tkc.oscarmodulepath, r"Standalones\OSCAR\Data\Rigs\RelativeDeformer\RelativeDeformer.ma")
@@ -1285,7 +1285,11 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot):
     tkc.matchTRS(rootConstrainer, root)
     inRoot.addChild(rootConstrainer)
 
-    tkc.constrain(rootConstrainer, under, 'Surface')
+    if not inSurfaceOffset is None:
+        pc.move(inSurfaceOffset[0], inSurfaceOffset[1], inSurfaceOffset[2], rootConstrainer, objectSpace=True, r=True, wd=True)
+
+    surfCns = tkc.constrain(rootConstrainer, under, 'Surface')
+
     tkc.constrain(root, rootConstrainer)
 
     pc.delete(importedObjects[0])
@@ -1293,6 +1297,8 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot):
     pc.delete([ "{0}:Deformers".format(newNodeName), "{0}:Hidden".format(newNodeName)])
 
     pc.namespace(removeNamespace=newNodeName, mergeNamespaceWithRoot=True)
+
+    tkRig.OscarHide([surfCns.name()])
 
     return (newControl, newDeformer)
 
@@ -1426,7 +1432,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     for control, jointData in controlsToMove.iteritems():
         joint, meshesData = jointData
-        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root)
+        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root, inSurfaceOffset=[0.0, 0.0, 0.47])
 
         #Add source transforms in neededTransforms
         neededTransforms.extend(list(set(controller.listHistory(type="transform") + controller.getShape().listHistory(type="transform"))))
@@ -1592,7 +1598,8 @@ controlsToMove = ["Right_Mouth_Deform","Right_Mouth_Down_2_Deform","Right_Mouth_
                     "Right_Mouth_Down_0_Deform","Center_Down_Deform","Center_Up_Deform",
                     "Left_Mouth_Down_0_Deform","Left_Mouth_Up_0_Deform","Left_Mouth_Up_1_Deform",
                     "Left_Mouth_Down_1_Deform","Left_Mouth_Down_2_Deform","Left_Mouth_Up_2_Deform",
-                    "Left_Mouth_Deform"]
+                    "Left_Mouth_Deform",
+                    "Left_Cheekbone_Main_Ctrl", "Right_Cheekbone_Main_Ctrl"]
 
 defaultReplaceDeformer = "TK_Head_Ctrl_0_Deform"
 
@@ -1640,6 +1647,8 @@ remove_roots = [    "TK_Mouth_Root",
                     "TK_Right_AttenuationCheekBone_ParentSwitcher1_Root",
                 ]
 
+import re
+
 import tkMayaCore as tkc
 import tkOptimize as tko
 import tkNodeling as tkn
@@ -1679,7 +1688,4 @@ postSmooths = {"head_under_geo":smoothInfs,
                 "body_under_geo":smoothInfs}
 
 tko.convertToBlendShapes(mouth_conversions, remove_roots, "TK_Head_Ctrl_0_Deform", "TKRig", inRootName="TK_Mouth_Root", inReskin=reskin, inControlsToMove=controlsToMove, inNewSkinCluster=["head_geo", "body_geo"], inShapeAliases=None, inPostSmooths=postSmooths)
-
-#ADD CHEEKS
-
 """

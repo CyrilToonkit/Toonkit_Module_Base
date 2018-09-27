@@ -26,6 +26,7 @@ import math
 import maya.api.OpenMaya as api
 import pymel.core as pc
 
+import tkMayaCore as tkc
 import tkNodeling as tkn
 
 """
@@ -199,10 +200,16 @@ def aim(inTransform,  inPrimary=0, inPrimaryDirection=None, inPrimaryPoint=None,
     q = api.MQuaternion(mat.rotate)
     eulerAngles = map(math.degrees, q.asEulerRotation())
     
+    rotateOrder = pc.xform(inTransform, rotateOrder=True, query=True)
+    if rotateOrder != "xyz":
+        pc.xform(inTransform, rotateOrder="xyz", preserve=True)
+
     #pc.xform(inTransform, matrix=mat, worldSpace=True)
     pc.rotate(inTransform, eulerAngles, absolute=True, worldSpace=True, preserveChildPosition=inPreserveChildren)
     #inTransform.setRotation(mat.rotate, space='world', preserveChildPosition=inPreserve)
 
+    if rotateOrder != "xyz":
+        pc.xform(inTransform, rotateOrder=rotateOrder, preserve=True)
 
 def getPoleVector(inStartPoint, inMiddlePoint, inEndPoint, inDistance=1.0, inDistanceAsFactor=False):
     inStartPoint = pc.datatypes.Vector(inStartPoint)
@@ -226,7 +233,7 @@ def getPoleVector(inStartPoint, inMiddlePoint, inEndPoint, inDistance=1.0, inDis
     return inMiddlePoint + (midToStart + midToEnd) * -1 * inDistance * factor
 
 """
-inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent
+inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent
 """
 def orientJoint(inTransform, inPrimary=0, inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False):
     childTrans = [1,0,0]
@@ -259,13 +266,22 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryNegate=False, inPrimaryChild=
     thirdPoint = None
     #Calculations for UpVs
     if inSecondaryType > 1:
-        if len(children) > 0:
+        if len(children) > 0 or inSecondaryType > 3:
             if inSecondaryType > 2:
-                parent = inTransform.getParent()
-                if not parent is None:
-                    thirdPoint = secondPoint
-                    secondPoint = firstPoint
-                    firstPoint = parent.getTranslation(space='world')
+                if inSecondaryType > 3:
+                    parent = inTransform.getParent()
+                    if not parent is None:
+                        parentParent = parent.getParent()
+                        if not parentParent is None:
+                            thirdPoint = firstPoint
+                            secondPoint = parent.getTranslation(space='world')
+                            firstPoint = parentParent.getTranslation(space='world')
+                else:
+                    parent = inTransform.getParent()
+                    if not parent is None:
+                        thirdPoint = secondPoint
+                        secondPoint = firstPoint
+                        firstPoint = parent.getTranslation(space='world')
             else:
                 childChildren = children[0].getChildren()
                 if len(childChildren) > 0:
@@ -324,7 +340,12 @@ def addAttr(inTransform, inName, inValue, inEnumValues=None):
     else:
         pc.addAttr(inTransform, longName=inName, attributeType=attType, defaultValue=inValue)
 
-def writePreset(inTransform, **inPreset):
+def writePreset(inTransform, inClearDict=DEFAULT_PRESET, **inPreset):
+    if not inClearDict is None:
+        for key, value in inClearDict.iteritems():
+            if pc.attributeQuery(key, node=inTransform, exists=True):
+                pc.deleteAttr(inTransform, at=key)
+
     for key, value in inPreset.iteritems():
         addAttr(inTransform, key, value)
 
@@ -371,11 +392,12 @@ def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPatte
         inRoots = inObjects[:]
 
         for root in inRoots:
-            inObjects.extend(root.getChildren(allDescendents=True))
+            inObjects.extend(root.getChildren(allDescendents=True, type="joint"))
 
         inObjects = list(set(inObjects))
 
     for obj in inObjects:
+        print "obj",obj
         if re.match(inPrimaryPattern, obj.name()):
             continue
 
@@ -439,7 +461,7 @@ def disconnectSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryP
         inRoots = inObjects[:]
 
         for root in inRoots:
-            inObjects.extend(root.getChildren(allDescendents=True))
+            inObjects.extend(root.getChildren(allDescendents=True, type="joint"))
 
         inObjects = list(set(inObjects))
 
