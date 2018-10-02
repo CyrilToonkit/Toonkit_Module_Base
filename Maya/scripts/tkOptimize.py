@@ -965,14 +965,13 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                     else:
                         orphans.append(poseName)
 
-                elif "Left" in poseName:
+                elif "Left" in poseName and poseName.replace("Left", "Right") in shapes:
                     otherName = poseName.replace("Left", "Right")
-                    if otherName in shapes:
-                        newDict["TKRECUT_"+poseName] = [poseData, shapes[otherName]]
-                        if otherName in orphans:
-                            orphans.remove(otherName)
-                        else:
-                            orphans.append(otherName)
+                    newDict["TKRECUT_"+poseName] = [poseData, shapes[otherName]]
+                    if otherName in orphans:
+                        orphans.remove(otherName)
+                    else:
+                        orphans.append(otherName)
                 else:
                     newDict[poseName] = poseData
 
@@ -1225,7 +1224,9 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
         if inDelete:
             pc.delete(inName)
 
-def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset=None):
+def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inRootUnder="TK_RootUnder_Main_Ctrl", inSurfaceOffset=None):
+    #print "moveControl",inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset
+
     newNodeName = inControl.name() + "_REPLACING"
 
     relativeDeformerPath = os.path.join(tkc.oscarmodulepath, r"Standalones\OSCAR\Data\Rigs\RelativeDeformer\RelativeDeformer.ma")
@@ -1239,6 +1240,9 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset=None)
     newDeformer = pc.PyNode(baseName + "_Main_Deform")
 
     tkc.matchTRS(root, inControl)
+    root.s.set([1.0 if root.sx.get() > 0 else -1.0,
+                1.0 if root.sy.get() > 0 else -1.0,
+                1.0 if root.sz.get() > 0 else -1.0])
 
     setupParams.RelativeDeformer_initTx.set(root.tx.get())
     setupParams.RelativeDeformer_initTy.set(root.ty.get())
@@ -1281,9 +1285,19 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset=None)
     #Create surface constraint
     under = tkc.getNode(inSurfaceMesh)
 
+    rootParent = pc.group(empty=True, name=root.name() + "_Constrainer_Parent")
+    tkc.matchTRS(rootParent, root)
+    inRoot.addChild(rootParent)
+    if pc.objExists(inRootUnder):
+        rootUnder = pc.PyNode(inRootUnder)
+        tkc.constrain(rootParent, rootUnder)
+        tkc.constrain(rootParent, rootUnder, "Scaling")
+    else:
+        pc.warning("Can't find root under to reconstrain ({0}) !!".format(inRootUnder))
+
     rootConstrainer = pc.group(empty=True, name=root.name() + "_Constrainer")
-    tkc.matchTRS(rootConstrainer, root)
-    inRoot.addChild(rootConstrainer)
+    tkc.matchTRS(rootConstrainer, rootParent)
+    rootParent.addChild(rootConstrainer)
 
     if not inSurfaceOffset is None:
         pc.move(inSurfaceOffset[0], inSurfaceOffset[1], inSurfaceOffset[2], rootConstrainer, objectSpace=True, r=True, wd=True)
@@ -1291,6 +1305,7 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset=None)
     surfCns = tkc.constrain(rootConstrainer, under, 'Surface')
 
     tkc.constrain(root, rootConstrainer)
+    tkc.constrain(root, rootConstrainer, "Scaling")
 
     pc.delete(importedObjects[0])
     #"{0}:Controls".format(newNodeName),"{0}:Connected".format(newNodeName), "{0}:Guide".format(newNodeName), "{0}:Unselectable".format(newNodeName)
@@ -1302,7 +1317,7 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inSurfaceOffset=None)
 
     return (newControl, newDeformer)
 
-def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1):
+def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1):
     if not pc.objExists(inDefaultReskin):
         pc.warning("Can't find 'inDefaultReskin' " + inDefaultReskin)
         return
@@ -1432,7 +1447,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     for control, jointData in controlsToMove.iteritems():
         joint, meshesData = jointData
-        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root, inSurfaceOffset=[0.0, 0.0, 0.47])
+        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root, inRootUnder=inRootUnder, inSurfaceOffset=[0.0, 0.0, 0.47])
 
         #Add source transforms in neededTransforms
         neededTransforms.extend(list(set(controller.listHistory(type="transform") + controller.getShape().listHistory(type="transform"))))
@@ -1687,5 +1702,5 @@ for addInf in addInfs:
 postSmooths = {"head_under_geo":smoothInfs,
                 "body_under_geo":smoothInfs}
 
-tko.convertToBlendShapes(mouth_conversions, remove_roots, "TK_Head_Ctrl_0_Deform", "TKRig", inRootName="TK_Mouth_Root", inReskin=reskin, inControlsToMove=controlsToMove, inNewSkinCluster=["head_geo", "body_geo"], inShapeAliases=None, inPostSmooths=postSmooths)
+tko.convertToBlendShapes(mouth_conversions, remove_roots, "TK_Head_Ctrl_0_Deform", "TKRig", inRootName="TK_Mouth_Root", inReskin=reskin, inControlsToMove=controlsToMove, inNewSkinCluster=["head_geo", "body_geo"], inShapeAliases=mouth_shape_aliases, inPostSmooths=postSmooths)
 """

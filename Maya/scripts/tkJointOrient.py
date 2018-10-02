@@ -340,15 +340,6 @@ def addAttr(inTransform, inName, inValue, inEnumValues=None):
     else:
         pc.addAttr(inTransform, longName=inName, attributeType=attType, defaultValue=inValue)
 
-def writePreset(inTransform, inClearDict=DEFAULT_PRESET, **inPreset):
-    if not inClearDict is None:
-        for key, value in inClearDict.iteritems():
-            if pc.attributeQuery(key, node=inTransform, exists=True):
-                pc.deleteAttr(inTransform, at=key)
-
-    for key, value in inPreset.iteritems():
-        addAttr(inTransform, key, value)
-
 DEFAULT_PRESET = {
     "inPrimary":0,
     "inPrimaryNegate":False,
@@ -358,6 +349,15 @@ DEFAULT_PRESET = {
     "inSecondaryData":[0.0, 1.0, 0.0],
     "inSecondaryNegate":False
 }
+
+def writePreset(inTransform, inClearDict=DEFAULT_PRESET, **inPreset):
+    if not inClearDict is None:
+        for key, value in inClearDict.iteritems():
+            if pc.attributeQuery(key, node=inTransform, exists=True):
+                pc.deleteAttr(inTransform, at=key)
+
+    for key, value in inPreset.iteritems():
+        addAttr(inTransform, key, value)
 
 def readPreset(inTransform):
     preset = {}
