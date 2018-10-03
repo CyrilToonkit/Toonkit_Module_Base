@@ -1317,7 +1317,7 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inRootUnder="TK_RootU
 
     return (newControl, newDeformer)
 
-def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1):
+def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1, inSurfaceOffset=[0.0, 0.0, 0.47]):
     if not pc.objExists(inDefaultReskin):
         pc.warning("Can't find 'inDefaultReskin' " + inDefaultReskin)
         return
@@ -1447,7 +1447,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     for control, jointData in controlsToMove.iteritems():
         joint, meshesData = jointData
-        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root, inRootUnder=inRootUnder, inSurfaceOffset=[0.0, 0.0, 0.47])
+        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root, inRootUnder=inRootUnder, inSurfaceOffset=inSurfaceOffset)
 
         #Add source transforms in neededTransforms
         neededTransforms.extend(list(set(controller.listHistory(type="transform") + controller.getShape().listHistory(type="transform"))))

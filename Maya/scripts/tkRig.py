@@ -4467,7 +4467,7 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
 
     if len(notFoundNodes) > 0:
         option = "deleted" if cleanUnconnected else "kept"
-        pc.warning("Some nodes have not been reconnected, they will be {0} ({1})".format(option, [n.name() for n in notFoundNodes]))
+        pc.warning("Some nodes have not been reconnected, they will be {0} ({1})".format(option, [n for n in notFoundNodes]))
         if cleanUnconnected:
             pc.delete(notFoundNodes)
 
