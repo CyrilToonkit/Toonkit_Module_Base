@@ -3887,6 +3887,16 @@ def connectOscarPoses(inPosesHolder, nodal=True, scaling=True):
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''   
 
+def getAllAnimated():
+    animCurves = pc.ls(type=["animCurveTA", "animCurveTU", "animCurveTL"])
+
+    controls = []
+
+    for animCurve in animCurves:
+        controls.extend(animCurve.listConnections(type="transform", source=False, destination=True))
+
+    return controls
+
 def getAnimated(inControls):
     animatedControls = []
 
