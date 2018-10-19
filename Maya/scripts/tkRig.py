@@ -5902,9 +5902,9 @@ def matchT(inObj, inValue):
 
     match(inObj, inValue)
 
-    if inObj.r.isSettable():
+    if inObj.r.isSettable() and inObj.rx.isSettable() and inObj.ry.isSettable() and inObj.rz.isSettable():
         inObj.r.set(r)
-    if inObj.s.isSettable():
+    if inObj.s.isSettable() and inObj.sx.isSettable() and inObj.sy.isSettable() and inObj.sz.isSettable():
         inObj.s.set(s)
 
 def matchR(inObj, inValue):

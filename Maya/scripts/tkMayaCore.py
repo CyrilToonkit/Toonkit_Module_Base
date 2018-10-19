@@ -4792,6 +4792,7 @@ def removeUnusedInfs(inSkin, inInfs=None):
 
 type_priority = {
     "blendShape":10,
+    "cluster":15,
     "skinCluster":20,
     "shrinkWrap":25,
     "nonLinear":27,
@@ -5156,20 +5157,20 @@ def disconnect(inParam):
 
     return True
 
-def getAllConnections(inAttr):
-    cons = inAttr.listConnections(source=True, destination=True, plugs=True, connections=True)
+def getAllConnections(inAttr, inSource=True, inDestination=True):
+    cons = inAttr.listConnections(source=inSource, destination=inDestination, plugs=True, connections=True)
 
     if len(cons) == 0 and inAttr.isCompound():
         childAttrs = inAttr.children()
         for childAttr in childAttrs:
-            cons.extend(childAttr.listConnections(source=True, destination=True, plugs=True, connections=True))
+            cons.extend(childAttr.listConnections(source=inSource, destination=inDestination, plugs=True, connections=True))
 
     return cons
 
-def getNodeConnections(inNode, *args):
+def getNodeConnections(inNode, *args, **kwargs):
     cons = []
     for arg in args:
-        cons.extend(getAllConnections(inNode.attr(arg)))
+        cons.extend(getAllConnections(inNode.attr(arg), kwargs.get("inSource", True), kwargs.get("inDestination", True)))
 
     baked = str(cons)
     return cons
@@ -5188,8 +5189,8 @@ def setNodeConnections(inNode, inCons):
 
         linkOutput >> inNode.attr(inputName)
 
-def matchConnections(inNode, inRefNode, *args):
-    setNodeConnections(inNode, getNodeConnections(inRefNode, *args))
+def matchConnections(inNode, inRefNode, *args, **kwargs):
+    setNodeConnections(inNode, getNodeConnections(inRefNode, *args, **kwargs))
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":
@@ -6476,6 +6477,53 @@ def getKeySetParents(inNamespace, inKeySet, inProp=None):
         parent = getKeySetParent(inNamespace, parent, prop)
 
     return parents
+
+def getKeySetsHierarchy(inCharacters=[]):
+    inCharacters = getCharacters(inCharacters)
+
+    createdSets = []
+
+    for char in inCharacters:
+        ns = char.split(":")[0]
+
+        if len(ns) > 0:
+            ns += ":"
+
+        prop = getProperty(char, CONST_KEYSETSTREEPROP)
+        keySets = getKeySets(char)
+
+        keySetsHierachy = []
+
+        for keySet in keySets:
+            keySetsHierachy.append((keySet,getKeySetParents(char, keySet, prop)))
+            
+    return sorted(keySetsHierachy, key=lambda x: len(x[1]))
+
+def getControlsHierarchy(char, inSet, inHierarchy=None, inOrder=True):
+    inHierarchy = inHierarchy or getKeySetsHierarchy(inCharacters=[char])
+    
+    #print "inHierarchy ?",inHierarchy
+
+    ctrls = getKeyables(inSet, [char])
+    
+    if len(ctrls) == 0:
+        return [[],[],[]]
+    
+    childSets = []
+    
+    toRemove = []
+    
+    for keySet in inHierarchy:
+        if len(keySet[1]) > 0 and (keySet[1][0] == inSet or keySet[1][0] == "$"+inSet):
+            childSets.append(keySet[0])
+            #print "ctrls",len(ctrls),ctrls
+            subControls = getKeyables(keySet[0], [char])
+            toRemove.extend(subControls)
+            #print "subControls",len(subControls),subControls
+
+    toRemove = list(set(toRemove))
+
+    return [item for item in ctrls if not item in toRemove], sorted(childSets), ctrls
 
 def orderControls(inControls):
     orderedControls = []

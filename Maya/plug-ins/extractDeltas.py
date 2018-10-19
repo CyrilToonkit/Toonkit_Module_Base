@@ -148,8 +148,11 @@ class extractDeltas(OpenMayaMPx.MPxCommand):
 			elif i == 0 and len(shapes) > 1:
 				skin = tkc.getSkinCluster(tkc.getNode(shapes[0]))
 				if skin == None:
-					OpenMaya.MGlobal.displayError(shapes[0] + ' is not bound to a skin cluster.')
-					return
+					shapes.remove(shapes[0])
+					skin = tkc.getSkinCluster(tkc.getNode(shapes[0]))
+					if skin == None:
+						OpenMaya.MGlobal.displayError(shapes[0] + ' is not bound to a skin cluster.')
+						return
 				skin = skin.name()
 				if cmds.getAttr(shapes[1] + '.intermediateObject'):
 					shapeList.append(shapes[1])
@@ -173,7 +176,7 @@ class extractDeltas(OpenMayaMPx.MPxCommand):
 		selList.getDependNode(0, intermediateObj)
 		selList.getDependNode(1, skinObj)
 		selList.getDependNode(2, targetObj)
-		
+
 		# --------------------------------------------------------------------------------
 		# define the mesh functions and get the points
 		# --------------------------------------------------------------------------------

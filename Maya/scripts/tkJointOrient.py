@@ -145,6 +145,8 @@ inPrimary : 0=x, 1=y, 2=z
 inSecondary : 0=x, 1=y, 2=z
 """
 def aim(inTransform,  inPrimary=0, inPrimaryDirection=None, inPrimaryPoint=None, inPrimaryNegate=False, inSecondary=1, inSecondaryDirection=None, inSecondaryPoint=None, inSecondaryNegate=False, inPreserveChildren=False):
+    #print "aim", inTransform, "inPrimary=", inPrimary, "inPrimaryDirection=", inPrimaryDirection, "inPrimaryPoint=", inPrimaryPoint, "inPrimaryNegate=", inPrimaryNegate, "inSecondary=", inSecondary, "inSecondaryDirection=", inSecondaryDirection, "inSecondaryPoint=", inSecondaryPoint, "inSecondaryNegate=", inSecondaryNegate, "inPreserveChildren=", inPreserveChildren
+
     if inPrimaryDirection is None and inPrimaryPoint is None:
         raise ValueError("inPrimaryDirection and inPrimaryPoint can't both be null !")
 
@@ -233,20 +235,41 @@ def getPoleVector(inStartPoint, inMiddlePoint, inEndPoint, inDistance=1.0, inDis
     return inMiddlePoint + (midToStart + midToEnd) * -1 * inDistance * factor
 
 """
-inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent
+inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child
+inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent, 5 = towards parent
 """
-def orientJoint(inTransform, inPrimary=0, inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False):
+def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0.0, 0.0], inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False):
+    #print "inPrimaryType",inPrimaryType
+    #print "inPrimaryData",inPrimaryData
+
+    cns = tkc.storeConstraints([inTransform], inRemove=True)
+
+    cons = tkc.getNodeConnections(inTransform, "t", "r", "s", inSource=True, inDestination=False)
+    consIter = cons[:]
+    for con in consIter:
+        dest, source = con
+        #print " -source",source,"dest",dest
+        source.disconnect(dest)
+
+    inTransform = pc.PyNode(inTransform.name())
+
     childTrans = [1,0,0]
     primaryIsDirection = True
 
     childObj = None
-    children = inTransform.getChildren()
+    children = inTransform.getChildren(type="joint")
+
+    ns = str(inTransform.namespace())
 
     if not inPrimaryChild is None and inPrimaryChild != "":
-        if pc.objExists(inPrimaryChild):
-            childObj = pc.PyNode(inPrimaryChild)
+        if pc.objExists(ns + inPrimaryChild.split(":")[-1]):
+            childObj = pc.PyNode(ns + inPrimaryChild.split(":")[-1])
         else:
-            pc.warning("Given primary child cannot be found !")
+            if pc.objExists(inPrimaryChild):
+                childObj = pc.PyNode(inPrimaryChild)
+            else:
+                pc.warning("Given primary child cannot be found ({0}) !".format(inPrimaryChild))
+
     elif len(children) > 0:
         childObj = children[0]
     
@@ -266,7 +289,9 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryNegate=False, inPrimaryChild=
     thirdPoint = None
     #Calculations for UpVs
     if inSecondaryType > 1:
-        if len(children) > 0 or inSecondaryType > 3:
+        if inSecondaryType == 5:
+            thirdPoint = inTransform.getParent().getTranslation(space='world')
+        elif len(children) > 0 or inSecondaryType > 3:
             if inSecondaryType > 2:
                 if inSecondaryType > 3:
                     parent = inTransform.getParent()
@@ -287,28 +312,54 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryNegate=False, inPrimaryChild=
                 if len(childChildren) > 0:
                     thirdPoint = childChildren[0].getTranslation(space="world")
 
+    primaryPoint = childTrans
+    if inPrimaryType != 2:
+        primaryPoint = inPrimaryData
+        primaryIsDirection = inPrimaryType == 0
+
+    #print "primaryPoint",primaryPoint
+
     if primaryIsDirection:
         if inSecondaryType == 0:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=childTrans, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
         elif inSecondaryType == 1:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=childTrans, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
         elif not thirdPoint is None:#Upvs
-            upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=childTrans, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            if inSecondaryType == 5:
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=thirdPoint, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            else:
+                upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
     else:
         if inSecondaryType == 0:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=childTrans, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
         elif inSecondaryType == 1:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=childTrans, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
         elif not thirdPoint is None:#Upvs
-            upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=childTrans, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            if inSecondaryType == 5:
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=thirdPoint, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            else:
+                upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
 
     pc.makeIdentity(inTransform, apply=True)
-    
+    """
+    try:
+        #makeIdentity will fail sooner or later because it wat to act on children...
+        pc.makeIdentity(inTransform, apply=True)
+    except Exception as e:
+        pc.warning(e)
+    """
+    if len(cns) > 0:
+        tkc.loadConstraints(cns, inMaintainOffset=True)
+
+    if len(cons) > 0:
+        tkc.setNodeConnections(inTransform, cons)
+
     if inOrientChildren:
         for child in childen:
-            orientJoint(child,  inPrimary=inPrimary, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryType=inSecondaryType, inSecondaryData=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inOrientChildren=True)
+            if child.type() == "joint":
+                orientJoint(child,  inPrimary=inPrimary, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryType=inSecondaryType, inSecondaryData=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inOrientChildren=True)
 
 def addAttr(inTransform, inName, inValue, inEnumValues=None):
     attType = type(inValue).__name__
@@ -342,6 +393,8 @@ def addAttr(inTransform, inName, inValue, inEnumValues=None):
 
 DEFAULT_PRESET = {
     "inPrimary":0,
+    "inPrimaryType":2,
+    "inPrimaryData":[1.0, 0.0, 0.0],
     "inPrimaryNegate":False,
     "inPrimaryChild":"",
     "inSecondary":1,
@@ -372,15 +425,18 @@ writePreset(pc.selected()[0], **DEFAULT_PRESET)
 print readPreset(pc.selected()[0])
 """
 
-def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChildren=True):
+def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChildren=True, inSkipPrefix=None, inSkipIfFound=None):
+    if not inSkipPrefix is None and inTransform.stripNamespace().startswith(inSkipPrefix):
+        return
+
     preset = inDefaultPreset.copy()
     preset.update(readPreset(inTransform))
 
     orientJoint(inTransform, **preset)
 
-    if inOrientChildren:
-        for child in inTransform.getChildren():
-            orientJointPreset(child, inDefaultPreset=inDefaultPreset, inOrientChildren=True)
+    if inOrientChildren and inSkipIfFound != inTransform.stripNamespace():
+        for child in inTransform.getChildren(type="joint"):
+            orientJointPreset(child, inDefaultPreset=inDefaultPreset, inOrientChildren=True, inSkipPrefix=inSkipPrefix, inSkipIfFound=inSkipIfFound)
 
 def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inRotate=True, inLockCenter=0, inConsiderHierarchy=True, invertX=True, invertY=False, invertZ=False):
     if inObjects is None:

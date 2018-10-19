@@ -443,7 +443,7 @@ def batcherReferenceSelectedClick(*args):
     if nodesText != None and len(nodesText) > 0:
         for nodeText in nodesText:
             path = nodeText.split("(")[1][:-1]
-            mc.file(path, reference=True, force=True)
+            pc.system.createReference(path, namespace=os.path.splitext(os.path.basename(path))[0])
 
 def batcherOpenSelectedClick(*args):
     nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)

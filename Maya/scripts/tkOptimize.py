@@ -421,13 +421,19 @@ def replaceConstraints(inDebugFolder=None, inVerbose=False):
                 continue
 
             targetPivots=False
+            targetNonUniformScale=False
             for target in targets:
                 if not tkc.listsBarelyEquals(list(target.rp.get()), [0.0,0.0,0.0]):
                     if inVerbose:
                         print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner,
                     targetPivots=True
 
-            if targetPivots:
+                if not tkc.listsBarelyEquals(list(target.s.get()), [1.0,1.0,1.0]):
+                    if inVerbose:
+                        print "Cannot replace (target {0} have non-uniform scaling): ".format(target),parentCon,"on",owner,
+                    targetNonUniformScale=True
+
+            if targetPivots or targetNonUniformScale:
                 continue
 
             replaced.append(owner.name())
@@ -947,7 +953,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     print "geos",len(geos),geos
     print "proxies",len(proxies),proxies
 
-def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS", inDisconnectConflicting=False, inRecut=True, inRecutTreshold=2.0):
+def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS", inDisconnectConflicting=False, inRecut=True, inRecutTreshold=2.0, inUseTopLevel=False):
     if inShapeAliases is None:
         inShapeAliases = {}
 
@@ -996,6 +1002,17 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
             pc.warning("Can't find object '{0}' (and None of its aliases : {1}) !".format(origName, inShapeAliases.get(origName, [])))
             continue
 
+        sourceObject = object
+        if inUseTopLevel:
+            objectNode = pc.PyNode(object)
+            #If we want to use 'top level', search a mesh using 'object' as live blendShape target
+            outBss = objectNode.getShape().listConnections(source=False, destination=True, type="blendShape")
+            if len(outBss) > 0:
+                outBs = outBss[0]
+                topLevelMeshes = outBs.listHistory(future=True, type="mesh")
+                if len(topLevelMeshes) > 0:
+                    sourceObject = topLevelMeshes[0].getParent().name()
+
         #Here we may have existing blendShape targets in conflict that will be disconnected
         toDisconnects = []
         #Get blendShape targets attributes at 0 that are connected to something
@@ -1021,7 +1038,7 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                 isRecut = True
                 poseNames = [poseName[8:], poseName[8:].replace("Left", "Right")]
                 poseDatas = [poseData[0], poseData[1]]
-                refObj = tkc.duplicateAndClean(object, inMuteDeformers=True, inResetDisplayType=False)
+                refObj = tkc.duplicateAndClean(sourceObject, inMuteDeformers=True, inResetDisplayType=False)
 
             i = 0
             oldValues = {}
@@ -1047,6 +1064,10 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                 else:
                     channel, value, outputChannel, outputValue = poseData
 
+                if not pc.objExists(channel):
+                    pc.warning("Can't find channel {0}".format(channel))
+                    continue
+
                 channelNode = pc.PyNode(channel)
                 channelNiceName = outputChannel.replace(".", "_DOT_")
 
@@ -1069,7 +1090,7 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                         if bsAttr.get() >= 0.1:
                             toDisconnects.append(bsAttr)
 
-                    dupe = pc.PyNode(tkc.duplicateAndClean(object, inMuteDeformers=False, inResetDisplayType=False))
+                    dupe = pc.PyNode(tkc.duplicateAndClean(sourceObject, inMuteDeformers=False, inResetDisplayType=False))
                     dupe.rename("{0}_{1}".format(object, poseName))
                     tkc.addParameter(dupe, channelNiceName, default=outputValue, containerName=inName)
                     if len(poseData) == 4:
@@ -1085,21 +1106,24 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                     if bsAttr.get() >= 0.1:
                         toDisconnects.append(bsAttr)
                 
-                dupe = pc.PyNode(tkc.duplicateAndClean(object, inMuteDeformers=False, inResetDisplayType=False))
+                dupe = pc.PyNode(tkc.duplicateAndClean(sourceObject, inMuteDeformers=False, inResetDisplayType=False))
                 tkb.cutLeftRight(refObj, dupe, treshold=inRecutTreshold)
+
 
                 node = pc.PyNode(dupe.name() + "_Left")
                 node.rename("{0}_{1}".format(object, poseNames[0]))
-                tkc.addParameter(node, channelNiceNames[poseNames[0]], default=outputValues[poseNames[0]], containerName=inName)
-                if len(poseDatas[0]) == 4:
-                    tkc.addParameter(node, channels[poseNames[0]].replace(".", "_DOT_"), default=values[poseNames[0]], containerName=inName)
+                if poseNames[0] in channelNiceNames:
+                    tkc.addParameter(node, channelNiceNames[poseNames[0]], default=outputValues[poseNames[0]], containerName=inName)
+                    if len(poseDatas[0]) == 4:
+                        tkc.addParameter(node, channels[poseNames[0]].replace(".", "_DOT_"), default=values[poseNames[0]], containerName=inName)
                 objectRoot.addChild(node)
 
                 node = pc.PyNode(dupe.name() + "_Right")
                 node.rename("{0}_{1}".format(object, poseNames[1]))
-                tkc.addParameter(node, channelNiceNames[poseNames[1]], default=outputValues[poseNames[1]], containerName=inName)
-                if len(poseDatas[1]) == 4:
-                    tkc.addParameter(node, channels[poseNames[1]].replace(".", "_DOT_"), default=values[poseNames[1]], containerName=inName)
+                if poseNames[1] in channelNiceNames:
+                    tkc.addParameter(node, channelNiceNames[poseNames[1]], default=outputValues[poseNames[1]], containerName=inName)
+                    if len(poseDatas[1]) == 4:
+                        tkc.addParameter(node, channels[poseNames[1]].replace(".", "_DOT_"), default=values[poseNames[1]], containerName=inName)
                 objectRoot.addChild(node)
                 
                 pc.delete(dupe)
@@ -1120,6 +1144,10 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                         outputValue = value
                     else:
                         channel, value, outputChannel, outputValue = poseData
+
+                    if not pc.objExists(channel):
+                        pc.warning("Can't find channel {0}".format(channel))
+                        continue
 
                     pc.setAttr(channel, oldValues[channel])
 
@@ -1153,35 +1181,36 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
                 newBS = []
                 for bsObj in bs:
                     channels = tkc.getParameters(bsObj, containerName=inName)
-                    channel = channels[-1]
-                    controller, attribute = channel.split("_DOT_")
-                    attrNode = pc.PyNode(controller).attr(attribute)
+                    if len(channels) > 0:
+                        channel = channels[-1]
+                        controller, attribute = channel.split("_DOT_")
+                        attrNode = pc.PyNode(controller).attr(attribute)
 
-                    oldValue = attrNode.get()
-                    value = tkc.getProperty(bsObj, inName).attr(channel).get()
-                    attrNode.set(value)
+                        oldValue = attrNode.get()
+                        value = tkc.getProperty(bsObj, inName).attr(channel).get()
+                        attrNode.set(value)
 
-                    deltaMesh = None
-                    try:
-                        deltaMesh = pc.extractDeltas(s=objectNode, c=bsObj)
-                    except:
-                        pass
+                        deltaMesh = None
+                        try:
+                            deltaMesh = pc.extractDeltas(s=objectNode, c=bsObj)
+                        except:
+                            pass
 
-                    if not deltaMesh is None:
-                        deltaNode = pc.PyNode(deltaMesh)
+                        if not deltaMesh is None:
+                            deltaNode = pc.PyNode(deltaMesh)
 
-                        bsObj.getParent().addChild(deltaNode)
-                        for child in bsObj.getChildren():
-                            deltaNode.addChild(child)
+                            bsObj.getParent().addChild(deltaNode)
+                            for child in bsObj.getChildren():
+                                deltaNode.addChild(child)
 
-                        name = bsObj.name()
-                        pc.delete(bsObj)
-                        deltaNode.rename(name)
-                        newBS.append(deltaNode)
-                    else:
-                        newBS.append(bsObj)
+                            name = bsObj.name()
+                            pc.delete(bsObj)
+                            deltaNode.rename(name)
+                            newBS.append(deltaNode)
+                        else:
+                            newBS.append(bsObj)
 
-                    attrNode.set(oldValue)
+                        attrNode.set(oldValue)
 
                 bs = newBS
 
@@ -1317,7 +1346,7 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inRootUnder="TK_RootU
 
     return (newControl, newDeformer)
 
-def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1, inSurfaceOffset=[0.0, 0.0, 0.47]):
+def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1, inSurfaceOffset=[0.0, 0.0, 0.47], inDeletePosed=None):
     if not pc.objExists(inDefaultReskin):
         pc.warning("Can't find 'inDefaultReskin' " + inDefaultReskin)
         return
@@ -1328,7 +1357,28 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     inRootParent = tkc.getNode(inRootParent)
 
-    storeShapeConversions(inShapeConversions, inShapeAliases=inShapeAliases, inDisconnectConflicting=True)
+    storeShapeConversions(inShapeConversions, inShapeAliases=inShapeAliases, inDisconnectConflicting=True, inUseTopLevel=(not inDeletePosed is None))
+
+    if not inDeletePosed is None:
+        for posesToDelete in inDeletePosed:
+            if not pc.objExists(posesToDelete):
+                pc.warning("Can't find posed object to delete '{0}'".format(posesToDelete))
+                continue
+
+            #Disconnect poses
+            posesToDeleteNodeParent = pc.PyNode(posesToDelete).getParent()
+
+            posesToDeleteNodeParent.tx.disconnect()
+            posesToDeleteNodeParent.ty.disconnect()
+            posesToDeleteNodeParent.tz.disconnect()
+
+            posesToDeleteNodeParent.rx.disconnect()
+            posesToDeleteNodeParent.ry.disconnect()
+            posesToDeleteNodeParent.rz.disconnect()
+
+            posesToDeleteNodeParent.sx.disconnect()
+            posesToDeleteNodeParent.sy.disconnect()
+            posesToDeleteNodeParent.sz.disconnect()
 
     inNodesToRemove = tkc.getNodes(inNodesToRemove)
 
@@ -1437,6 +1487,8 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     neededTransforms = []
 
+    nVertsNewSkinCluster = pc.polyEvaluate(newSkinCluster, vertex=True)
+
     root = None
     TerriblyArbitraryTmpName = "TerriblyArbitraryTmpName"
     if pc.objExists(TerriblyArbitraryTmpName):
@@ -1447,7 +1499,18 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     for control, jointData in controlsToMove.iteritems():
         joint, meshesData = jointData
-        controller, deformer = moveControl(control, joint, meshesData.keys()[0].getParent(), root, inRootUnder=inRootUnder, inSurfaceOffset=inSurfaceOffset)
+
+        surfaceMesh = None
+        #Find the good mesh to connect the moved controls to
+        for mesh, meshData in meshesData.iteritems():
+            if "under" in mesh.name() and pc.polyEvaluate(mesh, vertex=True) == nVertsNewSkinCluster:
+                surfaceMesh = mesh
+
+        if not surfaceMesh is None:
+            print "MOVE",control,"meshesData",meshesData,"surface ?",meshesData.keys()[0].getParent()
+            controller, deformer = moveControl(control, joint, surfaceMesh.getParent(), root, inRootUnder=inRootUnder, inSurfaceOffset=inSurfaceOffset)
+        else:
+            pc.warning("!! surfaceMesh can't be found for " + control)
 
         #Add source transforms in neededTransforms
         neededTransforms.extend(list(set(controller.listHistory(type="transform") + controller.getShape().listHistory(type="transform"))))
@@ -1459,8 +1522,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
                 addSkinData[mesh][0].append(deformer)
                 addSkinData[mesh][1].append(weights)
 
-    nVertsNewSkinCluster = pc.polyEvaluate(newSkinCluster, vertex=True)
-
+    
     for mesh, jointData in addSkinData.iteritems():
         if pc.polyEvaluate(mesh, vertex=True) == nVertsNewSkinCluster:
             tkc.addWeights(newSkinCluster, jointData[0], jointData[1])
