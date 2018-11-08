@@ -2462,7 +2462,7 @@ def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None):
             tkc.loadSkins(skinfile)
 
     #Reset All
-    resetAll("")
+    resetAll("", inParams=True)
 
     #Mesh overrides to True
     setMeshesOverrides(True)

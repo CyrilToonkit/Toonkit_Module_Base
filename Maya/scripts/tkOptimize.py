@@ -788,7 +788,13 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
             skinClusters.extend(deformer.listConnections(type="skinCluster"))
 
     skinClusters = list(set(skinClusters))
-    geos = [skin.getGeometry()[0] for skin in skinClusters]
+    geos = []
+    for skin in skinClusters:
+        skinGeos = skin.getGeometry()
+        if len(skinGeos) > 0:
+            geos.append(skinGeos[0])
+        else:
+            pc.warning("SkinCluster '{0}' is not bound to a geometry !".format(skin))
 
     deformersRemaining = []
 
@@ -860,6 +866,8 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
             #------------------------------------
             blendShapes = geo.listHistory(type="blendShape")
             for blendShape in blendShapes:
+                print "blendShape",blendShape
+
                 if pc.objExists(blendShape):
                     cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
                     for con in cons:
@@ -868,6 +876,9 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                             BSinfs = skin.influenceObjects()
                             #Determine if most of the influences are kept or dropped
                             keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
+
+                            print "keptInfs", len(keptInfs),keptInfs
+                            print "remainingTopInfs", len(remainingTopInfs),remainingTopInfs                          
 
                             if len(keptInfs) > len(remainingTopInfs):
                                 underGeo = con
@@ -1192,6 +1203,7 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
 
                         deltaMesh = None
                         try:
+                            print "extractDeltas",objectNode,bsObj
                             deltaMesh = pc.extractDeltas(s=objectNode, c=bsObj)
                         except:
                             pass
@@ -1287,6 +1299,24 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inRootUnder="TK_RootU
 
     inRoot.addChild(root)
 
+    #external constraints
+    """
+    extCons = tkc.getConstraintsUsing(inControl)
+
+    owners = []
+    for extCon in extCons:
+        owner = tkc.getConstraintOwner(extCon)[0]
+        
+        if not owner in owners:
+            owners.append(owner)
+
+    storedCons = []
+    for owner in owners:
+        storedCons.append(tkc.storeConstraints([owner], inRemove=True))
+
+    #print "!! storedCons",storedCons
+    """
+
     ctrlName = inControl.name()
     inControl.rename(ctrlName + "_REPLACED")
     newControl.rename(ctrlName)
@@ -1336,6 +1366,12 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inRootUnder="TK_RootU
     tkc.constrain(root, rootConstrainer)
     tkc.constrain(root, rootConstrainer, "Scaling")
 
+    #reapply constraints
+    """
+    for cns in storedCons:
+        tkc.loadConstraints(cns)
+    """
+
     pc.delete(importedObjects[0])
     #"{0}:Controls".format(newNodeName),"{0}:Connected".format(newNodeName), "{0}:Guide".format(newNodeName), "{0}:Unselectable".format(newNodeName)
     pc.delete([ "{0}:Deformers".format(newNodeName), "{0}:Hidden".format(newNodeName)])
@@ -1346,7 +1382,7 @@ def moveControl(inControl, inJoint, inSurfaceMesh, inRoot, inRootUnder="TK_RootU
 
     return (newControl, newDeformer)
 
-def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1, inSurfaceOffset=[0.0, 0.0, 0.47], inDeletePosed=None):
+def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, inRootParent, inRootName="MovedControllers", inReskin=None, inControlsToMove=None, inNewSkinCluster=None, inRootUnder="TK_RootUnder_Main_Ctrl", inShapeAliases=None, inPostSmooths=None, inPostSmoothGrows=1, inSurfaceOffset=[0.0, 0.0, 0.47], inDeletePosed=None, inKeptRoots=None, inPostSmoothSteps=30, inPostSmoothSize=0.15):
     if not pc.objExists(inDefaultReskin):
         pc.warning("Can't find 'inDefaultReskin' " + inDefaultReskin)
         return
@@ -1466,6 +1502,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
         for newDef, oldDefs in skinningReplacements.iteritems():
             pc.progressBar(gMainProgressBar, edit=True, step=1)
+            print "replaceDeformers",oldDefs,newDef,meshSkins
             tkc.replaceDeformers(oldDefs, tkc.getNode(newDef), inSkins=meshSkins)
 
         pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
@@ -1476,7 +1513,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
             pc.mel.eval("GrowPolygonSelectionRegion")
 
         try:
-            pc.ngSkinRelax(numSteps=50, stepSize=0.3)
+            pc.ngSkinRelax(numSteps=inPostSmoothSteps, stepSize=inPostSmoothSize)
         except:
             pass
 
@@ -1507,7 +1544,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
                 surfaceMesh = mesh
 
         if not surfaceMesh is None:
-            print "MOVE",control,"meshesData",meshesData,"surface ?",meshesData.keys()[0].getParent()
+            #print "MOVE",control,"meshesData",meshesData,"surface ?",meshesData.keys()[0].getParent()
             controller, deformer = moveControl(control, joint, surfaceMesh.getParent(), root, inRootUnder=inRootUnder, inSurfaceOffset=inSurfaceOffset)
         else:
             pc.warning("!! surfaceMesh can't be found for " + control)
@@ -1543,7 +1580,23 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
     #actually delete
     for nodeToRemove in inNodesToRemove:
-        pc.delete(nodeToRemove)
+        if pc.objExists(nodeToRemove):
+            node = pc.PyNode(nodeToRemove)
+
+            if not inKeptRoots is None and nodeToRemove in inKeptRoots:
+                vAttr = node.v
+                locked = vAttr.isLocked()
+                if locked:
+                    vAttr.setLocked(False)
+
+                vAttr.set(0)
+
+                if locked:
+                    vAttr.setLocked(True)
+
+                pc.rename(nodeToRemove, nodeToRemove + "_KEPT")
+            else:
+                pc.delete(nodeToRemove)
 
     #ApplyShapeConversions
     applyShapeConversions()

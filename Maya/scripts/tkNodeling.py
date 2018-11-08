@@ -421,7 +421,7 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
     return node.outColorR if not outVectors else node.outColor
 
 @profiled
-def conditionOr(inAttr, inCond):
+def conditionOr(inAttr, inCond, **kwargs):
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
     if len(oldConds) > 0:
@@ -446,7 +446,7 @@ def conditionOr(inAttr, inCond):
     return inCond
 
 @profiled
-def conditionAnd(inAttr, inCond):
+def conditionAnd(inAttr, inCond, **kwargs):
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
     if len(oldConds) > 0:

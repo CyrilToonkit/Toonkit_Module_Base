@@ -358,10 +358,10 @@ def batcherOpenClick(*args):
     startingDirectory = dirname
 
     pyFilePath = mc.fileDialog2(caption="Select a .py batch file", fileFilter="Python (*.py)(*.py)", startingDirectory=startingDirectory, dialogStyle=1, fileMode=1)
-    if pyFilePath == None:
+    if pyFilePath == None or len(pyFilePath) == 0:
         return
 
-    batcherInit(pyFilePath)
+    batcherInit(pyFilePath[0])
 
 def batcherSelectSuccessClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)

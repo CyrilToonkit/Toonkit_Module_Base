@@ -2767,49 +2767,50 @@ def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObj
         allChildren.extend(root.getChildren(allDescendents=True, type="transform"))
     allChildren.extend(inRoot)
 
-    gMainProgressBar = None
-
-    if inProgress:
-        gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
-
-        pc.progressBar( gMainProgressBar,
-        edit=True,
-        beginProgress=True,
-        isInterruptable=True,
-        status="Walking contraints",
-        maxValue=len(allChildren))
-
-    allChildrenStr = [n.name() for n in allChildren]
-
-    for child in allChildren:
-        targets = []
-
-        if inSource:
-            constraints = getConstraintsUsing(child)
-            for constraint in constraints:
-                for target in getConstraintOwner(constraint):
-                    targets.append((target, constraint))
-        if inDestination:
-            constraints = getConstraints(child)
-            for constraint in constraints:
-                for target in getConstraintTargets(constraint):
-                    targets.append((target, constraint))
-
-        targets = list(set(targets))
-        cnsAll.extend(targets)
-
-        filteredTargets = []
-        for target in targets:
-            if not target[0].name() in allChildrenStr:
-                filteredTargets.append(target)
-
-        externalTargets.extend(filteredTargets)
+    if len(allChildren) > 0:
+        gMainProgressBar = None
 
         if inProgress:
-            pc.progressBar(gMainProgressBar, edit=True, step=1)
+            gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
 
-    if inProgress:
-        pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+            pc.progressBar( gMainProgressBar,
+            edit=True,
+            beginProgress=True,
+            isInterruptable=True,
+            status="Walking contraints",
+            maxValue=len(allChildren))
+
+        allChildrenStr = [n.name() for n in allChildren]
+
+        for child in allChildren:
+            targets = []
+
+            if inSource:
+                constraints = getConstraintsUsing(child)
+                for constraint in constraints:
+                    for target in getConstraintOwner(constraint):
+                        targets.append((target, constraint))
+            if inDestination:
+                constraints = getConstraints(child)
+                for constraint in constraints:
+                    for target in getConstraintTargets(constraint):
+                        targets.append((target, constraint))
+
+            targets = list(set(targets))
+            cnsAll.extend(targets)
+
+            filteredTargets = []
+            for target in targets:
+                if not target[0].name() in allChildrenStr:
+                    filteredTargets.append(target)
+
+            externalTargets.extend(filteredTargets)
+
+            if inProgress:
+                pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+        if inProgress:
+            pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
 
     returnList = []
 
@@ -4022,19 +4023,42 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
         #bind
         #If the object shape is hidden, maya will crash at binding...
         hiddenShapes = []
+        lockedShapes = []
+        connections = {}
 
         shapes = inObject.getShapes()
         for shape in shapes:
-            if not shape.visibility.get():
-                hiddenShapes.append(shape)
-                shape.visibility.set(1)
+            attr = shape.visibility
+            if not attr.get():
+                hiddenShapes.append(attr)
+
+                if attr.isLocked():
+                    lockedShapes.append(attr)
+                    attr.setLocked(False)
+
+                cons = getNodeConnections(shape, "v", inSource=True, inDestination=False)
+                if len(cons) > 0:
+                    consIter = cons[:]
+                    connections[shape] = cons
+                    for con in consIter:
+                        dest, source = con
+                        #print " -source",source,"dest",dest
+                        source.disconnect(dest)
+
+                attr.set(1)
 
         skin = pc.animation.skinCluster(inObject,inInfluences, name=inObject.name() + "_skinCluster", toSelectedBones=True)
 
-        for hiddenShape in hiddenShapes:
-            hiddenShape.visibility.set(0)
-
         realInfs = pc.skinCluster(skin,query=True,inf=True)
+
+        for hiddenShape in hiddenShapes:
+            hiddenShape.set(0)
+
+        for obj, cons in connections.iteritems():
+            setNodeConnections(obj, cons)
+
+        for lockedShape in lockedShapes:
+            lockedShape.setLocked(True)
     else:
         #verify that all influences are on the list and add them if necessary
         realInfs = pc.skinCluster(skin,query=True,inf=True)
@@ -4792,7 +4816,6 @@ def removeUnusedInfs(inSkin, inInfs=None):
 
 type_priority = {
     "blendShape":10,
-    "cluster":15,
     "skinCluster":20,
     "shrinkWrap":25,
     "nonLinear":27,
@@ -5189,8 +5212,8 @@ def setNodeConnections(inNode, inCons):
 
         linkOutput >> inNode.attr(inputName)
 
-def matchConnections(inNode, inRefNode, *args, **kwargs):
-    setNodeConnections(inNode, getNodeConnections(inRefNode, *args, **kwargs))
+def matchConnections(inNode, inRefNode, *args):
+    setNodeConnections(inNode, getNodeConnections(inRefNode, *args))
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":
