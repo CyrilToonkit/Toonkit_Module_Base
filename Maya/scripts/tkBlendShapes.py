@@ -471,10 +471,11 @@ def muteDeformers(inMeshName):
     defs = mc.listHistory(inMeshName, gl=True, pdo=True, lf=True, f=False, il=2)
     if defs != None:
         for deformer in defs:
-            if mc.attributeQuery("envelope" , node=deformer, exists=True):
-                attrName = "{0}.envelope".format(deformer)
-                envelopes[deformer] = mc.getAttr(attrName)
-                mc.setAttr(attrName, 0.0)
+            if pc.objExists(deformer):
+                if mc.attributeQuery("envelope" , node=deformer, exists=True):
+                    attrName = "{0}.envelope".format(deformer)
+                    envelopes[deformer] = mc.getAttr(attrName)
+                    mc.setAttr(attrName, 0.0)
 
     return envelopes
 

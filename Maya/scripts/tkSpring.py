@@ -171,7 +171,8 @@ def cache(value=True, manageCacheAnim=True):
 					bounds = springBounds[springId]
 
 					if bounds[0] <= frame and frame <= bounds[1]:
-						attenuationAttr = tkc.getRealAttr(spring + ".attenuation")
+						attenuationAttr = spring + ".attenuation"#tkc.getRealAttr(spring + ".attenuation")
+						#print "attenuationAttr",attenuationAttr,"orig",spring + ".attenuation"
 						attenuation = pc.getAttr(attenuationAttr)
 						mul = 0 if attenuation >=1.0 else 1.0/(1.0-attenuation)
 

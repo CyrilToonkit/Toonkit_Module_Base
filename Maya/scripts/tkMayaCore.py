@@ -4474,7 +4474,10 @@ def loadSkins(inSkins, inObjects=None):
             lines =  f.readlines()
 
             for line in lines:
-                inSkins.append(deserializeSkin(line))
+                deserialized = deserializeSkin(line)
+
+                if not deserialized is None:
+                    inSkins.append(deserializeSkin(line))
 
         except Exception as e:
             pc.warning("Cannot load skinnings file from " + skinsPath + " : " + str(e))
@@ -4489,6 +4492,7 @@ def loadSkins(inSkins, inObjects=None):
     if inObjects == None or len(inObjects) == 0:
         for inSkin in inSkins:
             loadSkin(inSkin)
+
     else:
         for inObject in inObjects:
             found = False

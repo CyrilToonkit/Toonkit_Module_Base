@@ -728,7 +728,7 @@ def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVis
     else:
         tkn.conditionAnd(inObj.nodeState, inCond)
 
-def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True):
+def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inDropProxy=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True, **kwargs):
     if inRootsKeep is None and inRootsRemove is None:
         raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
 
@@ -836,6 +836,16 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                 if not node in geos:
                     geos.append(node)
 
+    forcedOrphans = []
+    #Find and exclude "droppedProxies"
+    if not inDropProxy is None:
+        for droppedProxy in inDropProxy:
+            if pc.objExists(droppedProxy):
+                node = tkc.getNode(droppedProxy)
+
+                forcedOrphans.append(node)
+                forcedOrphans.extend(node.getShapes())
+
     proxies = []
 
     for geo in geos:
@@ -857,37 +867,40 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
         if not geoSkin is None:
             keptTopInfs = geoSkin.influenceObjects()
 
-            remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
+        remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
 
-            otherDeformers = [d for d in geo.listHistory() if d.type() in ["blendShape", "wrap"]]
+        otherDeformers = [d for d in geo.listHistory() if d.type() in ["blendShape", "wrap"]]
 
 
-            #'Live' blendshape targets
-            #------------------------------------
-            blendShapes = geo.listHistory(type="blendShape")
-            for blendShape in blendShapes:
-                print "blendShape",blendShape
+        #'Live' blendshape targets
+        #------------------------------------
+        blendShapes = geo.listHistory(type="blendShape")
+        for blendShape in blendShapes:
+            print "blendShape",blendShape
 
-                if pc.objExists(blendShape):
-                    cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
-                    for con in cons:
-                        skin = tkc.getSkinCluster(con)
-                        if not skin is None:
-                            BSinfs = skin.influenceObjects()
-                            #Determine if most of the influences are kept or dropped
-                            keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
+            if pc.objExists(blendShape):
+                cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
+                for con in cons:
+                    skin = tkc.getSkinCluster(con)
+                    if not skin is None:
+                        BSinfs = skin.influenceObjects()
+                        #Determine if most of the influences are kept or dropped
+                        keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
 
-                            print "keptInfs", len(keptInfs),keptInfs
-                            print "remainingTopInfs", len(remainingTopInfs),remainingTopInfs                          
+                        print "keptInfs", len(keptInfs),keptInfs
+                        print "remainingTopInfs", len(remainingTopInfs),remainingTopInfs                          
 
-                            if len(keptInfs) > len(remainingTopInfs):
-                                underGeo = con
-                                break
+                        if len(keptInfs) > len(remainingTopInfs):
+                            underGeo = con
+                            break
 
-            isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None 
+        isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None 
 
-        if isOrphanGeo and transform.stripNamespace() in inKeepOrphans:
-            isOrphanGeo  = False
+        if isOrphanGeo:
+            if transform.stripNamespace() in inKeepOrphans:
+                isOrphanGeo  = False
+        elif geo in forcedOrphans:
+            isOrphanGeo  = True
 
         print " isOrphanGeo",isOrphanGeo
         print " underGeo",underGeo
@@ -932,6 +945,8 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                             if inf in removedDeformers:
                                 infsToRemove.append(inf)
 
+                        if len(infsToRemove) > 0:
+                            print "infsToRemove", len(infsToRemove),infsToRemove
                         pc.skinCluster(newSkin,e=True,ri=infsToRemove)
                     elif infsLeft == 0:
                         if len(replacingDeformers) > 0:
@@ -946,7 +961,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                         newSkin = tkc.getSkinCluster(dupe)
                         pc.skinCluster(newSkin,e=True,ri=infsToRemove)
 
-                    tkRig.hammerCenter(dupe)
+                    tkRig.hammerCenter(dupe, inThreshold=kwargs.get("inThreshold", 10.0))
                     pc.skinPercent(newSkin, dupe, pruneWeights=0.005 )
                     removedInfs = tkc.removeUnusedInfs(newSkin)
 
