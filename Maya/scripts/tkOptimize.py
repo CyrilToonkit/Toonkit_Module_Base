@@ -1522,15 +1522,15 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
         pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
 
-    for mesh, points in postSmooths.iteritems():
-        pc.select(points)
-        for i in range(inPostSmoothGrows):
-            pc.mel.eval("GrowPolygonSelectionRegion")
+        for mesh, points in postSmooths.iteritems():
+            pc.select(points)
+            for i in range(inPostSmoothGrows):
+                pc.mel.eval("GrowPolygonSelectionRegion")
 
-        try:
-            pc.ngSkinRelax(numSteps=inPostSmoothSteps, stepSize=inPostSmoothSize)
-        except:
-            pass
+            try:
+                pc.ngSkinRelax(numSteps=inPostSmoothSteps, stepSize=inPostSmoothSize)
+            except:
+                pass
 
     pc.select(clear=True)
 
