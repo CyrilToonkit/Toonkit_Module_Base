@@ -354,7 +354,7 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
         tkc.loadConstraints(cns, inMaintainOffset=True)
 
     if len(cons) > 0:
-        tkc.setNodeConnections(inTransform, cons)
+        tkc.setNodeConnections(cons, inTransform)
 
     if inOrientChildren:
         for child in childen:

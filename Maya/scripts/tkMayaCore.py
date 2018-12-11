@@ -4055,7 +4055,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
             hiddenShape.set(0)
 
         for obj, cons in connections.iteritems():
-            setNodeConnections(obj, cons)
+            setNodeConnections(cons, obj)
 
         for lockedShape in lockedShapes:
             lockedShape.setLocked(True)
@@ -4451,12 +4451,13 @@ def loadSkin(inSkin, inObject=None):
         if skin != None:
             cons = getNodeConnections(skin, "nodeState")
             pc.skinCluster(skin,edit=True, ub=True)
+            
 
         newSkin = setWeights(obj, infs, weights)
 
         if len(cons) > 0:
             #print "cons", str(cons)
-            setNodeConnections(newSkin, cons)
+            setNodeConnections(cons, newSkin)
 
         return newSkin
     else:
@@ -5185,12 +5186,30 @@ def disconnect(inParam):
     return True
 
 def getAllConnections(inAttr, inSource=True, inDestination=True):
-    cons = inAttr.listConnections(source=inSource, destination=inDestination, plugs=True, connections=True)
+    cons = []
+    if inSource:
+        tempCons = inAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+        for i in range(len(tempCons)):
+            tempCons[i] = (tempCons[i][1], tempCons[i][0])
+        cons.extend(tempCons)
+
+    if inDestination:
+        cons.extend(inAttr.listConnections(source=False, destination=True, plugs=True, connections=True))
 
     if len(cons) == 0 and inAttr.isCompound():
         childAttrs = inAttr.children()
         for childAttr in childAttrs:
-            cons.extend(childAttr.listConnections(source=inSource, destination=inDestination, plugs=True, connections=True))
+
+            if inSource:
+                tempCons = childAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+                for i in range(len(tempCons)):
+                    tempCons[i] = (tempCons[i][1], tempCons[i][0])
+                cons.extend(tempCons)
+
+            if inDestination:
+                cons.extend(childAttr.listConnections(source=False, destination=True, plugs=True, connections=True))
+
+            cons.extend(tempCons)
 
     return cons
 
@@ -5199,25 +5218,34 @@ def getNodeConnections(inNode, *args, **kwargs):
     for arg in args:
         cons.extend(getAllConnections(inNode.attr(arg), kwargs.get("inSource", True), kwargs.get("inDestination", True)))
 
+    if kwargs.get("inDisconnect", True):
+        for con in cons:
+            con[0].disconnect(con[1])
+
     baked = str(cons)
     return cons
 
-def setNodeConnections(inNode, inCons):
-    for linkInput, linkOutput in inCons:
-        inputName = linkInput.split(".")[-1]
+def setNodeConnections(inCons, inNode=None):
+    for linkOutput, linkInput in inCons:
+        inputAttr = linkInput
 
-        if not pc.attributeQuery(inputName, node=inNode, exists=True):
-            pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), inputName))
+        if not inNode is None:
+            inputName = linkInput.split(".")[-1]
+
+            if not pc.attributeQuery(inputName, node=inNode, exists=True):
+                pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), inputName))
+                continue
+
+            inputAttr = inNode.attr(inputName)
+
+        if len(inputAttr.listConnections()) > 0:
+            pc.warning("Can't 'setNodeConnections', '{0}' already connected !".format(inputAttr))
             continue
 
-        if len(inNode.attr(inputName).listConnections()) > 0:
-            pc.warning("Can't 'setNodeConnections', '{0}.{1}' already connected !".format(inNode.name(), inputName))
-            continue
-
-        linkOutput >> inNode.attr(inputName)
+        linkOutput >> inputAttr
 
 def matchConnections(inNode, inRefNode, *args):
-    setNodeConnections(inNode, getNodeConnections(inRefNode, *args))
+    setNodeConnections(getNodeConnections(inRefNode, *args), inNode)
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":
