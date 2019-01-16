@@ -2676,11 +2676,13 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
 
     return closestValues
 
-def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicule=True):
+def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicule=True, inEnsureAttachment=True, inDetectionOffset=[0.0, 0.0, 0.0]):
+    #print "constrainToPoint",inObj, inRef, inOffset, inU, inV, useFollicule, inEnsureAttachment
     createdObjects = []
 
     if inU == None or inV == None:
-        closestInfo = closestPoint(inRef, inObj.getTranslation(space="world"))
+        wt = inObj.getTranslation(space="world")
+        closestInfo = closestPoint(inRef, [wt[0] + inDetectionOffset[0], wt[1] + inDetectionOffset[1], wt[2] + inDetectionOffset[2]])
         if inU == None:
             inU = closestInfo['u']
         if inV == None:
@@ -2743,6 +2745,8 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
 
         if not inOffset:
             resetTRS(inObj)
+
+        cnsObj = folP
     else:
         cns = pc.pointOnPolyConstraint(inRef, cnsObj)
         createdObjects.append(cns)
@@ -2752,7 +2756,18 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
     
     if inOffset and not useFollicule:
         pc.parent(inObj, cnsObj)
+
+    if inEnsureAttachment and listsBarelyEquals(cnsObj.getTranslation(space="world"), [0.0, 0.0, 0.0]):
+        removeAllCns(inObj)
+        print "Does not attach with values",inU,inV
+
+        if inDetectionOffset == [0.0, 0.0, 0.0]:
+            inDetectionOffset = [0.0001, 0.0001, 0.0001]
+        else:
+            inDetectionOffset = [2*v for v in inDetectionOffset]
         
+        constrainToPoint(inObj, inRef, inOffset=inOffset, useFollicule=useFollicule, inDetectionOffset=inDetectionOffset)
+
     return createdObjects
 
 def getExternalConstraints(inRoot, inSource=True, inDestination=False, returnObjects=False, inReturnAll=False, inProgress=False):
@@ -3051,7 +3066,13 @@ def selectConstraining(inObj):
 def removeAllCns(inObj):
     cns = getConstraints(inObj)
     for c in cns:
+        typ = c.type()
         pc.delete(c)
+
+        if typ == "follicle":
+            par = inObj.getParent()
+            par.getParent().addChild(inObj)
+            pc.delete(par)
 
 def selectConstrained(inObj):
     constrained = []
@@ -4036,14 +4057,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
                     lockedShapes.append(attr)
                     attr.setLocked(False)
 
-                cons = getNodeConnections(shape, "v", inSource=True, inDestination=False)
-                if len(cons) > 0:
-                    consIter = cons[:]
-                    connections[shape] = cons
-                    for con in consIter:
-                        dest, source = con
-                        #print " -source",source,"dest",dest
-                        source.disconnect(dest)
+                connections[shape] = getNodeConnections(shape, "v", inSource=True, inDestination=False, inDisconnect=True)
 
                 attr.set(1)
 
@@ -4449,7 +4463,7 @@ def loadSkin(inSkin, inObject=None):
         cons = []
 
         if skin != None:
-            cons = getNodeConnections(skin, "nodeState")
+            cons = getNodeConnections(skin, "nodeState", inDisconnect=True)
             pc.skinCluster(skin,edit=True, ub=True)
             
 
@@ -5218,7 +5232,7 @@ def getNodeConnections(inNode, *args, **kwargs):
     for arg in args:
         cons.extend(getAllConnections(inNode.attr(arg), kwargs.get("inSource", True), kwargs.get("inDestination", True)))
 
-    if kwargs.get("inDisconnect", True):
+    if kwargs.get("inDisconnect", False):
         for con in cons:
             con[0].disconnect(con[1])
 

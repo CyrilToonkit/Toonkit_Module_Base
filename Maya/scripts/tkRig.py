@@ -2411,7 +2411,7 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
         else:
             output >> neutralInput
 
-def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None):
+def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None, inFunction=None):
     filePath = inPath
     deltaPath = inDeltaPath
 
@@ -2441,6 +2441,9 @@ def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None):
         return False
     
     ref.load(newFile=filePath)
+
+    if not inFunction is None:
+        inFunction()
 
     #Delete orphans
     nodesToClean = pc.ls(assemblies=True)
@@ -3975,7 +3978,10 @@ def loadSimplePose(inPose, inNamespace=None):
             node = pc.PyNode(objName)
         
             for attr, value in attrs.iteritems():
-                node.attr(attr).set(value)
+                if pc.attributeQuery(attr, node=node, exists=True):
+                    node.attr(attr).set(value)
+                else:
+                    pc.warning("loadSimplePose failed, object \"{0}\" don't have attribute \"{1}\"".format(objName, attr))
         else:
             pc.warning("loadSimplePose failed, object \"{0}\" not found".format(objName))
             pass
