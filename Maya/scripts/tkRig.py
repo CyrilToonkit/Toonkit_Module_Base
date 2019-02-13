@@ -2442,22 +2442,27 @@ def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None, inFunction=None):
     
     ref.load(newFile=filePath)
 
-    if not inFunction is None:
-        inFunction()
-
-    #Delete orphans
+    #Collect orphans
+    orphans = []
     nodesToClean = pc.ls(assemblies=True)
     nodesToClean.extend([s for s in pc.ls(type="objectSet") if pc.mel.eval("setFilterScript " + s.name())])
 
     for node in nodesToClean:
         if not pc.referenceQuery( node, isNodeReferenced=True ):
-            try:
-                pc.delete(node)
-            except:
-                pass
+            orphans.append(node)
 
     #import reference
     ref.importContents(removeNamespace=ref.namespace != ":")
+
+    if not inFunction is None:
+        inFunction()
+
+    #Delete orphans
+    for orphan in orphans:
+        try:
+            pc.delete(orphan)
+        except:
+            pass
 
     #import skinnings
     if not inSkinFiles is None:
@@ -4474,7 +4479,10 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
             
             if nodeName in foundNodes:
                 if foundNodes[nodeName].hasAttr(attrName):
-                    node.output >> foundNodes[nodeName].attr(attrName)
+                    try:
+                        node.output >> foundNodes[nodeName].attr(attrName)
+                    except:
+                        pass
                 elif verbose:
                     pc.warning("Can't find attribute {0}.{1}".format(nodeName, attrName))
 
