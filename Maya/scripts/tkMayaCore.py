@@ -2766,7 +2766,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         else:
             inDetectionOffset = [2*v for v in inDetectionOffset]
         
-        constrainToPoint(inObj, inRef, inOffset=inOffset, useFollicule=useFollicule, inDetectionOffset=inDetectionOffset)
+        createdObjects = constrainToPoint(inObj, inRef, inOffset=inOffset, useFollicule=useFollicule, inDetectionOffset=inDetectionOffset)
 
     return createdObjects
 

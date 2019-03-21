@@ -48,10 +48,11 @@ from anim_picker import node
 from anim_picker import gui
 from anim_picker import handlers
 
+from tkHooks import tkAnimPickerHooks as hook
+
 __author__ = "Cyril GIBAUD - Toonkit"
 
 ROOTVAR = "$ROOT"
-PROJECTVAR = "$PROJECT"
 PROJECTPATHVAR = "$PROJECTPATH"
 
 DEBUG=False
@@ -61,33 +62,6 @@ PRODPATH = None
 
 PICKERFILESCHUNK = os.path.join("scripts", "anim_picker","Picker_Files")
 
-def conformPath(inPath):
-    return inPath.replace("\\", "/")
-
-def resolvePath(inPath):
-    #Initialize
-    replacements = []
-
-    ROOT = DEBUGPATH
-    replacements.append((ROOTVAR, ROOT))
-
-    PROJECTPATH = os.path.join(ROOT, tkc.getTool().options["project"])
-    replacements.append((PROJECTPATHVAR, PROJECTPATH))
-
-    #Perform paths replacements
-    for replacement in replacements:
-        if replacement[0] in inPath:
-            if DEBUG:
-                print "Replace", replacement[0], "by", replacement[1],"(", inPath, "=>",inPath.replace(replacement[0], replacement[1]),")"
-
-            inPath = inPath.replace(replacement[0], replacement[1])
-
-    if not DEBUG:
-        inPath = inPath.replace(DEBUGPATH, PRODPATH)
-        inPath = inPath.replace(conformPath(DEBUGPATH), PRODPATH)
-
-    return conformPath(inPath)
-
 def mergePickers(inMainPicker, inPickerToAdd):
     for tab in inPickerToAdd["tabs"]:
         inMainPicker["tabs"].append(tab)
@@ -96,12 +70,12 @@ def resolveReferences(inPicker, inNs):
     needResolve=False
     for tab in inPicker["tabs"]:
         if not DEBUG and "background" in tab["data"]:
-            if conformPath(DEBUGPATH) in tab["data"]["background"]:
-                tab["data"]["background"] = resolvePath(tab["data"]["background"])
+            if hook.conformPath(DEBUGPATH) in tab["data"]["background"]:
+                tab["data"]["background"] = hook.resolvePath(tab["data"]["background"], PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH, inNs[:-1])
         newItems = []
         for item in tab["data"]["items"]:
             if "action_script" in item and "#REF:" in item["action_script"]:
-                path = resolvePath(item["action_script"][5:])
+                path = hook.resolvePath(item["action_script"][5:], PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH, inNs[:-1])
                 if os.path.isfile(path):
                     nodeData = anim_picker.handlers.file_handlers.read_data_file(path)
                     resolveReferences(nodeData, inNs)
@@ -179,7 +153,7 @@ def load(edit=False, multi=False, path=None, debug=False, forceRebuild=False):
     for synoAttr in synoAttrs:
         transformNode = synoAttr.node()
         if not transformNode.namespace() in pickers:
-            pickers[transformNode.namespace()] = resolvePath(synoAttr.get()).replace(".xml", ".pkr")
+            pickers[transformNode.namespace()] = hook.resolvePath(synoAttr.get(), PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH, transformNode.namespace()[:-1]).replace(".xml", ".pkr")
 
     #Path brute force override
     if path != None:
@@ -187,8 +161,8 @@ def load(edit=False, multi=False, path=None, debug=False, forceRebuild=False):
             pickerNode.picker_datas_file.set(path)
 
     if DEBUG:
-        print "Root Path", resolvePath(ROOTVAR)
-        print "Project Path", resolvePath(PROJECTPATHVAR)
+        print "Root Path", hook.resolvePath(ROOTVAR, PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH)
+        print "Project Path", hook.resolvePath(PROJECTPATHVAR, PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH)
 
     for pickerNs, pickerPaths in pickers.iteritems():
         if isinstance(pickerPaths, basestring):
