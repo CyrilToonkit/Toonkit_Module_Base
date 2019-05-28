@@ -214,6 +214,12 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
 
         pc.delete(offset)
 
+    #As we may change local transformations (world ones stayiong the same), and maya constraints being dependant on locals,
+    #(because of contraints being separated parent + scale) we'll store output contraints on the objects and reapply them afterwards
+    storedCons = [c for c in tkc.getConstraintsUsing(inTarget) if c.type() in ["parentConstraint", "scaleConstraint"]]
+    storedConsInfo = [(c.type(), tkc.getConstraintOwner(c)[0].name(), c.name()) for c in storedCons]
+    pc.delete(storedCons)
+
     offseted = inForceOffset or not (tkc.listsBarelyEquals(offsets[0], [0.0,0.0,0.0]) and
                 tkc.listsBarelyEquals(offsets[1], [0.0,0.0,0.0]) and
                 tkc.listsBarelyEquals(offsets[2], [1.0,1.0,1.0]))
@@ -236,6 +242,17 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
     decompMatrix.outputRotate >> inTarget.rotate
     if inScale:
         decompMatrix.outputScale >> inTarget.scale
+
+    #Reapply old output contraints
+    for storedCon in storedConsInfo:
+        cnsType, cnsTarget, cnsName = storedCon
+
+        if cnsType == "parentConstraint":
+            newCns = pc.parentConstraint(inTarget, cnsTarget, name=cnsName, maintainOffset=True)
+            print "NEWCNS parentConstraint",newCns,cnsName
+        else:
+            newCns = pc.scaleConstraint(inTarget, cnsTarget, name=cnsName, maintainOffset=True)
+            print "NEWCNS scaleConstraint",newCns,cnsName
 
     return createdNodes
 
@@ -367,14 +384,16 @@ def replaceConstraints(inDebugFolder=None, inVerbose=False):
         tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
         debugCounter = debugCounter + 1
 
-    parentCons = pc.ls(type=["parentConstraint","pointConstraint"])
+    parentCons = [c.name() for c in pc.ls(type=["parentConstraint","pointConstraint"])]
     
     if inVerbose:
         print "Constraints", len(parentCons)
+        print parentCons
     
     replaced = []
 
     for parentCon in parentCons:
+        parentCon = pc.PyNode(parentCon)
         conName = parentCon.name().replace("|", "(")
 
         owner = tkc.getConstraintOwner(parentCon)[0]
