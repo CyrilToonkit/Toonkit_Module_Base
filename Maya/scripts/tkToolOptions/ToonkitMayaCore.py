@@ -47,7 +47,7 @@ HOTKEYS =   {
                 "Outliner":
                     {"key":"_" , "ctrl":False , "alt":False, "mel":True,
                         "desc":"Show Outliner",
-                        "code":"tearOffPanel \"Outliner\" \"outlinerPanel\" false"
+                        "code":"OutlinerWindow"
                     },
                 "ComponentEditor":
                     {"key":"e" , "ctrl":True , "alt":False, "mel":True,
