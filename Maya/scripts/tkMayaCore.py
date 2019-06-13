@@ -2745,6 +2745,12 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
 
         if not inOffset:
             resetTRS(inObj)
+        else:
+            constraints = getConstraints(inObj)
+
+            for constraint in constraints:
+                if constraint.type() == "orientConstraint":
+                    constraint.restRotate.set(ozms.getPymelRotation(inObj))
 
         cnsObj = folP
     else:
