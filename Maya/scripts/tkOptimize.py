@@ -248,11 +248,9 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
         cnsType, cnsTarget, cnsName = storedCon
 
         if cnsType == "parentConstraint":
-            newCns = pc.parentConstraint(inTarget, cnsTarget, name=cnsName, maintainOffset=True)
-            print "NEWCNS parentConstraint",newCns,cnsName
+            newCns = pc.parentConstraint(inTarget, cnsTarget, name=cnsName.split("|")[-1], maintainOffset=True)
         else:
-            newCns = pc.scaleConstraint(inTarget, cnsTarget, name=cnsName, maintainOffset=True)
-            print "NEWCNS scaleConstraint",newCns,cnsName
+            newCns = pc.scaleConstraint(inTarget, cnsTarget, name=cnsName.split("|")[-1], maintainOffset=True)
 
     return createdNodes
 
