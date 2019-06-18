@@ -453,29 +453,20 @@ def replaceConstraints(inDebugFolder=None, inVerbose=False):
             if targetPivots or targetNonUniformScale:
                 continue
 
+            #Check if we have contraints using replaced object that are not replaceable
+            storedCons = [c for c in tkc.getConstraintsUsing(owner) if c.type() in ["parentConstraint", "scaleConstraint"]]
+            incompatible = False
+            for storedCon in storedCons:
+                if len([c for c in storedCon.listConnections() if not isinstance(c, pc.nodetypes.Transform)]) > 0:
+                    incompatible = True
+                    print "Cannot replace (constraints on owner with connections): ",owner,storedCon
+                    break
+
+            if incompatible:
+                continue
+
             replaced.append(owner.name())
             replaceConstraint(parentCon, owner, targets[0])
-
-        #Reparent
-        #------------------
-        """
-        constraints = tkc.getConstraints(owner)
-        for constraint in constraints:
-            if constraint.type() == "scaleConstraint" and targets[0] in tkc.getConstraintTargets(constraint):
-                pc.delete(constraint)
-                break
-
-        pc.delete(parentCon)
-
-        #Unlock the Transforms
-        attrs = ["tx","ty", "tz", "rx","ry","rz","sx","sy","sz"]
-        for attr in attrs:
-           owner.attr(attr).setLocked(False) 
-
-        if owner.getParent() != targets[0]:
-            targets[0].addChild(owner)
-        """
-        #------------------
 
         if not inDebugFolder is None:
             tkc.capture(os.path.join(inDebugFolder, "{0:04d}_replaceCns_{1}.jpg".format(debugCounter, conName)), start=1, end=1, width=1280, height=720)
