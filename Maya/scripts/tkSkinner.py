@@ -48,14 +48,13 @@ MIN_SEL_PROGRESS = 200
 SORTRADIOS = ["tkSkinSortDefault", "tkSkinSortByValueRadio", "tkSkinSortByProximityRadio", "tkSkinSortAlphaRadio"]
 MODERADIOS = ["tkSkinTypeReplaceRadio", "tkSkinTypeAddRadio", "tkSkinTypeAddpcRadio", "tkSkinTypeScaleRadio"]
 
-
 SLIDER_DRAGGING = False
 
 SEL = {"comps":[], "infs":[]}
 
 #sortInfs : 0 default, 1 by value, 2 by proximity, 3 Alphabetically
 #mode : 0 set, 1 add, 2 addPercent, 3 scale
-UI = {"debug":False,"infs":[], "selInfs":[], "showNear":True, "showZero":False, "sortInfs":1, "normalize":True, "useLocks":False, "mode":0}
+UI = {"debug":True,"infs":[], "selInfs":[], "showNear":True, "showZero":False, "sortInfs":1, "normalize":True, "useLocks":False, "mode":0, "chunkOpen":False}
 
 INFOS = {}
 VERTINFOS = {}
@@ -207,7 +206,7 @@ def getSkinInfo(inObjects=None):
                     unlockJoints(INFOS[node]["infs"])
 
                 #Get bind poses
-                INFOS[node]["bind"] = [tkc.getRefPose(inf, INFOS[node]["skin"])[3][:3] for inf in INFOS[node]["infs"]]
+                INFOS[node]["bind"] = [inf.getTranslation() for inf in INFOS[node]["infs"]]#[tkc.getRefPose(inf, INFOS[node]["skin"])[3][:3] for inf in INFOS[node]["infs"]]
 
                 if UI["debug"]:
                     timerName = "getNodeInfo : " + node.name()
@@ -242,9 +241,15 @@ def getSkinInfo(inObjects=None):
         tkc.startTimer(timerName)
 
     pointPos=VERTINFOS[selComp]["georig"].vtx[selComp.indices()[0]].getPosition(space="world")
+
+    if UI["debug"]:
+        print "pointPos", selComp, ":", pointPos
+
     for i in range(len(VERTINFOS[selComp]["infs"])):
         inf = VERTINFOS[selComp]["infs"][i]
         if not inf in VERTINFOS[selComp]["infsBind"]:
+            if UI["debug"]:
+                print "jointBnd", inf, ":", VERTINFOS[selComp]["bind"][i]
             VERTINFOS[selComp]["infsBind"][inf] = computeDist(pointPos, VERTINFOS[selComp]["bind"][i])
 
     VERTINFOS[selComp]["distances"] = [VERTINFOS[selComp]["infsBind"][inf] for inf in VERTINFOS[selComp]["infs"]]
@@ -407,7 +412,7 @@ def infSelChanged(*args):
         print "infsSelChanged !",pc.textScrollList("tkSkinInfsLB", query=True, selectIndexedItem=True)
 
     #Check if selection have really changed
-    oldSel = [inf.name() for inf in UI["selInfs"]]
+    oldSel = [] if True in args else [inf.name() for inf in UI["selInfs"]] 
     UI["selInfs"] = [UI["infs"][i-1][0] for i in pc.textScrollList("tkSkinInfsLB", query=True, selectIndexedItem=True)]
     newSel = [inf.name() for inf in UI["selInfs"]]
 
@@ -476,7 +481,7 @@ def modeChanged(*args):
     else:
         pc.floatSliderGrp("tkSkinSlider", edit=True, minValue=0.0, maxValue=1.0)
 
-    infSelChanged()
+    infSelChanged(True)
 
 def sortChanged(*args):
     global UI
@@ -494,39 +499,57 @@ def sortChanged(*args):
 def endSliderDrag(*args):
     global SLIDER_DRAGGING
     global STOREDWEIGHTS
+    global UI
+
+    val = pc.floatSliderGrp("tkSkinSlider", q=True, v=True )
 
     if UI["debug"]:
-        print "sliderDrag",pc.floatSliderGrp("tkSkinSlider", q=True, v=True )
+        print "endSliderDrag",val
 
-    pc.undoInfo(closeChunk=True)
+    try:
+        setWeigthsClick(0, val)
+    except:
+        pass
+
+    if UI["chunkOpen"]:
+        pc.undoInfo(closeChunk=True)
+        UI["chunkOpen"] = False
 
     SLIDER_DRAGGING = False
     STOREDWEIGHTS = None
 
     getSkinInfo()
-    resfreshUIInfs()
+    pc.evalDeferred(partial(resfreshUIInfs, True))
 
 def sliderDrag(*args):
     global SLIDER_DRAGGING
     global SLIDER_BASEVALUE
     global STOREDWEIGHTS
+    global UI
 
     val = pc.floatSliderGrp("tkSkinSlider", q=True, v=True )
 
+    if UI["debug"]:
+        print "SliderDrag",val
+
     if not SLIDER_DRAGGING:
-        pc.undoInfo(openChunk=True)
+        if not UI["chunkOpen"]:
+            pc.undoInfo(openChunk=True)
+            UI["chunkOpen"] = True
 
         #Store weights
         STOREDWEIGHTS = {}
         for vert in SEL["comps"]:
             STOREDWEIGHTS[vert] = VERTINFOS[vert]["weights"][:]
 
-    SLIDER_DRAGGING = True
+        SLIDER_DRAGGING = True
 
-    if UI["debug"]:
-        print "value",val
-
-    setWeigthsClick(0, val)
+    try:
+        setWeigthsClick(0, val)
+    except:
+        if UI["chunkOpen"]:
+            pc.undoInfo(closeChunk=True)
+            UI["chunkOpen"] = False
 
 def connectControls():
     pc.button("tkSkinThird0BT", edit=True, c=partial(setWeigthsClick, 3, 0.0))
@@ -652,7 +675,7 @@ def resfreshUIInfs(*args):
 def refreshUI(*args):
     getSkinInfo(pc.selected())
     resfreshUIInfs()
-    infSelChanged()
+    infSelChanged(True)
 
 def refreshSkin(*args):
     global INFOS
@@ -699,6 +722,10 @@ def cleanUI(*args):
     if "closeJob" in UI:
         #pc.mel.evalDeferred("scriptJob -kill " + str(UI["closeJob"]))
         del UI["closeJob"]
+
+    if UI["chunkOpen"]:
+        pc.undoInfo(closeChunk=True)
+        UI["chunkOpen"] = False
 
 def progressStart(maxValue, status="",isInterruptable=False):
     if pc.control("skinProgressBar_2", exists=True):
