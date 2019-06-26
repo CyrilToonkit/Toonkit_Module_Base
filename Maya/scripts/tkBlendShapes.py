@@ -185,7 +185,7 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
 
     dupe = mc.rename(dupe, inTargetName)
     
-    shapes = mc.listRelatives(dupe, shapes=True)
+    shapes = mc.listRelatives(dupe, shapes=True, fullPath=True)
     if shapes != None:
         for shape in shapes:
             if mc.getAttr("{0}.intermediateObject".format(shape)):
@@ -503,7 +503,23 @@ def getOrCreateRefMesh(inMeshName):
 
     return refMesh
 
-def copyBS(inBlendShape, inTarget):
+def matchOneOf(inString, inPatterns):
+    for pattern in inPatterns:
+        if re.match(pattern, inString):
+            return True
+
+    return False
+
+"""
+import tkBlendShapes
+reload(tkBlendShapes)
+
+EYELASHESPOLYS = [941,942,943,944,945,946,947,948,949,950,951,952,953,1022,2114,2115,2116,2117,2118,2119,2120,2121,2122,2123,2124,2125,2126,2141]
+
+tkBlendShapes.copyBS("mod:malik_body_Under_BS", "mod:malik_eyeLash_Under", inCreateBlendShape=False, inBsFilters=[".*Left_Upperblink_Dwn",".*Right_Upperblink_Dwn"], inPolySubSet=EYELASHESPOLYS, inPolySubSetReference="mod:malik_body")
+"""
+
+def copyBS(inBlendShape, inTarget, inCreateBlendShape=True, inDeleteTargets=True, inBsFilters=None, inPolySubSet=None, inPolySubSetReference=None, **kwargs):
     mc.undoInfo(openChunk=True)
 
     sourceMesh = getSource(inBlendShape)
@@ -514,46 +530,89 @@ def copyBS(inBlendShape, inTarget):
 
     aliases = mc.aliasAttr(inBlendShape, query=True)
 
+    #store and remove weight connections if we have any on targets
+    weightAttrs = [aliases[i*2] for i in range(len(aliases)/2)]
+    inBlendShapeNode = pc.PyNode(inBlendShape)
+    cons = tkc.getNodeConnections(inBlendShapeNode, *weightAttrs, inDisconnect=True)
+
     #reset all targets
     oldValues = {}
-    for i in range(len(aliases)/2):
-        attrName = "{0}.{1}".format(inBlendShape, aliases[i*2])
+    for weightAttr in weightAttrs:
+        attrName = "{0}.{1}".format(inBlendShape, weightAttr)
         oldValues[attrName] = mc.getAttr(attrName)
         mc.setAttr(attrName, 0)
 
     targets = []
     for i in range(len(aliases)/2):
         alias = aliases[i*2]
-        dupe = duplicateAndClean(inTarget, alias)
-        mc.select([dupe, sourceMesh], replace=True)
-        pc.mel.eval("CreateWrap")
-        wrap = None
-        wraps = mc.ls(mc.listHistory(dupe, gl=True, pdo=True, lf=True, f=False, il=2), type="wrap")
-        if len(wraps) > 0:
-            wrap = wraps[0]
-            mc.setAttr("{0}.falloffMode".format(wrap), 0)
-            mc.setAttr("{0}.autoWeightThreshold".format(wrap), 0)
-            mc.setAttr("{0}.maxDistance".format(wrap), 0)
 
-            attrName = "{0}.{1}".format(inBlendShape, alias)
-            mc.setAttr(attrName, 1.0)
-            mc.delete(dupe , ch=True)
-            if mc.objExists(sourceTransform + "Base"):
-                mc.delete(sourceTransform + "Base")
-            mc.setAttr(attrName, 0.0)
-            targets.append(dupe)
-        else:
-            mc.warning("Cannot find wrap !")
-            mc.delete(dupe)
+        if inBsFilters is None or matchOneOf(alias, inBsFilters):
+            dupe = duplicateAndClean(inTarget, alias)
+            intermediate = None
+            wraps = []
+
+            if not inPolySubSet is None:
+                sourceRef = inPolySubSetReference or sourceTransform
+
+                nFaces = mc.polyEvaluate(sourceRef, face=True)
+                intermediate = duplicateAndClean(sourceRef, sourceRef + "_intermediate")
+                mc.delete(["{0}.f[{1}]".format(intermediate, i) for i in range(nFaces) if not i in inPolySubSet])
+
+                #Wrap subset on sourceMesh
+                mc.select([intermediate, sourceMesh], replace=True)
+                pc.mel.eval("CreateWrap")
+                wrap = None
+                wraps.extend(mc.ls(mc.listHistory(intermediate, gl=True, pdo=True, lf=True, f=False, il=2), type="wrap"))
+
+                #final Wrap
+                mc.select([dupe, intermediate], replace=True)
+                pc.mel.eval("CreateWrap")
+                wrap = None
+                wraps.extend(mc.ls(mc.listHistory(dupe, gl=True, pdo=True, lf=True, f=False, il=2), type="wrap"))
+            else:
+                mc.select([dupe, sourceMesh], replace=True)
+                pc.mel.eval("CreateWrap")
+                wrap = None
+                wraps.extend(mc.ls(mc.listHistory(dupe, gl=True, pdo=True, lf=True, f=False, il=2), type="wrap"))
+
+            if len(wraps) > 0:
+                for wrap in wraps:
+                    mc.setAttr("{0}.falloffMode".format(wrap), kwargs.get("falloffMode", 0))
+                    mc.setAttr("{0}.autoWeightThreshold".format(wrap), 0)
+                    mc.setAttr("{0}.maxDistance".format(wrap), 0)
+
+                attrName = "{0}.{1}".format(inBlendShape, alias)
+                mc.setAttr(attrName, 1.0)
+
+                mc.delete(dupe , ch=True)
+                if mc.objExists(sourceTransform + "Base"):
+                    mc.delete(sourceTransform + "Base")
+
+                if not intermediate is None:
+                    mc.delete(intermediate)
+
+                    if mc.objExists(intermediate + "Base"):
+                        mc.delete(intermediate + "Base")
+
+                mc.setAttr(attrName, 0.0)
+                targets.append(dupe)
+            else:
+                mc.warning("Cannot find wrap !")
+                mc.delete(dupe)
+
+    bsNode = None
 
     if len(targets) > 0:
-        args = targets[:]
-        args.append(inTarget)
-        ns = ""
-        if ":" in inTarget:
-            ns = inTarget.split(":")[0]+":"
-        mc.blendShape(*args, name=ns + inBlendShape.split(":")[-1])
-        mc.delete(targets)
+        if inCreateBlendShape:
+            args = targets[:]
+            args.append(inTarget)
+            ns = ""
+            if ":" in inTarget:
+                ns = inTarget.split(":")[0]+":"
+            bsNode = mc.blendShape(*args, name=ns + inBlendShape.split(":")[-1])
+
+            if inDeleteTargets:
+                mc.delete(targets)
     else:
         mc.warning("Cannot copy any targets !")
 
@@ -561,9 +620,14 @@ def copyBS(inBlendShape, inTarget):
     for key in oldValues.keys():
         mc.setAttr(key, oldValues[key])
 
+    #Restore weight connections
+    tkc.setNodeConnections(cons)
+
     restoreDeformers(sourceMesh, envelopes)
 
     mc.undoInfo(closeChunk=True)
+
+    return bsNode if inCreateBlendShape else targets
 
 def editCorrective(inMeshName, inPose, inCharName, inKeySet):
     #drop ns

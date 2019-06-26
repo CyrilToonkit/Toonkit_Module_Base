@@ -4875,6 +4875,10 @@ def expandCompIndices(inComps):
         if isinstance(comp, pc.general.MeshVertex):
             for curIdx in comp.indices():
                 comps.append(comp.node().vtx[curIdx])
+
+        if isinstance(comp, pc.general.MeshFace):
+            for curIdx in comp.indices():
+                comps.append(comp.node().f[curIdx])
                 
     return comps
 
