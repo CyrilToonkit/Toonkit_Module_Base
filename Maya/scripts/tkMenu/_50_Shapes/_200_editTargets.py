@@ -36,7 +36,9 @@ def editTargets(*args):
 
     pc.optionMenu("editTargetsTargets", label='Targets')
     for arrayAttr in arrayAttrs:
-        pc.menuItem(arrayAttr, label=arrayAttr)
+        index = tkBlendShapes.getBSIndexFromTarget(bs, arrayAttr)
+
+        pc.menuItem(arrayAttr, label="{0} ({1})".format(arrayAttr, index + 1))
 
     pc.rowLayout(numberOfColumns=3)
     pc.button(label='Edit Target', c=editTargetsClick, width=128)
@@ -53,7 +55,7 @@ def editTargetsClick(*args):
         pc.warning("No blendShape node given !")
         return
 
-    target = pc.optionMenu("editTargetsTargets",query=True, value=True)
+    target = pc.optionMenu("editTargetsTargets",query=True, value=True).split(" ")[0]
     shape = tkBlendShapes.editTarget(UITAG, target, corrective=None)
 
     if shape != None:
