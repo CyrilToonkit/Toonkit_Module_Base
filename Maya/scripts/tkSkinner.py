@@ -54,7 +54,7 @@ SEL = {"comps":[], "infs":[]}
 
 #sortInfs : 0 default, 1 by value, 2 by proximity, 3 Alphabetically
 #mode : 0 set, 1 add, 2 addPercent, 3 scale
-UI = {"debug":True,"infs":[], "selInfs":[], "showNear":True, "showZero":False, "sortInfs":1, "normalize":True, "useLocks":False, "mode":0, "chunkOpen":False}
+UI = {"debug":False,"infs":[], "selInfs":[], "showNear":True, "showZero":False, "sortInfs":1, "normalize":True, "useLocks":False, "mode":0, "chunkOpen":False, "minInfs":5, "maxPoints":1000}
 
 INFOS = {}
 VERTINFOS = {}
@@ -141,7 +141,10 @@ def getSkinInfo(inObjects=None):
     timers = {}
     if UI["debug"]:
         print "getSkinInfo called !"
-        tkc.startTimer("getSkinInfo", inReset=True)
+        tkc.startTimer("getSkinInfo")
+        tkc.startTimer("collectSelection")
+
+    maxReached = False
 
     if inObjects != None:
         SEL["comps"] = []
@@ -156,16 +159,35 @@ def getSkinInfo(inObjects=None):
                         rawSelObj = node.vtx[index]
                         SEL["comps"].append(rawSelObj)
                         OPACITIES[rawSelObj] = value
+                        if len(SEL["comps"]) >= UI["maxPoints"]:
+                            maxReached = True
+                            break
+                    if maxReached:
+                        break
             else:
+                tkc.startTimer("expandCompIndices")
                 components = tkc.expandCompIndices(inObjects)
+                tkc.stopTimer("expandCompIndices")
                 for comp in components:
                     SEL["comps"].append(comp)
                     OPACITIES[comp] = 1.0
+                    if len(SEL["comps"]) >= UI["maxPoints"]:
+                        break
 
             #Filter inputs
             for rawSelObj in inObjects:
                 if isinstance(rawSelObj, pc.nodetypes.Joint):
                     SEL["infs"].append(rawSelObj)
+
+    if maxReached:
+        pc.warning("Maximum points reached ({0}), increase the 'Max points' limit if you need to affect more points at once !".format(UI["maxPoints"]))
+
+    if UI["debug"]:
+        elapsed = tkc.stopTimer("expandCompIndices", inReset=True)
+        print "expandCompIndices took {0:.5f} s".format(elapsed)
+
+        elapsed = tkc.stopTimer("collectSelection", inReset=True)
+        print "collectSelection took {0:.5f} s".format(elapsed)
 
     if len(SEL["comps"]) == 0:
         if UI["debug"]:
@@ -206,7 +228,7 @@ def getSkinInfo(inObjects=None):
                     unlockJoints(INFOS[node]["infs"])
 
                 #Get bind poses
-                INFOS[node]["bind"] = [inf.getTranslation() for inf in INFOS[node]["infs"]]#[tkc.getRefPose(inf, INFOS[node]["skin"])[3][:3] for inf in INFOS[node]["infs"]]
+                INFOS[node]["bind"] = [inf.getTranslation(space="world") for inf in INFOS[node]["infs"]]#[tkc.getRefPose(inf, INFOS[node]["skin"])[3][:3] for inf in INFOS[node]["infs"]]
 
                 if UI["debug"]:
                     timerName = "getNodeInfo : " + node.name()
@@ -248,8 +270,6 @@ def getSkinInfo(inObjects=None):
     for i in range(len(VERTINFOS[selComp]["infs"])):
         inf = VERTINFOS[selComp]["infs"][i]
         if not inf in VERTINFOS[selComp]["infsBind"]:
-            if UI["debug"]:
-                print "jointBnd", inf, ":", VERTINFOS[selComp]["bind"][i]
             VERTINFOS[selComp]["infsBind"][inf] = computeDist(pointPos, VERTINFOS[selComp]["bind"][i])
 
     VERTINFOS[selComp]["distances"] = [VERTINFOS[selComp]["infsBind"][inf] for inf in VERTINFOS[selComp]["infs"]]
@@ -345,7 +365,7 @@ def setWeigthsClick(divisions, weight, *args):
         tkc.stopTimer("setWeigths", inLog=True)
 
     if not SLIDER_DRAGGING: 
-        getSkinInfo()   
+        getSkinInfo()
         resfreshUIInfs()
 
 def selectionChanged():
@@ -441,6 +461,17 @@ def infSelChanged(*args):
                 pc.floatSliderGrp("tkSkinSlider", edit=True,v=1.0)
             else:
                 pc.floatSliderGrp("tkSkinSlider", edit=True, v=1.0)
+
+def minInfsChanged(*args):
+    global UI
+    UI["minInfs"] = int(pc.textField("tkSkinMinInfsLE", query=True, text=True))
+
+    resfreshUIInfs()
+
+def maxPointsChanged(*args):
+    global UI
+    UI["maxPoints"] = int(pc.textField("tkSkinMaxPointsLE", query=True, text=True))
+
 
 def normCBChanged(*args):
     global UI
@@ -575,6 +606,16 @@ def connectControls():
     pc.button("tkSkinTen90BT", edit=True, c=partial(setWeigthsClick, 10, 0.9))
     pc.button("tkSkinTen100BT", edit=True, c=partial(setWeigthsClick, 10, 1.0))
 
+    pc.button("tkSkinThou0001BT", edit=True, c=partial(setWeigthsClick, 1000, 0.001))
+    pc.button("tkSkinThou0005BT", edit=True, c=partial(setWeigthsClick, 1000, 0.005))
+    pc.button("tkSkinThou001BT", edit=True, c=partial(setWeigthsClick, 1000, 0.01))
+    pc.button("tkSkinThou0025BT", edit=True, c=partial(setWeigthsClick, 1000, 0.025))
+    pc.button("tkSkinThou005BT", edit=True, c=partial(setWeigthsClick, 1000, 0.05))
+    pc.button("tkSkinThou0075BT", edit=True, c=partial(setWeigthsClick, 1000, 0.075))
+
+    pc.textField("tkSkinMinInfsLE", edit=True, tcc=minInfsChanged)
+    pc.textField("tkSkinMaxPointsLE", edit=True, tcc=maxPointsChanged)
+
     pc.button("tkSkinRefreshBT", edit=True, c=refreshSkin)
 
     pc.textScrollList("tkSkinInfsLB", edit=True, sc=infSelChanged, dcc=infDoubleClick)
@@ -640,9 +681,9 @@ def resfreshUIInfs(*args):
             else:
                 droppedInfs.append(inf)
 
-        if len(filteredInfs) < 5 and UI["showNear"]:
+        if len(filteredInfs) < UI["minInfs"] and UI["showNear"]:
             droppedInfs.sort(key=lambda inf: inf[2])
-            for i in range(5 - len(filteredInfs)):
+            for i in range(UI["minInfs"] - len(filteredInfs)):
                 if len(droppedInfs) > i:
                     filteredInfs.append(droppedInfs[i])
 
@@ -797,6 +838,9 @@ def showUI(*args):
     #pc.radioButton(MODERADIOS[UI["mode"]], edit=True, select=True)
 
     pc.checkBox("tkSkinLocksCB", edit=True, value=UI["useLocks"])
+
+    mc.control("tkSkinMinInfsLE", edit=True, visible=False)
+    mc.control("tkSkinMaxPointsLE", edit=True, visible=False)
 
     mc.control("skinProgressBar_2", edit=True, visible=False)
 

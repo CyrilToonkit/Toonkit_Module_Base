@@ -4870,16 +4870,22 @@ def getSelectedIndices(node=None):
 
 def expandCompIndices(inComps):
     comps = []
+
+    nodeComps = {}
     
     for comp in inComps:
-        if isinstance(comp, pc.general.MeshVertex):
-            for curIdx in comp.indices():
-                comps.append(comp.node().vtx[curIdx])
+        node = comp.node()
+        if not node in nodeComps:
+            if isinstance(comp, pc.general.MeshVertex):
+                nodeComps[node] = [c for c in node.vtx]
+            elif isinstance(comp, pc.general.MeshFace):
+                nodeComps[node] = [c for c in node.f]
+            else:
+                break
 
-        if isinstance(comp, pc.general.MeshFace):
-            for curIdx in comp.indices():
-                comps.append(comp.node().f[curIdx])
-                
+        for curIdx in comp.indices():
+            comps.append(nodeComps[node][curIdx])
+
     return comps
 
 COMPS_SHORTCUTS = {
