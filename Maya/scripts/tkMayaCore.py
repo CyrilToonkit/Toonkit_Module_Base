@@ -687,6 +687,17 @@ def hasMethod(inInstance, inMethodName):
                                                        |___/                               
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def addNamespace(inNs):
+    """
+    Add a namespace if it does not exists
+
+    :param inNs: The namespace to add (without the ":")
+    :type inNs: str
+    """
+    if not pc.namespace(exists=":" + inNs):
+        pc.namespace(set=":")
+        pc.namespace(add=inNs)
+
 def getUniqueName(inName="Object", inSuffix=""):
 
     if not pc.objExists(inName+inSuffix):
@@ -2205,6 +2216,24 @@ def isRoot(obj):
         splitNs = obj.name().split(":")
         return len(splitNs) == 2 and splitNs[0] == splitNs[1]
     return False
+
+def find(inPatterns):
+    """
+    Look for an object with name matching one of the given patterns
+
+    :param inPatterns: The possible patterns to find the object 
+    :type inPatterns: list(str)
+    :return: The found object or None
+    :rtype: pyNode
+    """
+    for pattern in inPatterns:
+        foundObjs = pc.ls(pattern)
+
+        if len(foundObjs) > 0:
+            return foundObjs[0]
+
+    return None
+
 
 fuckedUpLetters = ("A", "P", "Q", "e", "q")
 def createText(inText, inMesh=False, inFont="Times New Roman", normalized=False):

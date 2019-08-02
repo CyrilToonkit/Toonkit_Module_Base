@@ -39,6 +39,8 @@ import math
 import operator
 import tempfile
 
+import tkCore as tc
+
 import pymel.core as pc
 import maya.cmds as mc
 import pymel.core.system as pmsys
@@ -51,6 +53,11 @@ import PAlt as palt
 import tkNodeling as tkn
 import tkExpressions
 import tkProjects.tkContext as context
+
+import logging
+
+LOGGER = logging.getLogger()
+LOGGER.setLevel(logging.WARN)
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -358,6 +365,319 @@ def setLOD(inValue, inNamespaces=None, inAttrs=["Body_LOD", "Facial_LOD", "LOD"]
         pc.evalDeferred(refreshFrame)
 
     return changed
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  ____       _       
+ / ___|  ___| |_ ___ 
+ \___ \ / _ \ __/ __|
+  ___) |  __/ |_\__ \
+ |____/ \___|\__|___/
+                     
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+def createOrGetGroup(name):
+    """
+    Create or get a set by name
+
+    :param name: The name of the set 
+    :type name: str
+    :return: The found or created set
+    :rtype: pyNode
+    """
+    groupNode = None
+
+    if not pc.objExists(name):
+        groupNode = tkSIGroups.create(name=name, useSelection=False, modifySelection=False)
+        if "Hidden" in name or "hidden" in name:
+            groupNode.attr(tkSIGroups.PARAM_Vis).set(0)
+        elif "Select" in name or "select" in name:
+            groupNode.attr(tkSIGroups.PARAM_Sel).set(0)
+    else:
+        return pc.PyNode(name)
+
+    return groupNode
+
+def addToGroup(inGroupName, inObjects=[]):
+    """
+    Add objects to a set, existing or not
+
+    :param inGroupName: The name of the set 
+    :type inGroupName: str
+    :param inObjects: The objects to add
+    :type inGroupName: list(PyNode) or PyNode
+    """
+
+    if not isinstance(inObjects, (list, tuple)):
+        inObjects = [inObjects]
+
+    groupNode = createOrGetGroup(name=inGroupName)
+    tkSIGroups.add(group=groupNode.name(), objects=[n.name() for n in inObjects], refresh=False)
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  _   _ _ 
+ | | | (_) ___ _ __ __ _  ___| |__  _   _ 
+ | |_| | |/ _ \ '__/ _` |/ __| '_ \| | | |
+ |  _  | |  __/ | | (_| | (__| | | | |_| |
+ |_| |_|_|\___|_|  \__,_|\___|_| |_|\__, |
+                                    |___/ 
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+def buildAttr(inObject, inAttrDict, **kwargs):
+    """
+    Create or modify an attribute
+
+    :param inObject: The object hodling the attribute
+    :type inObject: PyNode
+    :param inAttrDict: The first dictionary values ({"name":str, "type":str, "keyable":bool}
+        and eventually: {"value":object, "lock":bool, "minValue":object, "maxValue":object, "softMinValue":object, "softMaxValue":object})
+    :type inAttrDict: dict
+    :param **kwargs: Secondary dictionary values (see "inAttrDict")
+    :type **kwargs: dict
+    :return: The found or created attribute
+    :rtype: pyNode
+    """
+
+    name = tc.getFromDefaults(inAttrDict, "name", "attr", kwargs)
+    attrType = tc.getFromDefaults(inAttrDict, "type", "float", kwargs)
+    value = tc.getFromDefaults(inAttrDict, "value", None, kwargs)
+    minValue = tc.getFromDefaults(inAttrDict, "minValue", None, kwargs)
+    maxValue = tc.getFromDefaults(inAttrDict, "maxValue", None, kwargs)
+    softMinValue = tc.getFromDefaults(inAttrDict, "softMinValue", None, kwargs)
+    softMaxValue = tc.getFromDefaults(inAttrDict, "softMaxValue", None, kwargs)
+    keyable = tc.getFromDefaults(inAttrDict, "keyable", True, kwargs)
+    lock = tc.getFromDefaults(inAttrDict, "lock", None, kwargs)
+
+    if not pc.attributeQuery(name, node=inObject, exists=True):
+        addParamDict = {"name":name, "inType":attrType, "default":value, "keyable":keyable}
+        if not minValue is None:
+            addParamDict["min"] = minValue
+        if not maxValue is None:
+            addParamDict["max"] = maxValue
+        if not softMinValue is None:
+            addParamDict["softmin"] = softMinValue
+        if not softMaxValue is None:
+            addParamDict["softmax"] = softMaxValue
+
+        tkc.addParameter(inobject=inObject, **addParamDict)
+        LOGGER.debug("{0} attribute created ({1})".format("{0}.{1}".format(inObject.name(), name), value))
+
+        if not lock is None:
+            inObject.attr(name).setLocked(lock)
+    else:
+        LOGGER.debug("{0} attribute modified ({1} => {2})".format("{0}.{1}".format(name, name), inObject.attr(name).get(), value))
+        
+        lock = inObject.attr(name).isLocked()
+
+        if not value is None:
+            inObject.attr(name).setLocked(False)
+            inObject.attr(name).set(value)
+
+        if not keyable is None:
+            pc.setAttr(inObject.attr(name).name(), keyable=keyable)
+
+        if not lock is None:
+            inObject.attr(name).setLocked(lock)
+        elif lock:
+            inObject.attr(name).setLocked(lock)
+
+    return inObject.attr(name)
+
+
+def buildObject(inObjDict, **kwargs):
+    """
+    Create or modify an object
+
+    :param inObjDict: The first dictionary values (see below "Example "inObjDict":")
+    :type inAttrDict: dict
+    :param **kwargs: Secondary dictionary values (see "inObjDict")
+    :type **kwargs: dict
+    :return: The found or created object
+    :rtype: pyNode
+
+    Example "inObjDict":
+        {
+        "name"      :"mod:mod_Root_RigParameters",
+        "patterns"  :["lEyeInner_OscarAttributes", "mod:lEyeInner_OscarAttributes"],
+        "type"      :"locator",
+        "parent"    :"mod:mod_Root",
+        "rename"    :True,
+        "groups"    :["mod:Hidden", "mod:Unselectable"],
+        "attrs"     :[
+            {"name":"tx", "type":"float", "value":None, "keyable":False},
+            {"name":"ty", "type":"float", "value":None, "keyable":False},
+            {"name":"tz", "type":"float", "value":None, "keyable":False},
+            ],
+        }
+    """
+    node = None
+    name = tc.getFromDefaults(inObjDict, "name", "object1", kwargs)
+    patterns = tc.getFromDefaults(inObjDict, "patterns", [], kwargs)
+    objType = tc.getFromDefaults(inObjDict, "type", "locator", kwargs)
+    parent = tc.getFromDefaults(inObjDict, "parent", None, kwargs)
+    rename = tc.getFromDefaults(inObjDict, "rename", True, kwargs)
+    groups = tc.getFromDefaults(inObjDict, "groups", [], kwargs)
+    attrs = tc.getFromDefaults(inObjDict, "attrs", [], kwargs)
+
+    if pc.objExists(name):
+        LOGGER.debug("{0} already exists".format(name))
+        node = pc.PyNode(name)
+    elif len(patterns) > 0:
+        node = tkc.find(patterns)
+
+        if node is None:
+            LOGGER.debug("{0} not found from patterns ({1}) !".format(name, patterns))
+    else:
+        LOGGER.debug("{0} not found".format(name))
+
+    if node != None:
+        #Rename the node
+        if node.name() != name and rename:
+            #Add namespace if it does not exist
+            if ":" in name:
+                ns = ":".join(name.split(":")[0:-1])
+                tkc.addNamespace(ns)
+
+            LOGGER.debug("{0} renamed from {1}".format(name, node.name()))
+            node.rename(name)
+
+    else:
+        #Add namespace if it does not exist
+        if ":" in name:
+            ns = ":".join(name.split(":")[0:-1])
+            tkc.addNamespace(ns)
+
+        #Create the node
+        node = pc.createNode(objType, name=name)
+        LOGGER.debug("{0} created".format(name))
+
+        if node.type() != "transform":
+            objShape = node
+            node = objShape.getParent()
+            objShape.rename(name + "Shape")
+            node.rename(name)
+
+    #sets
+    for group in groups:
+        addToGroup(group, node)
+        LOGGER.debug("{0} added in group {1}".format(name, group))
+
+    #Attrs
+    for attr in attrs:
+        buildAttr(node, attr)
+
+    #Reparent the node
+    if not parent is None:
+        nodeParent = node.getParent()
+        nodeParentName = nodeParent.name() if not nodeParent is None else None
+        if nodeParentName != parent:
+            LOGGER.debug("{0} parented to {1}".format(name, parent))
+            pc.parent(node, parent)
+        else:
+            LOGGER.debug("{0} is already a child of {1}".format(name, parent))
+
+    return node
+
+#usefull Hierarchy presets
+HI_UNLOCKTRANS_ATTRS =  [
+    {"name":"tx", "type":"float", "value":None, "lock":False},
+    {"name":"ty", "type":"float", "value":None, "lock":False},
+    {"name":"tz", "type":"float", "value":None, "lock":False},
+
+    {"name":"rx", "type":"float", "value":None, "lock":False},
+    {"name":"ry", "type":"float", "value":None, "lock":False},
+    {"name":"rz", "type":"float", "value":None, "lock":False},
+
+    {"name":"sx", "type":"float", "value":None, "lock":False},
+    {"name":"sy", "type":"float", "value":None, "lock":False},
+    {"name":"sz", "type":"float", "value":None, "lock":False},
+
+    {"name":"visibility", "type":"bool", "value":None, "lock":False},
+]
+
+HI_INPUT_ATTRS =  [
+    {"name":"tx", "type":"float", "value":None, "keyable":False},
+    {"name":"ty", "type":"float", "value":None, "keyable":False},
+    {"name":"tz", "type":"float", "value":None, "keyable":False},
+
+    {"name":"rx", "type":"float", "value":None, "keyable":False},
+    {"name":"ry", "type":"float", "value":None, "keyable":False},
+    {"name":"rz", "type":"float", "value":None, "keyable":False},
+
+    {"name":"sx", "type":"float", "value":None, "keyable":False},
+    {"name":"sy", "type":"float", "value":None, "keyable":False},
+    {"name":"sz", "type":"float", "value":None, "keyable":False},
+
+    {"name":"visibility", "type":"bool", "value":False, "keyable":False},
+    {"name":"inheritsTransform", "type":"bool", "value":False},
+
+    {"name":"tk_type", "type":"enum;Model:Root:Input:Output:Null:Control:Deform:PlaceHolder", "value":2, "keyable":True},
+    {"name":"tk_guideRule", "type":"enum;None (don t appear in guide):As it is (position and rotation from guide):Oriented(position from guide and oriented towards a target):Delegate (don t appear in guide, but is matched on Placeholder):OrientedDelegate(matched in position on Placeholder and oriented towards a target)", "value":0, "keyable":True},
+    {"name":"tk_placeHolder", "type":"string", "value":"", "keyable":True},
+    {"name":"tk_upVReference", "type":"string", "value":"", "keyable":True},
+    {"name":"tk_target", "type":"string", "value":"", "keyable":True},
+    {"name":"tk_invert", "type":"bool", "value":False, "keyable":True},
+    {"name":"tk_invertUp", "type":"bool", "value":False, "keyable":True},
+    {"name":"tk_guideParent", "type":"string", "value":"", "keyable":True}
+                ]
+
+def buildHierarchy(inHierarchy, **kwargs):
+    """
+    Build a hierarchy from a list of dictionaries
+
+    :param inHierarchy: a list of "Object" dictionaries, see buildObject's "inObjDict" argument
+    :type inAttrDict: list(dict)
+    :param **kwargs: Secondary dictionary values for Objects, see buildObject's "inObjDict" argument
+    :type **kwargs: dict
+    :return: The found or created object
+    :rtype: pyNode
+    """
+
+    objsDict = {}
+
+    for obj in inHierarchy:
+        node = buildObject(obj, **kwargs)
+        obj["node"] = node
+        objsDict[obj["name"]] = obj
+
+    tkSIGroups.refreshOverrides()
+
+    return objsDict
+
+def buildExludeObject(inObject):
+    """
+    Build an object acting as an "exclude" tag for OSCAR Geometries 
+
+    :param inObject: The object name to exclude
+    :type inObject: str
+    """
+    H =     [{
+                "name"      :inObject + "_OscarAttributes",
+                "type"      :"transform",
+                "parent"    :inObject,
+                "attrs"     :[
+                    {"name":"tx", "type":"float", "value":None, "keyable":False},
+                    {"name":"ty", "type":"float", "value":None, "keyable":False},
+                    {"name":"tz", "type":"float", "value":None, "keyable":False},
+
+                    {"name":"rx", "type":"float", "value":None, "keyable":False},
+                    {"name":"ry", "type":"float", "value":None, "keyable":False},
+                    {"name":"rz", "type":"float", "value":None, "keyable":False},
+
+                    {"name":"sx", "type":"float", "value":None, "keyable":False},
+                    {"name":"sy", "type":"float", "value":None, "keyable":False},
+                    {"name":"sz", "type":"float", "value":None, "keyable":False},
+
+                    {"name":"visibility", "type":"bool", "value":False, "keyable":False},
+                    {"name":"inheritsTransform", "type":"bool", "value":False},
+
+                    {"name":"exclude", "type":"enum;False:True", "value":1},
+                ],
+            }]
+
+    buildHierarchy(H)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ____            _             _   _                              
@@ -4884,6 +5204,195 @@ def walkSystem(inName="WalkSystem", inParent=None):
     for keep in keeps:
         root.startFrame >> keep.startFrame
     #groupAttrs(fixerSystem, keeps)
+
+def hermite(inObjects=None, inAttribute="ty", inContainer="hermite_interpolator", inStart="start", inEnd="end", inTan1="tan1", inTan2="tan2"):
+    """
+    Create a 1-dimensionnal 2-points hermite interpolation on an object collection with start, end and tangents
+
+    :param inObjects: Objects to create the interpolation onto
+    :type inObjects: list(PyNode) or list(str)
+    :param inAttribute: Attribute name to connect the interpolation to
+    :type inAttribute: str
+    :param inContainer: Name of the container for settings attributes
+    :type inContainer: str
+    :param inStart: Name of the "start" setting attribute
+    :type inStart: str
+    :param inEnd: Name of the "end" setting attribute
+    :type inEnd: str
+    :param inEnd: Name of the "end" setting attribute
+    :type inEnd: str
+    :param inTan1: Name of the "tan1" setting attribute
+    :type inTan1: str
+    :param inTan2: Name of the "tan2" setting attribute
+    :type inTan2: str
+
+    :return: The attributes container object
+    :rtype: PyNode
+    """
+
+    INTERPOLATEDEFAULTS = {
+        "start":0.0,
+        "end":1,
+        "tan1":0.0,
+        "tan2":0.0,
+        }
+
+    if inObjects is None:
+        inObjects = pc.selected()
+    else:
+        inObjects = tkc.getNodes(inObjects)
+
+    hierarchy = [
+        {
+        "name"      :inContainer,
+        "type"      :"transform",
+        "parent"    :None,
+        "attrs"     :[
+            {"name":inStart, "type":"float", "value":INTERPOLATEDEFAULTS["start"], "keyable":True},
+            {"name":inEnd, "type":"float", "value":INTERPOLATEDEFAULTS["end"], "keyable":True},
+            {"name":inTan1, "type":"float", "value":INTERPOLATEDEFAULTS["tan1"], "keyable":True},
+            {"name":inTan2, "type":"float", "value":INTERPOLATEDEFAULTS["tan2"], "keyable":True},
+            ],
+        }
+    ]
+    hi = buildHierarchy(hierarchy)
+
+    lenObjs = len(inObjects)
+    
+    expr = ""
+
+    for i in range(lenObjs):
+        obj = inObjects[i]
+
+        if obj.attr(inAttribute).isDestination():
+            sources = obj.attr(inAttribute).listConnections(destination=True)
+            deleted = False
+            for source in sources:
+                if source.type() == "expression":
+                    pc.delete(source)
+                    deleted = True
+            if not deleted:
+                obj.attr(inAttribute).disconnect()
+
+        value = "{0} / {1}".format(float(i), float(lenObjs - 1))
+        
+        expr += "{0}.{1} = hermite({2}.{3}, {2}.{4}, {2}.{4} - {2}.{3} + {2}.{5}, {2}.{4} - {2}.{3} + {2}.{6}, {7});\n".format(
+            obj.name(), inAttribute, inContainer, inStart, inEnd, inTan1, inTan2, value, "length")
+
+    pc.expression(s=expr)
+
+    return hi[inContainer]
+
+def hermite2(inObjects=None, inAttribute="ty", inContainer="hermite_interpolator", inStart="start", inMiddle="middle",
+            inMiddleRatio="middleRatio", inEnd="end", inTan1="tan1", inTan2="tan2", inTan3="tan3", inTan4="tan4"):
+    """
+    Create a 1-dimensionnal 3-points hermite interpolation on an object collection with start, middle, end and tangents
+
+    :param inObjects: Objects to create the interpolation onto
+    :type inObjects: list(PyNode) or list(str)
+    :param inAttribute: Attribute name to connect the interpolation to
+    :type inAttribute: str
+    :param inContainer: Name of the container for settings attributes
+    :type inContainer: str
+    :param inStart: Name of the "start" setting attribute
+    :type inStart: str
+    :param inMiddle: Name of the "middle" setting attribute
+    :type inMiddle: str
+    :param inMiddleRatio: Name of the "middleRatio" setting attribute
+    :type inMiddleRatio: str
+    :param inEnd: Name of the "end" setting attribute
+    :type inEnd: str
+    :param inEnd: Name of the "end" setting attribute
+    :type inEnd: str
+    :param inTan1: Name of the "tan1" setting attribute
+    :type inTan1: str
+    :param inTan2: Name of the "tan2" setting attribute
+    :type inTan2: str
+    :param inTan3: Name of the "tan3" setting attribute
+    :type inTan3: str
+    :param inTan4: Name of the "tan4" setting attribute
+    :type inTan4: str
+
+    :return: The attributes container object
+    :rtype: PyNode
+    """
+
+    INTERPOLATEDEFAULTS2 = {
+        "start":0.0,
+        "middle":0.5,
+        "middleRatio":0.5,
+        "end":1,
+        "tan1":0.0,
+        "tan2":0.0,
+        "tan3":0.0,
+        "tan4":0.0,
+        "ratio":0.0
+        }
+
+    if inObjects is None:
+        inObjects = pc.selected()
+    else:
+        inObjects = tkc.getNodes(inObjects)
+
+    hierarchy = [
+        {
+        "name"      :inContainer,
+        "type"      :"transform",
+        "parent"    :None,
+        "attrs"     :[
+            {"name":inStart, "type":"float", "value":INTERPOLATEDEFAULTS2["start"], "keyable":True},
+            {"name":inMiddle, "type":"float", "value":INTERPOLATEDEFAULTS2["middle"], "keyable":True},
+            {"name":inMiddleRatio, "type":"float", "value":INTERPOLATEDEFAULTS2["middleRatio"], "min":0.0, "max":1.0, "keyable":True},
+            {"name":inEnd, "type":"float", "value":INTERPOLATEDEFAULTS2["end"], "keyable":True},
+            {"name":inTan1, "type":"float", "value":INTERPOLATEDEFAULTS2["tan1"], "keyable":True},
+            {"name":inTan2, "type":"float", "value":INTERPOLATEDEFAULTS2["tan2"], "keyable":True},
+            {"name":inTan3, "type":"float", "value":INTERPOLATEDEFAULTS2["tan3"], "keyable":True},
+            {"name":inTan4, "type":"float", "value":INTERPOLATEDEFAULTS2["tan4"], "keyable":True},
+            ],
+        }
+    ]
+    hi = buildHierarchy(hierarchy)
+    
+    lenObjs = len(inObjects)
+
+    expr = ""
+
+    for i in range(lenObjs):
+        obj = inObjects[i]
+
+        if obj.attr(inAttribute).isDestination():
+            sources = obj.attr(inAttribute).listConnections(destination=True)
+            deleted = False
+            for source in sources:
+                if source.type() == "expression":
+                    pc.delete(source)
+                    deleted = True
+            if not deleted:
+                obj.attr(inAttribute).disconnect()
+
+        value = float(i) / float(lenObjs - 1)
+               
+        code =  """if({2}.{3} > {4})
+{{
+    {0}.{1} = hermite({2}.{5}, {2}.{6}, {2}.{6} - {2}.{5} + {2}.{7}, {2}.{6} - {2}.{5} + {2}.{8}, {4}/{2}.{3});
+}}
+else
+{{
+    if({2}.{3} >= 1.0)
+    {{
+        {0}.{1} = {2}.{9};
+    }}
+    else
+    {{
+        {0}.{1} = hermite({2}.{6}, {2}.{9}, {2}.{9} - {2}.{6} + {2}.{10}, {2}.{9} - {2}.{6} + {2}.{11}, ({4} - {2}.{3}) / (1 - {2}.{3}));
+    }}
+}}""".format(obj.name(), inAttribute, inContainer, inMiddleRatio, value, inStart, inMiddle, inTan1, inTan2, inEnd, inTan3, inTan4)
+        
+        expr += code + "\n"
+
+    pc.expression(s=expr)
+
+    return hi[inContainer]
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                          _   _      
