@@ -31,6 +31,7 @@ tkSkinner.showUI()
 import os
 from functools import partial
 import math
+import re
 
 import pymel.core as pc 
 import maya.cmds as mc
@@ -54,7 +55,7 @@ SEL = {"comps":[], "infs":[]}
 
 #sortInfs : 0 default, 1 by value, 2 by proximity, 3 Alphabetically
 #mode : 0 set, 1 add, 2 addPercent, 3 scale
-UI = {"debug":False,"infs":[], "selInfs":[], "showNear":True, "showZero":False, "sortInfs":1, "normalize":True, "useLocks":False, "mode":0, "chunkOpen":False, "minInfs":5, "maxPoints":1000}
+UI = {"debug":False,"infs":[], "selInfs":[], "showNear":True, "showZero":False, "sortInfs":1, "normalize":True, "useLocks":False, "mode":0, "chunkOpen":False, "minInfs":5, "maxPoints":1000, "infFilter":"", "infRegex":False, "infCase":True}
 
 INFOS = {}
 VERTINFOS = {}
@@ -496,6 +497,27 @@ def showNearCBChanged(*args):
 
     resfreshUIInfs()
 
+def infFilterChanged(*args):
+    global UI
+    UI["infFilter"] = pc.textField("tkSkinInfFilterLE", query=True, text=True)
+
+    if not UI["infRegex"]:
+        UI["infFilter"] = UI["infFilter"].replace(".*", "*").replace("*", ".*")
+
+    resfreshUIInfs()
+
+def infRegexChanged(*args):
+    global UI
+    UI["infRegex"] = pc.checkBox("tkSkinRegexFilterLE", query=True, value=True)
+
+    infFilterChanged()
+
+def infCaseChanged(*args):
+    global UI
+    UI["infCase"] = pc.checkBox("tkSkinCaseFilterLE", query=True, value=True)
+
+    resfreshUIInfs()
+
 def modeChanged(*args):
     global UI
 
@@ -626,6 +648,10 @@ def connectControls():
     pc.checkBox("tkSkinShowZeroCB", edit=True, cc=showZeroCBChanged)
     pc.checkBox("tkSkinShowNearCB", edit=True, cc=showNearCBChanged)
 
+    pc.textField("tkSkinInfFilterLE", edit=True, tcc=infFilterChanged)
+    pc.checkBox("tkSkinRegexFilterLE", edit=True, cc=infRegexChanged)
+    pc.checkBox("tkSkinCaseFilterLE", edit=True, cc=infCaseChanged)
+
     pc.radioButton("tkSkinSortDefault", edit=True, onc=sortChanged)
     pc.radioButton("tkSkinSortByValueRadio", edit=True, onc=sortChanged)
     pc.radioButton("tkSkinSortByProximityRadio", edit=True, onc=sortChanged)
@@ -675,9 +701,13 @@ def resfreshUIInfs(*args):
         #filter
         filteredInfs = []
         droppedInfs = []
+
+        flags = [re.IGNORECASE] if UI["infCase"] else []
+
         for inf in infs:
             if UI["showZero"] or inf[1] > tkc.CONST_EPSILON:
-                filteredInfs.append(inf)
+                if len(UI["infFilter"]) == 0 or re.search(UI["infFilter"], inf[0].name(), *flags):
+                    filteredInfs.append(inf)
             else:
                 droppedInfs.append(inf)
 
