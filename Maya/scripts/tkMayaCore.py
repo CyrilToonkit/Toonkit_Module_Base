@@ -2755,10 +2755,33 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         geoMesh = inRef.getShape()
 
         folP = fol.getParent()
-        folP.rename(inObj.namespace() + 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_polyCnsOffset")
-        # connect
-        parentObj = inObj.getParent()
 
+        folName = inObj.namespace() + 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_polyCnsOffset"
+
+        parentObj = None
+
+        update=False
+        output_trans = None
+        if pc.objExists(folName):
+            update = True
+            output_trans = pc.xform(inObj, query=True, worldSpace=True, matrix=True )
+
+            oldFolP = folP
+
+            folP = pc.PyNode(folName)
+
+            folP.addChild(fol, shape=True, add=True)
+            cmds.parent(oldFolP.getShape().name(), shape=True, removeObject=True)
+            fol = folP.getShape()
+            pc.delete(oldFolP)
+
+            parentObj = folP.getParent()
+        else:
+            folP.rename(folName)
+
+            parentObj = inObj.getParent()
+
+        # connect
         geoMesh.outMesh >> fol.inputMesh
 
         multMatrix = pc.createNode( 'multMatrix', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_multMatrix")
@@ -2769,12 +2792,17 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         fol.outRotate >> folP.rotate
 
         createdObjects.append(fol)
-        pc.parent(folP, inObj.getParent())
-        pc.parent(inObj, folP)
+
+        if not update:
+            pc.parent(folP, inObj.getParent())
+            pc.parent(inObj, folP)
 
         if not inOffset:
             resetTRS(inObj)
         else:
+            if not output_trans is None:
+                pc.xform( inObj, worldSpace=True, matrix=output_trans )
+
             constraints = getConstraints(inObj)
 
             for constraint in constraints:
@@ -2992,6 +3020,7 @@ def getConstraintOwner(inCons):
 
     elif consType == "follicle":
         targets = inCons.outTranslate.listConnections()
+        targets = [t.getChildren(type="transform")[0] if t.name().endswith("_polyCnsOffset") else t for t in targets]
 
     elif pc.objExists(inCons + ".constraintTranslateX"):
         targets = pc.listConnections(inCons + ".constraintTranslateX")
@@ -3020,10 +3049,15 @@ def getConstraintsUsing(inObject):
 
     #In case of motionTrail the "cns" is on the shape
     shapes = getShapes(inObject)
-    if len(shapes) > 0 and shapes[0].type() == "nurbsCurve":
-         motionPathCons = pc.listConnections(shapes[0], source=False, type=["motionPath"])
-         if len(motionPathCons) > 0:
-            constraints.extend(motionPathCons)
+    if len(shapes) > 0:
+        if shapes[0].type() == "nurbsCurve":
+            motionPathCons = pc.listConnections(shapes[0], source=False, type=["motionPath"])
+            if len(motionPathCons) > 0:
+                constraints.extend(motionPathCons)
+        if shapes[0].type() == "mesh":
+            folliclesPlugs = pc.listConnections(shapes[0], source=False, type=["follicle"], plugs=True)
+            if len(folliclesPlugs) > 0:
+                constraints.extend([f.node() for f in folliclesPlugs])
 
     for cons in constraints:
         if not cons.name() in filteredNames:
@@ -3072,6 +3106,7 @@ def getConstraints(inObject):
 
     return filteredConstraints
 
+#DEPRECATE
 def getExternalConstraintsOnHierarchy(inRoot):
     externalCns = []
     children = getChildren(inRoot, True)
@@ -3102,12 +3137,20 @@ def removeAllCns(inObj):
     cns = getConstraints(inObj)
     for c in cns:
         typ = c.type()
-        pc.delete(c)
+        try:
+            pc.delete(c)
+        except:
+            pass
 
         if typ == "follicle":
             par = inObj.getParent()
-            par.getParent().addChild(inObj)
-            pc.delete(par)
+
+            #Try this as we may be in reference...
+            try:
+                par.getParent().addChild(inObj)
+                pc.delete(par)
+            except:
+                pass
 
 def selectConstrained(inObj):
     constrained = []
@@ -3263,7 +3306,7 @@ def constrain(inObject, inSource, inType="Pose", inOffset=True, inAdditionnalArg
             contraint = pc.scaleConstraint(inSource,inObject, name=getUniqueName(name + "_sCns"), maintainOffset=inOffset)
         elif inType == "Path" or inType == "pathConstraint"  or inType == "path":
             contraint = pathConstrain(inObject, inSource, inOffset, inAdditionnalArg)
-        elif inType.lower() == "surface" or inType.lower() == "mesh" or inType.lower() == "pointonpoly":
+        elif inType.lower() == "surface" or inType.lower() == "mesh" or inType.lower() == "pointonpoly" or inType.lower() == "follicle":
             u = None
             v = None
             if inAdditionnalArg != False and inAdditionnalArg != True and isinstance(inAdditionnalArg, tuple) or isinstance(inAdditionnalArg, list):
@@ -3417,6 +3460,32 @@ def storeConstraints(inObjects, inRemove=False, inPath=None):
 
     return constraints
 
+def storeConstraintsList(inConstraints, inRemove=False, inPath=None):
+    constraints = []
+
+    for con in inConstraints:
+        offset = getCnsOffset(con)
+        offset = [[offset[0][0], offset[0][1], offset[0][2]],[offset[1][0], offset[1][1], offset[1][2]],[offset[2][0], offset[2][1], offset[2][2]]]
+        constraints.append({"source":str(getConstraintOwner(con)[0].stripNamespace()),
+                            "target":str(getConstraintTargets(con)[0].stripNamespace()),
+                            "type":con.type(),
+                            "offset":offset})
+        if inRemove:
+            pc.delete(con)
+
+    if len(constraints) > 0 and inPath != None:
+        f = None
+        try:
+            f = open(inPath, 'w')
+            f.write(str(constraints))
+        except Exception as e:
+            pc.warning("Cannot save constraints file to " + inPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    return constraints
+
 def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintainOffset=False):
     if isinstance(inConstraints, basestring):
         cnsPath = inConstraints
@@ -3467,6 +3536,7 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
             removeAllCns(node)
 
     for con in inConstraints:
+
         sourceName = con["source"]
         node = sources.get(sourceName)
         
@@ -3477,7 +3547,7 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
         target = None
         if not pc.objExists(targetName):
             matches = pc.ls("*:{0}".format(targetName))
-            if matches > 0:
+            if len(matches) > 0:
                 target = matches[0]
         else:
             target = pc.PyNode(targetName)
@@ -3486,8 +3556,10 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
             pc.warning("Can't find target object {0}".format(targetName))
             continue
 
+        print "constrain({0}, {1}, '{2}')".format(node, target, con["type"])
+
         newCns = constrain(node, target, con["type"])
-        if not inMaintainOffset:
+        if not inMaintainOffset and con["type"] != "follicle":
             setCnsOffset(newCns,    t = dt.Vector(con["offset"][0][0],con["offset"][0][1],con["offset"][0][2]),
                                     r = dt.EulerRotation(con["offset"][1][0],con["offset"][1][1],con["offset"][1][2]),
                                     s = (con["offset"][2][0],con["offset"][2][1],con["offset"][2][2]))

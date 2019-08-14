@@ -370,7 +370,10 @@ def replaceConstraint(inConstraint, inTarget=None, inSource=None):
             else:
                 pc.warning("Can't reconnect {0} >> {1}".format(linkOutput, linkInput))
 
-def replaceConstraints(inDebugFolder=None, inVerbose=False):
+def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
+    inExclude = inExclude or []
+    inExclude = tkc.getNodes(inExclude)
+
     debugCounter = 0
 
     if not inDebugFolder is None:
@@ -400,6 +403,18 @@ def replaceConstraints(inDebugFolder=None, inVerbose=False):
         if len(targets) == 0:
             if inVerbose:
                 print "Cannot replace (NO TARGETS): ",parentCon,"on",owner
+            continue
+
+        skip = False
+
+        for target in targets:
+            #print "target",target,inExclude
+            if target in inExclude:
+                print "Constraint '{0}'' is on an excluded object ({1}), skip...".format(parentCon, target)
+                skip = True
+                break
+
+        if skip:
             continue
 
         if parentCon.type() == "pointConstraint":
