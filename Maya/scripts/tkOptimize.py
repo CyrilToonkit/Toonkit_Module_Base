@@ -397,6 +397,12 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
         parentCon = pc.PyNode(parentCon)
         conName = parentCon.name().replace("|", "(")
 
+        owners = tkc.getConstraintOwner(parentCon)
+        if len(owners) == 0:
+            pc.warning("Disconected constraint : " + parentCon.name())
+            pc.delete(parentCon)
+            continue
+
         owner = tkc.getConstraintOwner(parentCon)[0]
         targets = tkc.getConstraintTargets(parentCon)
 
@@ -530,28 +536,67 @@ def convertExpressions(inVerbose=False):
 
     return replaced
 
-def getUselessTransforms(inExceptPattern=None, inVerbose=False):
+CONSTRAINT_TYPES = ["parentConstraint",
+                    "aimConstraint",
+                    "orientConstraint",
+                    "scaleConstraint",
+                    "pointConstraint",
+                    "poleVectorConstraint"]
+
+def isUselessTransform(inTransform,  inVerbose=False):
+    #Children
+    children = inTransform.getChildren()
+    constraints = [tc for tc in children if tc.type() in CONSTRAINT_TYPES]
+    for c in constraints:
+        children.remove(c)
+    lenChildren = len(children)
+
+    if lenChildren > 1:
+        return False
+
+    #If child starts with the same name, have no connections and no children, consider it can go with its parent
+    if ( lenChildren == 1 and (
+            not children[0].name().startswith(inTransform.name()) or
+            len(children[0].getChildren()) > 0 or
+            len(children[0].listConnections(source=False, destination=True)) > 0
+                )
+        ):
+        return False
+
+    #Connections
+    if len([c for c in inTransform.listConnections(source=False, destination=True) if not c in constraints]) > 0:
+        if inVerbose:
+            print inTransform,[c for c in inTransform.listConnections(source=False, destination=True) if not c in constraints]
+        return False
+
+    return True
+
+def getUselessTransforms(inExceptPattern=None, inVerbose=False,
+                        inExceptTypes=["ikHandle"],
+                        inExceptShapes=["camera"]):
     uselessTransforms = []
     
-    ts = pc.ls( exactType=["transform", "joint"])
-    
+    ts = pc.ls(transforms=True)
+
     for t in ts:
         #Pattern
         if not inExceptPattern is None and re.match(inExceptPattern, t.name()):
             continue
 
-        #Children
-        if len(t.getChildren()) > 0:
-            continue
+        #Type
+        if not inExceptTypes is None and len(inExceptTypes) > 0:
+            if t.type() in inExceptTypes:
+                continue
 
-        #Connections
-        if len(t.listConnections(source=False, destination=True)) > 0:
-            if inVerbose:
-                print t,t.listConnections(source=False, destination=True)
-            continue
-    
-        uselessTransforms.append(t)
-        
+        #Shape
+        if not inExceptShapes is None and len(inExceptShapes) > 0:
+            shape = t.getShape()
+            if not shape is None and shape.type() in inExceptShapes:
+                continue
+
+        if isUselessTransform(t, inVerbose=inVerbose):
+            uselessTransforms.append(t)
+
     return uselessTransforms
 
 def deleteUselessTransforms(inExceptPattern=None, inVerbose=False):
@@ -576,6 +621,8 @@ def deleteUselessTransforms(inExceptPattern=None, inVerbose=False):
             if inVerbose:
                 print "deleteUselessTransforms",len(uts),uts
             return deleted
+
+        curIter += 1
 
     if inVerbose:
         print "deleteUselessTransforms",len(deleted),deleted

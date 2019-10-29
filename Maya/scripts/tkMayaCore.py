@@ -5676,22 +5676,24 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
             if not strSourceParam in oldCode:
                 oldCodeSplit = oldCode.split("=")
                 if(len(oldCodeSplit) == 2):
-                    newCode = oldCodeSplit[0] + "=" + oldCodeSplit[1] + " * " + finalExpr
+                    newCode = oldCodeSplit[0] + "=" + oldCodeSplit[1].rstrip("; ") + " * " + finalExpr
                     pc.delete(cons[0])
                     pc.expression(s=newCode, name=exprName)
         #else:
             #print "Unknown connection Type " + cons[0].type()
     else:
         if direct:
-            if specValue == None:
-                pc.connectAttr(strSourceParam, node + paramName)
-            else:
-                condition = pc.createNode("condition", name=node.name() + "_vis_cond")
-                pc.connectAttr(strSourceParam, condition.firstTerm)
-                pc.setAttr(condition.secondTerm, specValue)
-                pc.setAttr(condition.colorIfFalse.colorIfFalseR, 0)
-                pc.setAttr(condition.colorIfTrue.colorIfTrueR, 1)
-                pc.connectAttr(condition.outColor.outColorR, node.name() + paramName)
+            #Skip joints (hidden joints)
+            if "Deformers" in strSourceParam or node.type() != "joint":
+                if specValue == None:
+                    pc.connectAttr(strSourceParam, node + paramName)
+                else:
+                    condition = pc.createNode("condition", name=node.name() + "_vis_cond")
+                    pc.connectAttr(strSourceParam, condition.firstTerm)
+                    pc.setAttr(condition.secondTerm, specValue)
+                    pc.setAttr(condition.colorIfFalse.colorIfFalseR, 0)
+                    pc.setAttr(condition.colorIfTrue.colorIfTrueR, 1)
+                    pc.connectAttr(condition.outColor.outColorR, node.name() + paramName)
         else:
             setExpression(node + paramName, finalExpr)
 
