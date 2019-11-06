@@ -2365,6 +2365,88 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
 
     return newObjList
 
+def pointOnCurveObject(inCurve, inStartObj, inEndObj, inObject=None, inParam=0.5, inAxis=(0.0, 1.0, 0.0), inAsPerc=True):
+    kwargs = None
+
+    parent=inCurve.getParent()
+
+    if parent is None:
+       kwargs = {"world":True}
+    else:
+       kwargs = {"parent":parent}
+
+    #Create the rotation ref
+    orientRef = pc.group(empty=True, name=inStartObj + "_OrientRef", **kwargs)
+
+    if inParam <= 0.0:
+        orientRefRotDec = tkn.decomposeMatrix(tkn.mul(inStartObj.worldMatrix[0], orientRef.parentInverseMatrix[0]))
+        orientRefRotDec.outputRotate >>  orientRef.r
+    elif inParam >= 1.0:
+        orientRefRotDec = tkn.decomposeMatrix(tkn.mul(inEndObj.worldMatrix[0], orientRef.parentInverseMatrix[0]))
+        orientRefRotDec.outputRotate >>  orientRef.r
+    else:
+        cns = tkc.constrain(orientRef, inStartObj, "orient", False)
+        tkc.constrain(orientRef, inEndObj, "orient", False)
+
+        cns.attr(inStartObj.stripNamespace() + "W0").set(1 - inParam)
+        cns.attr(inEndObj.stripNamespace() + "W1").set(inParam)
+
+    #Make sure ref stays at pos world 0,0,0
+    orientRefDec = tkn.decomposeMatrix(orientRef.parentInverseMatrix[0])
+    orientRefDec.outputTranslate >> orientRef.t
+
+    #Create actual pointOnCurve
+    poc = tkn.pointOnCurve(inCurve, inAsPerc=inAsPerc, inParam=inParam)
+
+    zVec = tkn.cross(poc.normalizedTangent, tkn.pointMatrixMul(inAxis, orientRef.worldMatrix[0]))
+    yVec = tkn.cross(zVec, poc.normalizedTangent)
+
+    fbfOutput = tkn.fourByFourMatrix(   name="{0}_Perc_{1}".format(poc.name(), tkn.formatScalar(inParam)),
+                                        in00=poc.normalizedTangentX, in01=poc.normalizedTangentY, in02=poc.normalizedTangentZ,
+                                        in10=yVec.outputX, in11=yVec.outputY, in12=yVec.outputZ,
+                                        in20=zVec.outputX, in21=zVec.outputY, in22=zVec.outputZ,
+                                        in30=poc.positionX, in31=poc.positionY, in32=poc.positionZ)
+
+    if inObject is None:
+        inObject = pc.spaceLocator(name="{0}_Perc_{1}".format(inCurve.name(), tkn.formatScalar(inParam)))
+        if not parent is None:
+            parent.addChild(inObject)
+
+    #Multiply global transform to parentInverseMatrix and decomp
+    decomp = tkn.decomposeMatrix(tkn.mul(fbfOutput, inObject.parentInverseMatrix[0]))
+    
+    decomp.outputTranslate >> inObject.t
+    decomp.outputRotate >> inObject.r
+
+    return inObject
+
+def pointOnCurveRig(inCurve, inStartObj, inEndObj, inObjects=None, inInter=3, inAxis=(0.0, 1.0, 0.0), inAsPerc=True, inStart=True, inEnd=True):
+    intervals = 1 + inInter
+    step = 1.0 / intervals
+
+    existingObjects = inObjects or []
+    existingObjects = list(reversed(existingObjects))
+
+    current = 0.0
+
+    objects = []
+
+    if inStart:
+        curObj = None if len(existingObjects) == 0 else existingObjects.pop()
+        objects.append(pointOnCurveObject(inCurve, inStartObj, inEndObj, inObject=curObj, inParam=0.0, inAxis=inAxis, inAsPerc=inAsPerc))
+
+    current += step
+
+    for i in range(inInter):
+        curObj = None if len(existingObjects) == 0 else existingObjects.pop()
+        objects.append(pointOnCurveObject(inCurve, inStartObj, inEndObj, inObject=curObj, inParam=current, inAxis=inAxis, inAsPerc=inAsPerc))
+        current += step
+
+    if inEnd:
+        curObj = None if len(existingObjects) == 0 else existingObjects.pop()
+        objects.append(pointOnCurveObject(inCurve, inStartObj, inEndObj, inObject=curObj, inParam=1.0, inAxis=inAxis, inAsPerc=inAsPerc))
+
+    return objects
 
 def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSquash=False, inClusters=False, inPrefix=None):
     
