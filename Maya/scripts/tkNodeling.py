@@ -72,6 +72,7 @@ from string import ascii_lowercase
 
 import tkExpressions as tke
 import pymel.core as pc
+import pymel.core.datatypes as dt
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -133,6 +134,7 @@ ACCU_FORMAT = "{0}_Accu"
 
 CURVEINFO_FORMAT = "{0}_Info"
 CLOSESTPOINT_FORMAT = "{0}_{1}_Close"
+POINTONCURVE_FORMAT = "{0}_{1}_{2}_POC"
 CONDITION_FORMAT = "{0}_{1}_{2}_IFT_{3}_IFF_{4}_Cond"
 
 VELOCITY_FORMAT = "{0}_Vel"
@@ -328,7 +330,7 @@ def create(inType, inName, inHI=False, **kwargs):
 #################################################################################
 
 def formatScalar(inScalar):
-    if isinstance(inScalar, (list,tuple)):
+    if isinstance(inScalar, (list,tuple, dt.Vector)):
         return "_".join([formatScalar(scl) for scl in inScalar])
 
     if abs(inScalar) <= EPSILON:
@@ -971,6 +973,26 @@ def composeMatrix(inTranslation, inRotation, inName=None, **kwargs):
     
     return node.outputMatrix
 """
+@profiled
+def fourByFourMatrix(   in00=1.0, in01=0.0, in02=0.0, in03=0.0,
+                        in10=0.0, in11=1.0, in12=0.0, in13=0.0,
+                        in20=0.0, in21=0.0, in22=1.0, in23=0.0,
+                        in30=0.0, in31=0.0, in32=0.0, in33=1.0,
+                        inName=None, **kwargs):
+    kwargs = dict(locals())
+
+    fbf = create("fourByFourMatrix", inName or "fourByFourMatrix")
+
+    for key, value in kwargs.iteritems():
+        if key == "inName" or not key.startswith("in"):
+            continue
+
+        if isinstance(value, (float, int)):#isScalar
+            fbf.attr(key).set(value)
+        else:
+            value >> fbf.attr(key)
+
+    return fbf.output
 
 @profiled
 def composeMatrix(inT, inR, inS, inScale=[1.0,1.0,1.0], inName=None, **kwargs):
@@ -1089,10 +1111,18 @@ def distance(inSource, inDestination, inWorld=True, inName=None, **kwargs):
 
 @profiled
 def dot(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
-    inVec1 = getNode(inVec1)
-    inVec2 = getNode(inVec2)
+    vec1Scalar = isinstance(inVec1, (list, tuple, dt.Vector))
+    vec2Scalar = isinstance(inVec2, (list, tuple, dt.Vector))
 
-    nodeName = inName or reduceName(DOT_FORMAT.format(formatAttr(inVec1), formatAttr(inVec2, True)))
+    if not vec1Scalar:
+        inVec1 = getNode(inVec1)
+    if not vec2Scalar:
+        inVec2 = getNode(inVec2)
+
+    vec1Name = formatScalar(inVec1) if vec1Scalar else formatAttr(inVec1)
+    vec2Name = formatScalar(inVec2) if vec2Scalar else formatAttr(inVec2, not vec1Scalar)
+
+    nodeName = inName or reduceName(DOT_FORMAT.format(vec1Name, vec2Name))
     if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).outputX
 
@@ -1100,17 +1130,31 @@ def dot(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
     if inNormalize:
         node.normalizeOutput.set(True)
 
-    get3DOut(inVec2) >> node.input1
-    get3DOut(inVec1) >> node.input2
+    if vec2Scalar:
+        node.input1.set(inVec2)
+    else:
+        get3DOut(inVec2) >> node.input1
+    if vec1Scalar:
+        node.input2.set(inVec1)
+    else:
+        get3DOut(inVec1) >> node.input2
 
     return node.outputX
 
 @profiled
 def cross(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
-    inVec1 = getNode(inVec1)
-    inVec2 = getNode(inVec2)
+    vec1Scalar = isinstance(inVec1, (list, tuple, dt.Vector))
+    vec2Scalar = isinstance(inVec2, (list, tuple, dt.Vector))
 
-    nodeName = inName or reduceName(CROSS_FORMAT.format(formatAttr(inVec1), formatAttr(inVec2, True)))
+    if not vec1Scalar:
+        inVec1 = getNode(inVec1)
+    if not vec2Scalar:
+        inVec2 = getNode(inVec2)
+
+    vec1Name = formatScalar(inVec1) if vec1Scalar else formatAttr(inVec1)
+    vec2Name = formatScalar(inVec2) if vec2Scalar else formatAttr(inVec2, not vec1Scalar)
+
+    nodeName = inName or reduceName(CROSS_FORMAT.format(vec1Name, vec2Name))
     if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output
 
@@ -1119,8 +1163,14 @@ def cross(inVec1, inVec2, inNormalize=False, inName=None, **kwargs):
     if inNormalize:
         node.normalizeOutput.set(True)
 
-    get3DOut(inVec1) >> node.input1
-    get3DOut(inVec2) >> node.input2
+    if vec1Scalar:
+        node.input1.set(inVec1)
+    else:
+        get3DOut(inVec1) >> node.input1
+    if vec2Scalar:
+        node.input2.set(inVec2)
+    else:
+        get3DOut(inVec2) >> node.input2
 
     return node.output
 
@@ -1156,7 +1206,10 @@ def pairBlend(inTranslate1, inRotate1, inTranslate2, inRotate2, inWeight=0, inNa
 
     return node
 
+@profiled
+def getAxis(inObj, inLocalVec=(0.0, 1.0, 0.0)):
 
+    return None
 
 # Curves
 #################################################################################
@@ -1196,6 +1249,35 @@ def getClosestPoint(inCurve, inPositionNode, inWorld=True, inName=None, **kwargs
 
     inCurve.worldSpace[0] >> node.inputCurve
     get3DOut(inPositionNode) >> node.inPosition
+
+    return node
+
+@profiled
+def pointOnCurve(inCurve, inAsPerc=True, inParam=0.5, inName=None, **kwargs):
+    inCurve = getNode(inCurve)
+    
+    asPercScalar = isinstance(inAsPerc, (bool))
+    paramScalar = isinstance(inAsPerc, (float, int))
+
+    percName = formatScalar(inAsPerc) if asPercScalar else formatAttr(inAsPerc, True)
+    paramName = formatScalar(inParam) if paramScalar else formatAttr(inParam, True)
+
+    nodeName = inName or reduceName(POINTONCURVE_FORMAT.format(inCurve.name(), percName, paramName))
+    if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
+        return pc.PyNode(nodeName)
+
+    node = create("pointOnCurveInfo", nodeName, **kwargs)
+    inCurve.worldSpace[0] >> node.inputCurve
+
+    if asPercScalar:
+        node.turnOnPercentage.set(inAsPerc)
+    else:
+        inAsPerc >> node.turnOnPercentage
+
+    if paramScalar:
+        node.parameter.set(inParam)
+    else:
+        inParam >> node.parameter
 
     return node
 
