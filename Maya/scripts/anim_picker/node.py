@@ -126,7 +126,7 @@ class DataNode():
         cmds.setAttr('%s.%s'%(self.name, attr), l=False, type='string')
         
         # Set value and re-lock attr
-        cmds.setAttr('%s.%s'%(self.name, attr), value, l=True, type='string')
+        cmds.setAttr('%s.%s'%(self.name, attr), str(value), l=True, type='string')
     
     def get_namespace(self):
         '''Return namespace for current node

@@ -5669,8 +5669,10 @@ def linkVisibility(node, strSourceParam, direct=False, glob=False, specValue=Non
             shape = node.getShape()
             if shape != None:
                 node = shape
+            """
             else:
                 node = node.name()
+            """
     else:
         if not pc.getAttr(node + ".visibility", settable=True):
             pc.warning(node + ".visibility already connected !")
