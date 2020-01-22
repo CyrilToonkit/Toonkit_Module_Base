@@ -1774,7 +1774,19 @@ def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
     if oldNeutral != None:
         parent = oldNeutral.getParent()
         pc.parent(neutral, parent)
+
+        attrs = {}
+        for channel in CHANNELS:
+            attr = oldNeutral.attr(channel)
+            attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+            attr.setLocked(False)
+
         matchTRS(oldNeutral, inTarget)
+
+        for channel, info in attrs.iteritems():
+            attr = oldNeutral.attr(channel)
+            attr.setLocked(info[0])
+
         #matchTRS(oldNeutral, inTarget, inLocalApproach=True)
         pc.parent(inTarget, oldNeutral)
         neutralName=neutral.name()
