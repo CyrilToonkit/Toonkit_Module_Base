@@ -6087,6 +6087,81 @@ def setCtrlVisibility(inModel, ctrlLevel, value):
 
     pc.undoInfo(closeChunk=True)
 
+def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
+    inPos = inPos or [0.0,0.0,0.0]
+    inRot = inRot or [0.0,0.0,0.0]
+    inScl = inScl or [1.0,1.0,1.0]
+
+    name = inCtrl.name()
+
+    #Place new control
+
+    newCtrl = pc.group(empty=True, parent=inCtrl)
+    newParent = pc.group(empty=True, parent=newCtrl, name=name + "_OrigParent")
+
+    newCtrl.t.set(inPos)
+    newCtrl.r.set(inRot)
+    newCtrl.s.set(inScl)
+
+    inCtrl.getParent().addChild(newCtrl)
+
+    #Move Shape
+    shape = inCtrl.getShape()
+
+    if not shape is None:
+        cvs = None
+
+        if shape.type() == "nurbsCurve":
+            cvs = shape.getCVs(space="world")
+
+        newCtrl.addChild(inCtrl.getShape(), shape=True, add=True)
+        mc.parent(inCtrl.getShape().name(), shape=True, removeObject=True)
+
+        shape = newCtrl.getShape()
+
+    if not cvs is None:
+        shape.setCVs(cvs, space="world")
+        shape.updateCurve()
+
+    #Move properties
+
+    props = tkc.getProperties(inCtrl)
+
+    for prop in props:
+        newCtrl.addChild(prop)
+
+    #Rename
+
+
+    inCtrl.rename(name + "_Orig")
+    newCtrl.rename(name)
+
+    #Replace in sets
+
+    sets = inCtrl.listSets()
+    for thisSet in sets:
+        thisSet.remove(inCtrl)
+        thisSet.add(newCtrl)
+
+    #Reparent
+    tkc.matchTRS(newParent, inCtrl.getParent())
+    newParent.addChild(inCtrl)
+
+    #Set neutral
+    tkc.setNeutralPose(newCtrl)
+
+    #Match channels
+
+    for channel in tkc.CHANNELS:
+        attr = inCtrl.attr(channel)
+        newAttr = newCtrl.attr(channel)
+
+        newAttr.setLocked(attr.isLocked())
+        newAttr.setKeyable(attr.isKeyable())
+        newAttr.showInChannelBox(attr.isInChannelBox())
+
+    return newCtrl
+
 ATTRS = ["tx", "ty", "tz", "rx", "ry", "rz", "sx", "sy", "sz"]
 #Use as you would use a "setAttr" ( setSpace("wf_ch_bookie_rgh_1:Left_Shoulder.Orient_Space", 4) )
 #If the controller is not the one the parentSpace attribute is published on (of if there are multiple objects to manage, use "alternateControls" as a PyNode list
