@@ -168,11 +168,40 @@ def setWeightsMap(inObj, inAttrName, inRefObjects=None, inMode=0, inSetter=0, in
         
         return
 
+    if inSetter == 4:#Existing maps
+        nbVerts = pc.polyEvaluate(obj, vertex=True)
+
+        oldMap = refObjects[0]
+        influences = refObjects[1:]
+
+        if oldMap.type() == "skinCluster":
+
+            weights = [0.0] * nbVerts
+
+            for influence in influences:
+                thisWeights = tkc.getWeights(oldMap.getGeometry()[-1], inInfluence=influence.name())
+                lenWeights = len(thisWeights)
+
+                for i in range(len(weights)):
+                    weights[i] += thisWeights[min(i, lenWeights - 1)] / 100.0
+
+            for i in range(len(weights)):
+                if inReverse:
+                    attr[i].set(1.0 - weights[i])
+                else:
+                    attr[i].set(weights[i])
+            
+        else:
+            pc.warning("Type of existing map holder ({0} : {1}) is unknown !".format(oldMap, oldMap.type()))
+
+
+
 #pc.cluster("mod:eye_L_eyelid_geo", weightedNode=["locator1", "locator1"], relative=True)
 
 #setWeightsMap("pSphere1", "cluster1.weightList[0].weights", ["locator1", "locator2"], inSetter=1)
 #setWeightsMap("pSphere1", "cluster4.weightList[0].weights", inSetter=2)
-#setWeightsMap("mod:eye_L_eyelid_geo", "cluster2.weightList[0].weights", ["locator2"], inSetter=3, inIntervalAxis=[0,-1,0], inSecondaryAxis=[1,0,0])*
+#setWeightsMap("mod:eye_L_eyelid_geo", "cluster2.weightList[0].weights", ["locator2"], inSetter=3, inIntervalAxis=[0,-1,0], inSecondaryAxis=[1,0,0])
+#setWeightsMap("Root_Compound:pSphere1", "ffd1.weightList[0].weights", ["Root_Compound:pSphere1_skinCluster", "Root_Compound:ZeroDeform_Main_Deform"], inSetter=4)
 
 #blendShape1.inputTarget[0].inputTargetGroup[0].targetWeights
-setWeightsMap("mod:eye_L_eyelid_geo", "blendShape8.inputTarget[0].inputTargetGroup[0].targetWeights", inSetter=2)
+#setWeightsMap("mod:eye_L_eyelid_geo", "blendShape8.inputTarget[0].inputTargetGroup[0].targetWeights", inSetter=2)
