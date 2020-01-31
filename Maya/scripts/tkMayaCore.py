@@ -4084,8 +4084,21 @@ def getFFDs(inObject):
 
     return lattices
 
-def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=True, old=False):
+def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, inNormalize=True):
+    """
+    inInfluences is an influence short names list (no namespaces) : ["Influence1", "Influence2",...]
+    inValues are given "per influence" :
+        [Inf_1_Vert_1, Inf_1_Vert_2,...Inf_1_Vert_[n],  Inf_2_Vert_1, Inf_2_Vert_2,...Inf_2_Vert_[n]] 
+
+    Modes :
+        0 : Replace
+        1 : Overwrite
+        2 : Add
+        3 : Blend
+    """
+
     skin = getSkinCluster(inObject)
+
     valLength = len(inValues)
     infLength = len(inInfluences)
 
@@ -4095,14 +4108,21 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
 
     #print "setWeights : %s, %s, %s" % (inObject.name(), str(inInfluences), str(inValues))
 
+    oldInfs = None
+    oldWeights = None
+
     if skin != None:
-        if reset or (infLength == 0 and inValues == 0):
+        if infLength == 0 and inValues == 0:
             #detach
             pc.skinCluster(skin, edit=True, unbind=True)
-            if infLength == 0 and inValues == 0:
-                return
-            else:
-                skin = None
+            return 
+
+        if inMode > 0:
+            oldInfs = skin.influenceObjects()
+            oldWeights = getWeights(inObject)
+
+        #detach
+        pc.skinCluster(skin, edit=True, unbind=True)
 
     ns = inObject.namespace()
 
@@ -4159,94 +4179,113 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
         valLength -= -1 + len(nullInfs) * nVerts
         infLength -= -1 + len(nullInfs)
 
-    if skin == None:
-        #bind
-        #If the object shape is hidden, maya will crash at binding...
-        hiddenShapes = []
-        lockedShapes = []
-        connections = {}
+    #If we have old weights info
+    if not oldInfs is None:
+        commonInfs = []
+        commonInfsIndices = []
 
-        shapes = inObject.getShapes()
-        for shape in shapes:
-            attr = shape.visibility
-            if not attr.get():
-                hiddenShapes.append(attr)
+        for i in range(len(oldInfs)):
+            oldInfName = oldInfs[i].name()
 
-                if attr.isLocked():
-                    lockedShapes.append(attr)
-                    attr.setLocked(False)
+            if not oldInfName in inInfluences:
+                #Influence not found, add it
+                inInfluences.append(oldInfName)
+                infLength += 1
 
-                connections[shape] = getNodeConnections(shape, "v", inSource=True, inDestination=False, inDisconnect=True)
+                inValues.extend([0.0] *nVerts)
+                valLength += nVerts
 
-                attr.set(1)
+            commonInfs.append(oldInfName)
+            commonInfsIndices.append(i)
 
-        skin = pc.animation.skinCluster(inObject,inInfluences, name=inObject.name() + "_skinCluster", toSelectedBones=True)
+        #Manage fusion
+        for i in range(nVerts):
+            weights = []
+            totalWeights = 0.0
 
-        realInfs = pc.skinCluster(skin,query=True,inf=True)
+            oldPointWeights = []
+            totalOldWeights = 0.0
 
-        for hiddenShape in hiddenShapes:
-            hiddenShape.set(0)
+            #Get info
+            for j in range(infLength):
 
-        for obj, cons in connections.iteritems():
-            setNodeConnections(cons, obj)
+                inf = inInfluences[j]
 
-        for lockedShape in lockedShapes:
-            lockedShape.setLocked(True)
-    else:
-        #verify that all influences are on the list and add them if necessary
-        realInfs = pc.skinCluster(skin,query=True,inf=True)
-        infToAdd = []
-        for inf in inInfluences:
-            if not inf in realInfs:
-                infToAdd.append(inf)
-        if len(infToAdd) > 0:
-            pc.warning(inObject.name() + " : Influences %s were not in influence list and will be added" % infToAdd)
-            pc.skinCluster(skin,edit=True,addInfluence=infToAdd)
+                val = inValues[j*nVerts + i] * inOpacity
+                totalWeights += val
+                weights.append(val)
+
+                oldIndex = commonInfsIndices[commonInfs.index(inf)]
+                oldVal = oldWeights[oldIndex*nVerts + i]
+
+                totalOldWeights += oldVal
+                oldPointWeights.append(oldVal)
+
+
+            ratio = (100.0 - totalWeights) / 100.0
+
+            #Set values
+            for j in range(infLength):
+                if inMode == 1:#Overwrite
+                    inValues[j*nVerts + i] = weights[j] + ratio * oldPointWeights[j]
+
+                elif inMode == 2:#Add
+                    inValues[j*nVerts + i] = weights[j] + oldPointWeights[j]
+
+                elif inMode == 3:#Blend
+                    inValues[j*nVerts + i] = weights[j] + (1.0 - inOpacity) * oldPointWeights[j]
+
+    #If the object shape is hidden, maya will crash at binding, make everything visible
+    #and store shape connections if necessary
+
+    hiddenShapes = []
+    lockedShapes = []
+    connections = {}
+
+    shapes = inObject.getShapes()
+    for shape in shapes:
+        attr = shape.visibility
+        if not attr.get():
+            hiddenShapes.append(attr)
+
+            if attr.isLocked():
+                lockedShapes.append(attr)
+                attr.setLocked(False)
+
+            connections[shape] = getNodeConnections(shape, "v", inSource=True, inDestination=False, inDisconnect=True)
+
+            attr.set(1)
+        
+    skin = pc.animation.skinCluster(inObject, inInfluences, name=inObject.name() + "_skinCluster", toSelectedBones=True)
+    realInfs = pc.skinCluster(skin,query=True,inf=True)
+
+    #Restore shapes visibilities and connections
+    for hiddenShape in hiddenShapes:
+        hiddenShape.set(0)
+
+    for obj, cons in connections.iteritems():
+        setNodeConnections(cons, obj)
+
+    for lockedShape in lockedShapes:
+        lockedShape.setLocked(True)
 
     if valLength != 0:
         defaultNorm = pc.skinCluster(skin,query=True, normalizeWeights=True)
         pc.skinCluster(skin,edit=True,normalizeWeights=0)
 
-        if not old:
-            #remap inValues from [Def1pt1, Def1pt2, Def2pt1, Def2pt2] to [Def1pt1, Def2pt1, Def1pt2, Def2pt2]
-            pmValues = []
-            infIndices = range(infLength)
-            if versions.current() < 201400:
-                infIndices.reverse()
-            for dim1i in range(nVerts):
-                for dim2i in range(infLength):
-                    pmValues.append(inValues[dim1i + dim2i * nVerts] / 100.0)
-            skin.setWeights(skin.getGeometry()[-1], infIndices, pmValues)
-        else:
-            #old set weights (1 "skinPercent" call per point...)
-            oscarType = getOscarType(inObject)
+        #remap inValues from [Def1pt1, Def1pt2, Def2pt1, Def2pt2] to [Def1pt1, Def2pt1, Def1pt2, Def2pt2]
+        pmValues = []
+        infIndices = range(infLength)
+        if versions.current() < 201400:
+            infIndices.reverse()
+        for dim1i in range(nVerts):
+            for dim2i in range(infLength):
+                pmValues.append(inValues[dim1i + dim2i * nVerts] / 100.0)
 
-            pointName = "vtx"
-
-            if oscarType == "Lattice":
-                shapes = getShapes(inObject)
-                if len(shapes) > 0:
-                    pointName = "pt"
-                    nDivs = pc.getAttr(shapes[0] + ".sDivisions")
-                    nt = pc.getAttr(shapes[0] + ".tDivisions")
-                    nu = pc.getAttr(shapes[0] + ".uDivisions")
-                    counter = 0
-                    for s in range(nDivs):
-                        for t in range(nt):
-                            for u in range(nu):
-                                transValues = [(inInfluences[infCounter], inValues[(infCounter * nVerts) + counter]) for infCounter in range(infLength)]
-                                pc.skinPercent( skin, inObject.name() + ".%s[%i][%i][%i]" % (pointName, s, t, u), transformValue=transValues / 100.0)
-                                counter += 1
-            else:
-                if oscarType == "Curve" :
-                    pointName = "cv"
-
-                for pointIndex in range(nVerts):
-                    transValues = [(inInfluences[infCounter], inValues[(infCounter * nVerts) + pointIndex]) for infCounter in range(infLength)]
-                    pc.skinPercent( skin, inObject.name() + '.%s[%i]' % (pointName, pointIndex), transformValue=transValues / 100.0)
+        skin.setWeights(skin.getGeometry()[-1], infIndices, pmValues)
 
         pc.skinCluster(skin,edit=True,normalizeWeights=defaultNorm)
-        if normalize:
+        if inNormalize:
             #CBB : Can't believe we have to select the mesh...
             pc.select(inObject, replace=True)
             pc.skinPercent( skin, normalize=True)
@@ -4258,7 +4297,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], normalize=True, reset=Tru
 
     return skin
 
-def getWeights(inObject, inInfluence=None, old=False):
+def getWeights(inObject, inInfluence=None):
     skin = getSkinCluster(inObject)
     if skin == None:
         pc.warning("Can't get any skinCluster on given object ("+inObject.name()+") !")
@@ -4277,60 +4316,24 @@ def getWeights(inObject, inInfluence=None, old=False):
             nullInfIndex = i
             break
 
-    if not old:
-        if not inInfluence is None:
-            if not isinstance(inInfluence, int):
-                inInfluence = getNode(inInfluence)
-                #print "influence node",inInfluence,"..."
-                inInfluence = infObjs.index(inInfluence)
-                #print "is n",inInfluence,"in",skin
-            return [w * 100.0 for w in skin.getWeights(skin.getGeometry()[-1], influenceIndex=inInfluence)]
-        else:
-            rawWeights = list(skin.getWeights(skin.getGeometry()[-1]))
-            dim1 = len(rawWeights)
-            if dim1 > 0:
-                dim2 = len(rawWeights[0])
-                for dim2i in range(dim2):
-                    for dim1i in range(dim1):
-                        infWeights.append(rawWeights[dim1i][dim2i] * 100.0)
-
-            if nullInf != None:
-                pc.warning("Some deformers were missing, '"+ CONST_NULLINFNAME +"' joint is ignored")
-
-        return infWeights
-
-    nVerts = getPointsCount(inObject)
-    inf = cmds.skinCluster(skin.name(),query=True,inf=True)
-    #Base influences weigths list
-    infWeights = [0 for i in range(nVerts * len(inf))] 
-
-    oscarType = getOscarType(inObject)
-    pointName = "vtx"
-
-    if oscarType == "Lattice":
-        shapes = getShapes(inObject)
-        if len(shapes) > 0:
-            pointName = "pt"
-            ns = pc.getAttr(shapes[0] + ".sDivisions")
-            nt = pc.getAttr(shapes[0] + ".tDivisions")
-            nu = pc.getAttr(shapes[0] + ".uDivisions")
-            counter = 0
-            for s in range(ns):
-                for t in range(nt):
-                    for u in range(nu):
-                        vertsValues = pc.skinPercent(skin, inObject.name() + ".%s[%i][%i][%i]" % (pointName, s, t, u), query=True, value=True )
-                        for vertValueId in range(len(vertsValues)):
-                            #print "counter " + str(counter)
-                            #print "infWeights[%i * %i + %i + %i + %i] = %i" % (vertValueId, nVerts, s, t, u, vertsValues[vertValueId])
-                            infWeights[vertValueId * nVerts + counter] = vertsValues[vertValueId] * 100.0
-                        counter += 1
+    if not inInfluence is None:
+        if not isinstance(inInfluence, int):
+            inInfluence = getNode(inInfluence)
+            #print "influence node",inInfluence,"..."
+            inInfluence = infObjs.index(inInfluence)
+            #print "is n",inInfluence,"in",skin
+        return [w * 100.0 for w in skin.getWeights(skin.getGeometry()[-1], influenceIndex=inInfluence)]
     else:
-        if oscarType == "Curve":
-            pointName = "cv"
-        for i in range(nVerts):
-            vertsValues = pc.skinPercent(skin, inObject.name() + ".%s[%i]" % (pointName, i), query=True, value=True )
-            for vertValueId in range(len(vertsValues)):
-                infWeights[vertValueId * nVerts + i] = vertsValues[vertValueId] * 100.0
+        rawWeights = list(skin.getWeights(skin.getGeometry()[-1]))
+        dim1 = len(rawWeights)
+        if dim1 > 0:
+            dim2 = len(rawWeights[0])
+            for dim2i in range(dim2):
+                for dim1i in range(dim1):
+                    infWeights.append(rawWeights[dim1i][dim2i] * 100.0)
+
+        if nullInf != None:
+            pc.warning("Some deformers were missing, '"+ CONST_NULLINFNAME +"' joint is ignored")
 
     return infWeights
 
@@ -4565,7 +4568,35 @@ def storeSkins(inObjects, inPath=None):
 
     return skins
 
-def loadSkin(inSkin, inObject=None):
+def zeroOutDeformers(inSkin, inInfluences=[]):
+    infs = inSkin[1]
+    weights = inSkin[2]
+    nVerts = len(weights) / len(infs)
+
+    i = 0
+    for inf in inInfluences:
+        if inf in infs:
+            index = infs.index(inf)
+            weights[index * nVerts : (index + 1) * nVerts ] = [0.0] * nVerts
+        i += 1
+
+    inSkin[2] = weights
+
+    return inSkin
+
+def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True):
+    """
+        Modes :
+            0 : Replace
+            1 : Overwrite
+            2 : Add
+            3 : Blend
+    """
+    if not inZeroInfs is None:
+        if isinstance(inZeroInfs, basestring):
+            inZeroInfs = ",".split(inZeroInfs)
+        zeroOutDeformers(inSkin, inZeroInfs)
+
     obj = inSkin[0] if inObject == None else inObject
     ns = obj.namespace()
     infs = []
@@ -4582,22 +4613,27 @@ def loadSkin(inSkin, inObject=None):
         cons = []
 
         if skin != None:
-            cons = getNodeConnections(skin, "nodeState", inDisconnect=True)
-            pc.skinCluster(skin,edit=True, ub=True)
-            
+            cons = getNodeConnections(skin, "nodeState")
 
-        newSkin = setWeights(obj, infs, weights)
+        newSkin = setWeights(obj, infs, weights, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
 
         if len(cons) > 0:
             #print "cons", str(cons)
-            setNodeConnections(cons, newSkin)
+            setNodeConnections(newSkin, cons)
 
         return newSkin
     else:
         pc.warning("No influences given !")
         return None
 
-def loadSkins(inSkins, inObjects=None):
+def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True):
+    """
+        Modes :
+            0 : Replace
+            1 : Overwrite
+            2 : Add
+            3 : Blend
+    """
     if isinstance(inSkins, basestring):
         skinsPath = inSkins
 
@@ -4608,10 +4644,7 @@ def loadSkins(inSkins, inObjects=None):
             lines =  f.readlines()
 
             for line in lines:
-                deserialized = deserializeSkin(line)
-
-                if not deserialized is None:
-                    inSkins.append(deserializeSkin(line))
+                inSkins.append(deserializeSkin(line))
 
         except Exception as e:
             pc.warning("Cannot load skinnings file from " + skinsPath + " : " + str(e))
@@ -4625,14 +4658,13 @@ def loadSkins(inSkins, inObjects=None):
 
     if inObjects == None or len(inObjects) == 0:
         for inSkin in inSkins:
-            loadSkin(inSkin)
-
+            loadSkin(inSkin, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
     else:
         for inObject in inObjects:
             found = False
             for inSkin in inSkins:
                 if inObject.stripNamespace() == inSkin[0].split(":")[-1]:
-                    loadSkin(inSkin, inObject)
+                    loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
                     found = True
                     break
 
