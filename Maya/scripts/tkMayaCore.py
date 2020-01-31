@@ -4179,6 +4179,9 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
         valLength -= -1 + len(nullInfs) * nVerts
         infLength -= -1 + len(nullInfs)
 
+    # print "inInfluences",inInfluences
+    # print "oldInfs",oldInfs
+
     #If we have old weights info
     if not oldInfs is None:
         commonInfs = []
@@ -4198,6 +4201,8 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
             commonInfs.append(oldInfName)
             commonInfsIndices.append(i)
 
+
+
         #Manage fusion
         for i in range(nVerts):
             weights = []
@@ -4215,8 +4220,12 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
                 totalWeights += val
                 weights.append(val)
 
-                oldIndex = commonInfsIndices[commonInfs.index(inf)]
-                oldVal = oldWeights[oldIndex*nVerts + i]
+                oldIndex = None
+                oldVal = 0.0
+
+                if inf in commonInfs:
+                    oldIndex = commonInfsIndices[commonInfs.index(inf)]
+                    oldVal = oldWeights[oldIndex*nVerts + i]
 
                 totalOldWeights += oldVal
                 oldPointWeights.append(oldVal)
@@ -4600,6 +4609,7 @@ def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, in
     obj = inSkin[0] if inObject == None else inObject
     ns = obj.namespace()
     infs = []
+
     if cmds.objExists(ns + inSkin[1][0]):
         infs = [ns + inf for inf in inSkin[1]]
     elif cmds.objExists(inSkin[3] + inSkin[1][0]):
