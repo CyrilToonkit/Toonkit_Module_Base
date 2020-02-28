@@ -692,7 +692,10 @@ def deletePTAttributes(inExceptPattern=None, inExceptParamsPattern=None, inDropS
             if ud in exceptParams or (not inExceptParamsPattern is None and re.match(inExceptParamsPattern, ud)):
                 continue
 
-            attr = t.attr(ud)
+            try:
+                attr = t.attr(ud)
+            except:
+                continue
 
             #Connections
             cons = attr.listConnections(source=True, destination=False, plugs=True)
@@ -798,7 +801,7 @@ def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVis
     else:
         tkn.conditionAnd(inObj.nodeState, inCond)
 
-def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inDropProxy=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True, **kwargs):
+def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inDropProxy=None, inExistingProxies=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True, **kwargs):
     if inRootsKeep is None and inRootsRemove is None:
         raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
 
@@ -878,8 +881,10 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     if not inReplaceDeformers is None:
         for replaceDeformer in inReplaceDeformers:
             print " deformersRemaining","replaceDeformer",replaceDeformer, replaceDeformer,"deformersRemaining",len(deformersRemaining),deformersRemaining
-            if pc.objExists(replaceDeformer) and replaceDeformer in deformersRemaining:
-                replacingDeformers.append(pc.PyNode(replaceDeformer))
+            replaceDeformerList = pc.ls(["*:"+replaceDeformer, replaceDeformer])
+
+            if len(replaceDeformerList) > 0 and replaceDeformerList[0].name() in deformersRemaining:
+                replacingDeformers.append(pc.PyNode(replaceDeformerList[0]))
 
     print " deformersRemaining",len(deformersRemaining),deformersRemaining
 
@@ -899,8 +904,10 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     #Find and hide "forcedProxies"
     if not inForceProxy is None:
         for forcedProxy in inForceProxy:
-            if pc.objExists(forcedProxy):
-                node = tkc.getNode(forcedProxy)
+            forcedProxyList = pc.ls(["*:"+forcedProxy, forcedProxy])
+            print "forcedProxyList",forcedProxyList
+            if len(forcedProxyList) > 0:
+                node = forcedProxyList[0]
                 if node.type() == "transform":
                     node = node.getShape()
                 if not node in geos:
@@ -910,8 +917,10 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     #Find and exclude "droppedProxies"
     if not inDropProxy is None:
         for droppedProxy in inDropProxy:
-            if pc.objExists(droppedProxy):
-                node = tkc.getNode(droppedProxy)
+            droppedProxyList = pc.ls(["*:"+droppedProxy, droppedProxy])
+
+            if len(droppedProxyList) > 0:
+                node = droppedProxyList[0]
 
                 forcedOrphans.append(node)
                 forcedOrphans.extend(node.getShapes())
@@ -991,51 +1000,61 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                 #print " infsToRemove",len(infsToRemove),infsToRemove
 
                 if geo.type() == "mesh":
-                    #Create geometry proxy
-                    #------------------------
-                    dupe = tkc.getNode(tkc.duplicateAndClean(transform.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False, inResetDisplayType=False))
-                    
-                    if inPolyReduceMin < inPolyReduceMax:
-                        tkc.polyReduceComplexity(dupe, inPolyReduceMin, inPolyReduceMax)
+                    proxy = None
 
-                    proxies.append(dupe)
+                    shortName = transform.stripNamespace()
+                    if shortName in inExistingProxies:
+                        existingProxy = inExistingProxies[shortName]
 
-                    infsLeft = len(keptTopInfs) - len(infsToRemove)
+                        existingProxyTransforms = pc.ls(["*:"+existingProxy, existingProxy])
+                        if len(existingProxyTransforms) > 0:
+                            proxy = existingProxyTransforms[0]
 
-                    newSkin = None
-                    if not underGeo is None:
-                        print " Proxy",dupe,"created with gator under",underGeo,"approach" 
-                        tkc.gator([dupe], underGeo)
-                        newSkin = tkc.getSkinCluster(dupe)
-                        dupeInfs = newSkin.influenceObjects()
+                    if proxy is None:
+                        #Create geometry proxy
+                        #------------------------
+                        proxy = tkc.getNode(tkc.duplicateAndClean(transform.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False, inResetDisplayType=False))
+                        
+                        if inPolyReduceMin < inPolyReduceMax:
+                            tkc.polyReduceComplexity(proxy, inPolyReduceMin, inPolyReduceMax)
 
-                        infsToRemove = []
+                        infsLeft = len(keptTopInfs) - len(infsToRemove)
 
-                        for inf in dupeInfs:
-                            if inf in removedDeformers:
-                                infsToRemove.append(inf)
+                        newSkin = None
+                        if not underGeo is None:
+                            print " Proxy",proxy,"created with gator under",underGeo,"approach" 
+                            tkc.gator([proxy], underGeo)
+                            newSkin = tkc.getSkinCluster(proxy)
+                            dupeInfs = newSkin.influenceObjects()
 
-                        if len(infsToRemove) > 0:
-                            print "infsToRemove", len(infsToRemove),infsToRemove
-                        pc.skinCluster(newSkin,e=True,ri=infsToRemove)
-                    elif infsLeft == 0:
-                        if len(replacingDeformers) > 0:
-                            print " Proxy",dupe,"created with replacingDeformers approach",dupe,replacingDeformers
-                            newSkin = pc.skinCluster(dupe,replacingDeformers, name=dupe.name() + "_skinCluster", toSelectedBones=True)
-                        elif len(deformersRemaining) > 0:
-                            print " Proxy",dupe,"created with deformersRemaining approach" ,dupe,deformersRemaining
-                            newSkin = pc.skinCluster(dupe,deformersRemaining, name=dupe.name() + "_skinCluster", toSelectedBones=True)
-                    else:
-                        print " Proxy",dupe,"created with gator",geo,"approach" 
-                        tkc.gator([dupe], geo)
-                        newSkin = tkc.getSkinCluster(dupe)
-                        pc.skinCluster(newSkin,e=True,ri=infsToRemove)
+                            infsToRemove = []
 
-                    tkRig.hammerCenter(dupe, inThreshold=kwargs.get("inThreshold", 10.0))
-                    pc.skinPercent(newSkin, dupe, pruneWeights=0.005 )
-                    removedInfs = tkc.removeUnusedInfs(newSkin)
+                            for inf in dupeInfs:
+                                if inf in removedDeformers:
+                                    infsToRemove.append(inf)
 
-                    deactivate(dupe, inverse, inverseVis, inKeepVisible=not inHide, inKeepActive=inKeepActive)
+                            if len(infsToRemove) > 0:
+                                print "infsToRemove", len(infsToRemove),infsToRemove
+                            pc.skinCluster(newSkin,e=True,ri=infsToRemove)
+                        elif infsLeft == 0:
+                            if len(replacingDeformers) > 0:
+                                print " Proxy",proxy,"created with replacingDeformers approach",proxy,replacingDeformers
+                                newSkin = pc.skinCluster(proxy,replacingDeformers, name=proxy.name() + "_skinCluster", toSelectedBones=True)
+                            elif len(deformersRemaining) > 0:
+                                print " Proxy",proxy,"created with deformersRemaining approach" ,proxy,deformersRemaining
+                                newSkin = pc.skinCluster(proxy,deformersRemaining, name=proxy.name() + "_skinCluster", toSelectedBones=True)
+                        else:
+                            print " Proxy",proxy,"created with gator",geo,"approach" 
+                            tkc.gator([proxy], geo)
+                            newSkin = tkc.getSkinCluster(proxy)
+                            pc.skinCluster(newSkin,e=True,ri=infsToRemove)
+
+                        tkRig.hammerCenter(proxy, inThreshold=kwargs.get("inThreshold", 10.0))
+                        pc.skinPercent(newSkin, proxy, pruneWeights=0.005 )
+                        removedInfs = tkc.removeUnusedInfs(newSkin)
+
+                    proxies.append(proxy)
+                    deactivate(proxy, inverse, inverseVis, inKeepVisible=not inHide, inKeepActive=inKeepActive)
                     #------------------------
 
         #Connect "old" geometry
