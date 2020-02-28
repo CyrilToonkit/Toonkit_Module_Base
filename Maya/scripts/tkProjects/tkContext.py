@@ -78,6 +78,12 @@ SEP_VARIABLE_END_LENGTH = None
 RE_VARIABLES = None
 RE_INTFORMAT = re.compile("\[0-9\]\{(\d)\}")
 
+def conformPath(inPath):
+    path = re.sub(r"/", r"\\", inPath)
+    path = re.sub(r"(.+?)\\\\", r"\1\\", path)
+
+    return path
+
 def setSynTax(inVariableSep=SEP_VARIABLE, inVariableStart=SEP_VARIABLE_START, inVariableEnd=SEP_VARIABLE_END):
     global SEP_VARIABLE
     global SEP_VARIABLE_START
@@ -178,6 +184,89 @@ def regroupKnownChunks(inSplit):
 
     return splitPathRegrouped
 
+def match(inPattern, inString, inVariables=None):
+    variables = re.findall(RE_VARIABLES, inPattern)
+
+    if len(variables) > 0:
+        if inVariables == None:
+            inVariables = {}
+
+        pattern = inPattern
+        for variable in variables:
+            variableName, variableReg = splitReVariable(variable)
+            if variableReg == None:
+                variableReg = ".+"
+            else:
+                searchIndex = re.search("<(.+)>", variableReg)
+                #Search if we have a custom sorting directive (index)
+                if searchIndex:
+                    index=searchIndex.groups()[0]
+                    variableReg = variableReg.replace("<"+index+">", "")
+
+            if "\\" in variableReg:
+                print "WARNING : Please don't use escaped characters in variables regular expressions !"
+
+            pattern = pattern.replace(variable, "("+variableReg+")")
+
+        curReg = re.compile(pattern.replace('\\', r'\\'), re.IGNORECASE)
+
+
+        matchObj = re.search(curReg, inString)
+
+        if not matchObj:
+            return False
+
+        groups = matchObj.groups()
+
+        #fill Variables
+        for i in range(len(variables)):
+            variable = variables[i]
+            variableName, variableReg = splitReVariable(variable)
+            inVariables[variableName] = groups[i]
+
+        return True
+
+    curReg = re.compile(pattern.replace('\\', r'\\'), re.IGNORECASE)
+
+    return not re.search(curReg, inString) is None
+
+def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAllowDifferent=None):
+    variables = {}
+    matched = match(inSourcePattern, inSourcePath, variables)
+
+    if matched:
+        path = resolvePath(inDestinationPattern, variables)
+
+        if path is None and inAllowDifferent != None:
+            variables2 = variables.copy()
+            inDestinationPattern2 = inDestinationPattern
+
+            for variableName, value in inAllowDifferent.iteritems():
+                newValue = value.get("value")
+                newPattern = value.get("pattern")
+                
+                if not newValue is None:
+                    variables2[variableName] = newValue
+                else:
+                    del variables2[variableName]
+
+                if not newPattern is None:
+                    variables = re.findall(RE_VARIABLES, inDestinationPattern2)
+
+                    for variable in variables:
+                        if variable != variableName:
+                            continue
+                        variableName2, variableReg2 = splitReVariable(variable)
+                        oldPattern = variable
+                        newPattern = joinReVariable(variable, newPattern)
+                        inDestinationPattern2 = inDestinationPattern2.replace(oldPattern, newPattern)
+
+            return resolvePath(inDestinationPattern2, variables2)
+
+        return path
+
+    return None
+
 def resolvePath(inPath, inVariables=None, inAcceptUndefinedResults=False, inVerbose=False, inRootExists=False):
     results = collectPath(inPath, inVariables, inMaxResults=1, inRootExists=inRootExists, inAcceptUndefinedResults=inAcceptUndefinedResults, inVerbose=inVerbose)
     if len(results) > 0:
@@ -185,436 +274,6 @@ def resolvePath(inPath, inVariables=None, inAcceptUndefinedResults=False, inVerb
         return results[0][0]
 
     return None
-
-""" DEPRECATED
-def resolvePath(inPath, inVariables=None, inAcceptUndefinedResults=False, inCreate=False, inVerbose=False, inSkip=0,inKnownList=None, inRootExists=False):
-    if inVerbose:
-        print "! resolvePath called (inPath={0}, inVariables={1}, inAcceptUndefinedResults={2},inCreate={3},inSkip={4},inRootExists={5})".format(inPath, inVariables,inAcceptUndefinedResults,inCreate,inSkip,inRootExists)
-
-    parsings = 0
-    checkings = 0
-
-    variables = re.findall(RE_VARIABLES, inPath)
-    undefined = []
-    autodefined = []
-    
-    msgs = []
-    
-    if inVariables == None:
-        inVariables = {}
-    
-    for variable in variables:
-        variableName = freeVariable(variable)
-        if not variableName in inVariables:
-            if SEP_VARIABLE in variableName:
-                variableName_variableReg = splitReVariable(variable)
-                #If variable have a pattern but is finally defined, just strip regex
-                if variableName_variableReg[0] in inVariables:
-                    inPath = inPath.replace(variable, encloseVariable(variableName_variableReg[0]))
-                elif not variableName_variableReg in autodefined:
-                    autodefined.append(variableName_variableReg)
-            else:
-                undefined.append(variableName)
-
-    if inVerbose:
-        print "inPath",inPath
-        print "undefined", undefined
-        print "autodefined", autodefined
-
-    #Need real parsing
-    if len(autodefined) > 0:
-        parseAblePath = inPath
-        for undefinedVar in undefined:
-            parseAblePath = parseAblePath.replace(undefinedVar, "{{{0}}}".format(undefinedVar))
-        for autodefinedVar in autodefined:
-            rebuiltVariable = encloseVariable(joinReVariable(autodefinedVar))
-            safeVariable = encloseVariable(joinReVariable(autodefinedVar).replace("{", "{{").replace("}", "}}"))
-            parseAblePath = parseAblePath.replace(rebuiltVariable, "{{{0}}}".format(safeVariable))
-
-        parseAblePath = parseAblePath.format(**inVariables)
-        if inVerbose:
-            print "parseAblePath", parseAblePath
-
-        splitPath = parseAblePath.split(os.path.sep)
-        if len(splitPath[0]) + len(splitPath[1]) == 0:
-            #Shoud be a windows network root
-            del splitPath[:2]
-
-        #Manage case where os.path.sep == "\" and could be used as regexp escape characher...
-        if os.path.sep == "\\":
-            i = 0
-            while i < len(splitPath):
-                if splitPath[i].count(SEP_VARIABLE_START) > splitPath[i].count(SEP_VARIABLE_END):
-                    splitPath[i] = splitPath[i] + os.path.sep + splitPath[i+1]
-                    splitPath.remove(splitPath[i+1])
-                i+=1
-
-        splitPath = regroupKnownChunks(splitPath)
-
-        pathLen = len(splitPath)
-        confirmedPath = ""
-        curPath = ""
-
-        counter = 0
-        while counter < len(splitPath) and len(autodefined) > 0:
-            item = splitPath[counter]
-            if counter == 0:#root (drive or network share)
-                if inVerbose:
-                    print "root (drive or network share)", splitPath[counter]
-                if DRIVE_SEP in item:
-                    curPath += item+os.path.sep
-                else:
-                    #try with windows network separator
-                    #todo cross-platform
-                    curPath += 2*os.path.sep+item+os.path.sep
-                #Can't find how to test a network root path existence (https://www.google.fr/webhp?sourceid=chrome-instant&ion=1&espv=2&ie=UTF-8#q=python%20test%20if%20windows%20network%20path%20root%20exists)
-                #let it pass through
-            elif counter == pathLen-1 :#leaf (file or folder)
-                if inVerbose:
-                    print counter*" "+"-leaf (file or folder)", splitPath[counter]
-                innerVariables = re.findall(RE_VARIABLES, item)
-                if len(innerVariables) > 0:
-                    files = None
-                    if inKnownList == None or len(inKnownList) == 0:
-                        inKnownList=[]
-                        files = os.listdir(confirmedPath)
-                        parsings+=1
-                        inKnownList.extend(files)
-                        #print "knownList",inKnownList
-                    else:
-                        files = inKnownList
-
-                    files = sorted(files, key=lambda fileObj: ("Z" if os.path.isfile(os.path.join(confirmedPath,fileObj)) else "") + fileObj.lower())
-                    checkings+=1
-                    pattern = item
-                    index=None
-                    indexVariable=None
-                    for innerVariable in innerVariables:
-                        variableName, variableReg = splitReVariable(innerVariable)
-                        searchIndex = re.search("<(.+)>", variableReg)
-                        #Search if we have a custom sorting directive (index)
-                        if searchIndex:
-                            index=searchIndex.groups()[0]
-                            variableReg = variableReg.replace("<"+index+">", "")
-                            indexVariable = variableName
-                        pattern = pattern.replace(innerVariable, "("+variableReg+")")
-
-                    curReg = re.compile("^"+pattern+"$", re.IGNORECASE)
-                    matches={}
-                    for fileName in files:
-                        matchObj = re.search(curReg, fileName)
-                        #print "fileName",fileName,"matches" if matchObj else "does not match !"
-                        if matchObj:
-                            if inSkip > 0:
-                                inSkip -= 1
-                                continue
-                            groups = matchObj.groups()
-                            #fill Variables
-                            matches[fileName] = {}
-                            for i in range(len(innerVariables)):
-                                innerVariable = innerVariables[i]
-                                variableName, variableReg = splitReVariable(innerVariable)
-                                inVariables[variableName] = groups[i]
-                                matches[fileName][variableName] = groups[i]
-
-                                curSplit = splitReVariable(innerVariables[i])
-                                if curSplit in autodefined:
-                                    autodefined.remove(splitReVariable(innerVariables[i]))
-                                inPath = inPath.replace(innerVariables[i], encloseVariable(variableName))
-                            
-                            if index == None:
-                                item = fileName
-                                break
-
-                    if index != None:
-                        itemMatches = sorted(matches.keys(), key=lambda m:matches[m][indexVariable])
-                        item = itemMatches[int(index)]
-                        #refill Variables
-                        for i in range(len(innerVariables)):
-                            innerVariable = innerVariables[i]
-                            variableName, variableReg = splitReVariable(innerVariable)
-                            inVariables[variableName] = matches[item][variableName]
-
-                curPath += item
-                if inVerbose:
-                    print counter*" "+" => resolved with", item
-                if os.path.isdir(curPath) or os.path.isfile(curPath):
-                    checkings+=1
-                    confirmedPath = curPath
-                else:
-                    if inVerbose:
-                        msgs.append("Path '{0}' does not exists !".format(curPath))
-                    break
-            else:#branch
-                if inVerbose:
-                    print counter*" "+"-branch (folder)", splitPath[counter]
-                innerVariables = re.findall(RE_VARIABLES, item)
-                if len(innerVariables) > 0:
-                    if confirmedPath != "":
-                        dirs = sorted(os.listdir(confirmedPath))
-                        parsings+=1
-                        pattern = item
-                        index=None
-                        indexVariable=None
-                        for innerVariable in innerVariables:
-                            variableName, variableReg = splitReVariable(innerVariable)
-                            searchIndex = re.search("<(.+)>", variableReg)
-                            #Search if we have a custom sorting directive (index)
-                            if searchIndex:
-                                index=searchIndex.groups()[0]
-                                variableReg = variableReg.replace("<"+index+">", "")
-                                indexVariable = variableName
-                            pattern = pattern.replace(innerVariable, "("+variableReg+")")
-
-                        curReg = re.compile("^"+pattern+"$", re.IGNORECASE)
-                        matches={}
-                        for dirName in dirs:
-                            if not os.path.isdir(curPath+dirName):
-                                checkings+=1
-                                continue
-                            matchObj = re.search(curReg, dirName)
-                            if matchObj:
-                                if inSkip > 0:
-                                    inSkip -= 1
-                                    continue
-                                groups = matchObj.groups()
-                                #fill Variables
-                                matches[dirName] = {}
-                                for i in range(len(innerVariables)):
-                                    innerVariable = innerVariables[i]
-                                    variableName, variableReg = splitReVariable(innerVariable)
-                                    inVariables[variableName] = groups[i]
-                                    matches[dirName][variableName] = groups[i]
-
-                                    curSplit = splitReVariable(innerVariables[i])
-                                    if curSplit in autodefined:
-                                        autodefined.remove(splitReVariable(innerVariables[i]))
-                                    inPath = inPath.replace(innerVariables[i], encloseVariable(variableName))
-                                
-                                if index == None:
-                                    item = dirName
-                                    break
-                                else:
-                                    matches[dirName] = inVariables[indexVariable]
-
-                        if index != None:
-                            itemMatches = sorted(matches.keys(), key=lambda m:matches[m][indexVariable])
-                            item = itemMatches[int(index)]
-                            #refill Variables
-                            for i in range(len(innerVariables)):
-                                innerVariable = innerVariables[i]
-                                variableName, variableReg = splitReVariable(innerVariable)
-                                inVariables[variableName] = matches[item][variableName]
-
-                    else:
-                        if inVerbose:
-                            msgs.append("Cannot list shares on an external machine ! '{0}'".format(curPath))
-                        break
-
-                curPath += item+os.path.sep
-                if inVerbose:
-                    print counter*" "+" => resolved with", item
-                if inRootExists or os.path.isdir(curPath):
-                    if not inRootExists:
-                        checkings+=1
-                    else:
-                        inRootExists = False
-
-                    confirmedPath = curPath
-                else:
-                    if inVerbose:
-                        msgs.append("Path '{0}' does not exists !".format(curPath))
-                    break
-
-            counter +=1
-
-    for undefinedVar in undefined:
-        if inAcceptUndefinedResults:
-            inPath = inPath.replace(undefinedVar, "{{{0}}}".format(undefinedVar))
-        if inVerbose:
-            msgs.append("Please provide '{{{0}}}' variable".format(undefinedVar))
-    for autodefinedVar in autodefined:
-        if inAcceptUndefinedResults:
-            rebuiltVariable = encloseVariable(joinReVariable(autodefinedVar))
-            inPath = inPath.replace(rebuiltVariable, "{{{0}}}".format(rebuiltVariable))
-        if inVerbose:
-            msgs.append("Variable cannot be resolved '{{{0}}}'".format(joinReVariable(autodefinedVar)))
-
-    if inVerbose:
-        print "! resolvePath performed {0} file checks and {1} directories parsing".format(checkings, parsings)
-
-    if inVerbose:
-        print ",".join(msgs)
-
-    if not inAcceptUndefinedResults and (len(autodefined) + len(undefined)) > 0:
-        #print "inAcceptUndefinedResults",inAcceptUndefinedResults,"len(autodefined) + len(undefined)",len(autodefined) + len(undefined)
-        return None
-
-    path = inPath.format(**inVariables)
-
-    if inAcceptUndefinedResults or os.path.isdir(path) or os.path.isfile(path):
-        return path
-
-    return None
-"""
-
-""" DEPRECATED
-def collect(inPath, inVariables=None, inVerbose=False):
-    if inVerbose:
-        print "! collect called (inPath={0}, inVariables={1})".format(inPath, inVariables)
-
-    parsings = 0
-    checkings = 0
-
-    variables = re.findall(RE_VARIABLES, inPath)
-    undefined = []
-    autodefined = []
-    
-    msgs = []
-    
-    if inVariables == None:
-        inVariables = {}
-    
-    for variable in variables:
-        variableName = freeVariable(variable)
-        if not variableName in inVariables:
-            if SEP_VARIABLE in variableName:
-                variableName_variableReg = splitReVariable(variable)
-                #If variable have a pattern but is finally defined, just strip regex
-                if variableName_variableReg[0] in inVariables:
-                    inPath = inPath.replace(variable, encloseVariable(variableName_variableReg[0]))
-                elif not variableName_variableReg in autodefined:
-                    autodefined.append(variableName_variableReg)
-            else:
-                undefined.append(variableName)
-
-    if inVerbose:
-        print "inPath",inPath
-        print "undefined", undefined
-        print "autodefined", autodefined
-
-    #Need real parsing
-    if len(autodefined) > 0:
-        parseAblePath = inPath
-        for undefinedVar in undefined:
-            parseAblePath = parseAblePath.replace(undefinedVar, "{{{0}}}".format(undefinedVar))
-        for autodefinedVar in autodefined:
-            rebuiltVariable = encloseVariable(joinReVariable(autodefinedVar))
-            safeVariable = encloseVariable(joinReVariable(autodefinedVar).replace("{", "{{").replace("}", "}}"))
-            parseAblePath = parseAblePath.replace(rebuiltVariable, "{{{0}}}".format(safeVariable))
-        
-        parseAblePath = parseAblePath.format(**inVariables)
-
-        splitPath = parseAblePath.split(os.path.sep)
-        if len(splitPath[0]) + len(splitPath[1]) == 0:
-            #Shoud be a windows network root
-            del splitPath[:2]
-
-        #Manage case where os.path.sep == "\" and could be used as regexp escape characher...
-        i = 0
-        while i < len(splitPath):
-            if splitPath[i].count(SEP_VARIABLE_START) > splitPath[i].count(SEP_VARIABLE_END):
-                splitPath[i] = splitPath[i] + os.path.sep + splitPath[i+1]
-                splitPath.remove(splitPath[i+1])
-            i+=1
-
-        #Regroup known chunks
-        splitPathRegrouped = []
-        splitGroup = []
-        root=True
-        for split in splitPath:
-            #print "split",split
-            if root:
-                splitPathRegrouped.append(split)
-                root=False
-            elif "{" in split:
-                curItem = os.path.sep.join(splitGroup)
-                if len(curItem) > 0:
-                    splitPathRegrouped.append(os.path.sep.join(splitGroup))
-                splitPathRegrouped.append(split)
-                splitGroup = []
-            else:
-                splitGroup.append(split)
-
-        if len(splitGroup) > 0:
-            splitPathRegrouped.append(os.path.sep.join(splitGroup))
-
-        splitPath = splitPathRegrouped
-
-        pathLen = len(splitPath)
-        confirmedPath = ""
-        curPath = ""
-
-        results = [(None, None)]
-
-        counter = 0
-        while counter < pathLen and len(autodefined) > 0:
-            item = splitPath[counter]
-            if counter == 0:#root (drive or network share)
-                if DRIVE_SEP in item:
-                    curPath += item+os.path.sep
-                else:
-                    #try with windows network separator
-                    #todo cross-platform
-                    curPath += 2*os.path.sep+item+os.path.sep
-                #Can't find how to test a network root path existence (https://www.google.fr/webhp?sourceid=chrome-instant&ion=1&espv=2&ie=UTF-8#q=python%20test%20if%20windows%20network%20path%20root%20exists)
-                #let it pass through
-            else :
-                innerVariables = re.findall(RE_VARIABLES, item)
-                if len(innerVariables) > 0:
-                    toResolvePath = confirmedPath + item
-                    resolvedPath = ""
-                    skip = 0
-                    previousResults = results[:]
-                    results = []
-
-                    knownList = []
-                    while resolvedPath != None or (previousResults != [(None, None)] and len(previousResults) > skip):
-                        resolvedVariables = inVariables.copy()
-                        if previousResults != [(None, None)] and len(previousResults) > skip:
-                            resolvedVariables.update(previousResults[skip][1])
-                            toResolvePath = os.path.join(os.path.sep.join(confirmedPath.split(os.path.sep)[:-2]), previousResults[skip][0].split(os.path.sep)[-1], item)
-
-                        resolvedPath = resolvePath(toResolvePath, resolvedVariables, inVerbose=inVerbose, inSkip=skip, inKnownList=knownList, inRootExists=True)
-                        #print "resolvedPath",resolvedPath
-                        if inVerbose:
-                            print " ! collect resolvedPath {0}".format(resolvedPath)
-
-                        if resolvedPath != None or (previousResults != [(None, None)] and len(previousResults) > skip):
-                            skip += 1
-                            if resolvedPath != None:
-                                results.append((resolvedPath, resolvedVariables))
-                        elif len(results) > 0:
-                            if counter == pathLen-1:
-                                item = results[-1][0].split(os.path.sep)[-1]
-                        else:
-                            if inVerbose:
-                                msgs.append("Path '{0}' does not exists !".format(curPath))
-                            break
-                    #print "results",results,"leaf ?",counter == pathLen-1
-
-                curPath += item+os.path.sep
-                if os.path.isdir(curPath):
-                    checkings+=1
-                    confirmedPath = curPath
-                else:
-                    if counter == pathLen-1:
-                        if True or inVerbose:
-                            msgs.append("Path '{0}' does not exists !".format(curPath))
-                        break
-                    else:
-                        confirmedPath = curPath
-
-            counter +=1
-    else:
-        path = resolvePath(inPath, inVariables, inVerbose=inVerbose)
-        return [(path, inVariables)]
-
-    if inVerbose:
-        print "! collect performed {0} file checks and {1} directories parsing".format(checkings, parsings)
-
-    return results
-"""
 
 #Beware, only works with "{}" variables enclosures, because it relies on str.format()...
 #todo "Create" mode ?
@@ -735,45 +394,6 @@ def collectPath(inPath, inVariables=None, inMaxResults=0, inRootExists=False, in
         print "! resolvePath performed {0} file checks and {1} directories parsing".format(checkings, parsings)
 
     return results
-
-def match(inPattern, inString, inVariables=None):
-    variables = re.findall(RE_VARIABLES, inPattern)
-
-    if len(variables) > 0:
-        if inVariables == None:
-            inVariables = {}
-
-        pattern = inPattern
-        for variable in variables:
-            variableName, variableReg = splitReVariable(variable)
-            if variableReg == None:
-                variableReg = ".+"
-            else:
-                searchIndex = re.search("<(.+)>", variableReg)
-                #Search if we have a custom sorting directive (index)
-                if searchIndex:
-                    index=searchIndex.groups()[0]
-                    variableReg = variableReg.replace("<"+index+">", "")
-
-            if "\\" in variableReg:
-                print "WARNING : Please don't use escaped characters in variables regular expressions !"
-
-            pattern = pattern.replace(variable, "("+variableReg+")")
-
-        curReg = re.compile(pattern.replace('\\', r'\\'), re.IGNORECASE)
-
-        matchObj = re.search(curReg, inString)
-        if not matchObj:
-            return False
-
-        groups = matchObj.groups()
-        #fill Variables
-        for i in range(len(variables)):
-            variable = variables[i]
-            variableName, variableReg = splitReVariable(variable)
-            inVariables[variableName] = groups[i]
-
-    return True
 
 """
 import tkContext
