@@ -1852,7 +1852,7 @@ def OscarSplitNodes(inNodesToKeep):
     nodesRootToRemove = []
 
     for node in nodes:
-        nodeName = getNodeName(node.name())
+        nodeName = getNodeName(node.stripNamespace())
         if not nodeName in inNodesToKeep:
             nodesRootToRemove.append(node)
             nodesRootToKeep.remove(node)
@@ -2873,6 +2873,9 @@ def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None, inFunction=None):
 
     #Reset All
     resetAll("", inParams=True)
+
+    if pc.objExists("Global_SRT.NeutralPose"):
+        pc.PyNode("Global_SRT.NeutralPose").set(0.0)
 
     #Mesh overrides to True
     setMeshesOverrides(True)
