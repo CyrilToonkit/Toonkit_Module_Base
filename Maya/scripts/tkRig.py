@@ -6041,53 +6041,88 @@ def mirrorPose(inModel, symmetry=False, inAttrs=True):
 def setCtrlVisibility(inModel, ctrlLevel, value):
     pc.undoInfo(openChunk=True)
 
-    baseParamName = "Controls"
-    if ctrlLevel > 0:
-        baseParamName = baseParamName + "_" + str(ctrlLevel - 1)
-
     charName = tkc.getCharacterName(inModel)
 
     if charName == "":
         pc.error("Cannot get Character Name from namespace (%s)" % inModel)
         return
 
-    paramName = inModel + ":" + charName + "_TK_CtrlsDic.GLOBAL_VisHolder"
-    paramName = tkc.stripMockNamespace(paramName)
-    if pc.objExists(paramName):
-        rawName = pc.getAttr(paramName)
-        visParamName = tkc.stripMockNamespace(inModel + ":" + rawName + "." + baseParamName)
-        if pc.objExists(visParamName):
-            pc.setAttr(visParamName, value)
+    #Find controller
+    #---------------------------------------------------------------------------
+    visHolder = None
+    
+    #Try with dictionary key "GLOBAL_VisHolder"
+    visHolderKey = inModel + ":" + charName + "_TK_CtrlsDic.GLOBAL_VisHolder"
+    tkc.stripMockNamespace(visHolderKey)
+    if pc.objExists(visHolderKey):
+        visHolder = pc.PyNode(tkc.stripMockNamespace(inModel + ":" + pc.getAttr(visHolderKey)))
     else:
-        #Try with GlobalSRT
-        paramName = inModel + ":" + charName + "_TK_CtrlsDic.GlobalSRT_Main_Ctrl"
-        paramName = tkc.stripMockNamespace(paramName)
-        if pc.objExists(paramName):
-            rawName = pc.getAttr(paramName)
-            visParamName = tkc.stripMockNamespace(inModel + ":" + rawName + ".Control_Level")
-            visGlobalParamName = tkc.stripMockNamespace(inModel + ":" + rawName + ".Controls")
-            if pc.objExists(visParamName):
-                combinedValue =(ctrlLevel - 1) if value else (ctrlLevel-2)
-                if combinedValue < 0:
-                    pc.setAttr(visGlobalParamName, 0 if not value else 1)
-                else:
-                    pc.setAttr(visParamName, max(0,combinedValue))
-                    pc.setAttr(visGlobalParamName, 1)
-            else:
-                idx = 0
-                prefix = "Controls_"
-                visParamName = tkc.stripMockNamespace(inModel + ":" + rawName + "." + prefix + str(idx))
-                while pc.objExists(visParamName):
-                    if value:
-                        pc.setAttr(visParamName, 1 if idx <= ctrlLevel else 0)
-                    else:
-                        pc.setAttr(visParamName, 1 if idx + 1 <= ctrlLevel else 0)
-                    idx += 1
-                    visParamName = tkc.stripMockNamespace(inModel + ":" + rawName + "." + prefix + str(idx))
-        else:
-            pc.error("Cannot get 'GlobalSRT_Main_Ctrl' name from dictionary (%s)" % paramName)
-            return
+        #Let's try arbitrarily with some classic names
+        candidates = ["GlobalSRT_Main_Ctrl", "Global_SRT_Main_Ctrl", "Global_Main_Ctrl", "Loc_Main_Ctrl"]
+        for candidate in candidates:
+            visHolderKey = inModel + ":" + charName + "_TK_CtrlsDic." + candidate
+            tkc.stripMockNamespace(visHolderKey)
+            if pc.objExists(visHolderKey):
+                visHolder = pc.PyNode(tkc.stripMockNamespace(inModel + ":" + pc.getAttr(visHolderKey)))
+                break
 
+    #Find global controls visibility
+    #---------------------------------------------------------------------------
+    globalAttr = None
+    candidates = ["Controls", "ControlsBody"]
+    for candidate in candidates:
+        if hasattr(visHolder, candidate):
+            globalAttr = visHolder.attr(candidate)
+            break
+            
+    if globalAttr is None:
+        pc.error("Cannot get Global visibility attribute (from {})".format(candidates))
+        return
+    
+    #Find controlLevel (combined mode)
+    #---------------------------------------------------------------------------
+    controlLevel = None
+    candidates = ["Control_Level"]
+    for candidate in candidates:
+        if hasattr(visHolder, candidate):
+            controlLevel = visHolder.attr(candidate)
+            break
+
+    if not controlLevel is None:
+        #Combined case
+        combinedValue =(ctrlLevel - 1) if value > 0 else (ctrlLevel-2)
+        
+        if combinedValue < 0:
+            globalAttr.set(0 if value < 1 else 1)
+        else:
+            globalAttr.set(1)
+            controlLevel.set(max(0,combinedValue))
+    else:
+        #Independant case
+        aliases= {"Controls_0":["ControlMain"]}
+        
+        idx = 0
+        pattern = "Controls_{}"
+        
+        visParamName = pattern.format(idx)
+        if visParamName in aliases and not hasattr(visHolder, visParamName):
+            for alias in aliases[visParamName]:
+                if hasattr(visHolder, alias):
+                    visParamName = alias
+        #Set attrs
+        while hasattr(visHolder, visParamName):
+            if value > 0:
+                visHolder.attr(visParamName).set(1 if idx <= ctrlLevel else 0)
+            else:
+                visHolder.attr(visParamName).set(1 if idx + 1 <= ctrlLevel else 0)
+
+            idx += 1
+            visParamName = pattern.format(idx)
+            if visParamName in aliases and not hasattr(visHolder, visParamName):
+                for alias in aliases[visParamName]:
+                    if hasattr(visHolder, alias):
+                        visParamName = alias
+    
     pc.undoInfo(closeChunk=True)
 
 def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
