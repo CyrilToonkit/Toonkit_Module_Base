@@ -191,6 +191,7 @@ CONST_LAYERSUFFIX = "CtrlLayer"
 CONST_EXTRARIGSSUFFIX = "_ExtraRigs"
 CONST_KEYSETSPROP = "TK_KeySets"
 CONST_KEYSETSTREEPROP = "TK_KeySetsTree"
+CONST_CTRLSDICPROP = "TK_CtrlsDic"
 CONST_ATTRIBUTES = "OSCAR_Attributes"
 
 CONST_SKINNABLES = ['mesh', 'lattice', 'nurbsSurface', 'nurbsCurve']
