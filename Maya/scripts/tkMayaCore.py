@@ -329,18 +329,35 @@ def getType(inPyNode):
     
     return None
 
-def getNode(inObj):
+def getNode(inObj, inRobust=True, inVerbose=True, inConsiderNs=False):
+
     if isinstance(inObj, basestring):
-        return pc.PyNode(inObj)
-    
+        if not inRobust or "|" in inObj:
+            try:
+                return pc.PyNode(inObj)
+            except:
+                return None
+
+        objs = pc.ls(inObj) if not inConsiderNs else pc.ls([inObj, "*:" + inObj, "*:*:" + inObj])
+        if len(objs) == 0:
+            return None
+        else:
+            if inVerbose and len(objs) > 1:
+                pc.warning("More than one object matches name '{0}' ({1}), '{2}' was used...".format(
+                            inObj, ",".join(["'{}'".format(n.name()) for n in objs]), objs[0]))
+
+            return objs[0]
+
     return inObj
 
-def getNodes(inStringList):
+def getNodes(inStringList, inRobust=True, inVerbose=True):
     nodesList =[]
 
     for objName in inStringList:
-        if pc.objExists(objName):
-            nodesList.append(pc.PyNode(objName))
+        obj = getNode(objName, inRobust=inRobust, inVerbose=inVerbose)
+
+        if not obj is None:
+            nodesList.append(obj)
 
     return nodesList
 
@@ -1053,16 +1070,18 @@ def loadCollection(inName=OPT_SEL, clean=True, presetHolderName=OPT_SELSETS, swa
                     if swapNamespace != "" and ":" in longName:
                         ns = longName.split(":")[0]
                         longName = longName.replace(ns, swapNamespace)
-                    if(pc.objExists(longName)):
-                        actualObjects.append(pc.PyNode(longName))
+                    obj = getNode(longName)
+                    if not obj is None:
+                        actualObjects.append(obj)
                     else:
                         pc.warning(longName + " cannot be found?")
         else:
             if swapNamespace != "" and ":" in objectLongNames:
                 ns = objectLongNames.split(":")[0]
                 objectLongNames = objectLongNames.replace(ns, swapNamespace)
-            if(pc.objExists(objectLongNames)):
-                    actualObjects.append(pc.PyNode(objectLongNames))
+            obj = getNode(objectLongNames)
+            if not obj is None:
+                actualObjects.append(obj)
             else:
                 pc.warning(objectLongNames + " cannot be found?")
     except Exception, e:
@@ -1229,7 +1248,7 @@ def executeFromCollection(inFunc=printExecuteError, inColl=[], inObjectsMin=0, i
                 strArg = "'{0}'".format(arg)
             else:
                 try:
-                    strArg = "pc.PyNode('{0}')".format(arg.name())
+                    strArg = "tkc.getNode('{0}')".format(arg.name())
                 except:
                     pass
             if strArg == "":
@@ -1365,13 +1384,15 @@ def getPickedObjects(clean=True):
         if not isinstance(objectLongNames, str):
             if not isinstance(objectLongNames, int):
                 for longName in objectLongNames:
-                    if(pc.objExists(longName)):
-                        actualObjects.append(pc.PyNode(longName))
+                    obj = getNode(longName)
+                    if not obj is None:
+                        actualObjects.append(obj)
                     else:
                         pc.warning(longName + " cannot be found?")
         else:
-            if(pc.objExists(objectLongNames)):
-                    actualObjects.append(pc.PyNode(objectLongNames))
+            obj = getNode(objectLongNames)
+            if not obj is None:
+                actualObjects.append(obj)
             else:
                 pc.warning(objectLongNames + " cannot be found?")
     except Exception, e:
@@ -1732,9 +1753,10 @@ def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
 
     if oldNeutral != None:
         if len(pc.listConnections(oldNeutral, destination=False)) != 0:
-            resetTRS(inTarget)
+            return setNeutralPose(inTarget, globalScalingFix=True, inSuffix="_Buffer")
+            #resetTRS(inTarget)
             #print oldNeutral.name() + " is a connected NeutralPose, skipping setNeutralPose"
-            return
+
         oldNeutral.rename(oldNeutral.name() + "_OBSOLETE")
         #removeNeutralPose(inTarget, globalScalingFix)
 
@@ -2070,12 +2092,11 @@ def parent(child,parent=None, inRememberParent=False):
         if inRememberParent:
             if firstparent != None:
                 parentName = firstparent.name() + OLD_PARENT_SUFFIX
-                if not cmds.objExists(parentName):
+                parent = getNode(parentName)
+                if parent is None:
                     parent = pc.group(empty=True, name=parentName)
-                else:
-                    parent = pc.PyNode(parentName)
-        
-        if parent == None:
+
+        if parent is None:
             pc.parent(child, world=True)
         else:
             parent.addChild(child)
@@ -2101,8 +2122,9 @@ def reParent(inObjects):
             oldParent = oldParents[0]
             if oldParent.endswith(OLD_PARENT_SUFFIX):
                 oldParentName = oldParent[:-len(OLD_PARENT_SUFFIX)]
-                if cmds.objExists(oldParentName):
-                    parent(obj, pc.PyNode(oldParentName))
+                obj = getNode(oldParentName)
+                if not obj is None:
+                    parent(obj, obj)
                     if cmds.listRelatives(oldParent.name(), children=True) == None:
                         cmds.delete(oldParent.name())
                 else:
@@ -2110,11 +2132,6 @@ def reParent(inObjects):
 
 def getDirectParent(node):
     return palt.getparent(node)
-    # rel = pc.listRelatives( node,p=True)
-    # if (len(rel) > 0):
-    #   return rel[0]
-        
-    # return None
 
 def getParent(node, root=False, model=False, ignoreNeutral=True, ignoreLayers=False, ignoreBuffers=False, inRootSuffix="_Root"):
     if root and model:
@@ -2178,10 +2195,7 @@ def getProperties(node):
     return filteredChildren
 
 def getProperty(node, strName):
-    if pc.objExists(node + "_" + strName):
-        return pc.PyNode(node + "_" + strName)
-
-    return None
+    return getNode(node + "_" + strName)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____  _               _     _           _                             _   _             
@@ -2198,7 +2212,7 @@ def isProperty(obj):
         parent = obj.getParent()
         if parent != None:
             parentName = obj.getParent().name()
-            if len(parentName) < len(obj.name()) and obj.name()[:len(parentName)] == parentName and not pc.PyNode(obj.name() + ".tx").isKeyable() and not pc.PyNode(obj.name() + ".ry").isKeyable():
+            if len(parentName) < len(obj.name()) and obj.name()[:len(parentName)] == parentName and not obj.tx.isKeyable() and not obj.ry.isKeyable():
                 return True
     return False
 
@@ -2781,7 +2795,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
 
             oldFolP = folP
 
-            folP = pc.PyNode(folName)
+            folP = getNode(folName)
 
             folP.addChild(fol, shape=True, add=True)
             cmds.parent(oldFolP.getShape().name(), shape=True, removeObject=True)
@@ -2835,7 +2849,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
 
     if inEnsureAttachment and listsBarelyEquals(cnsObj.getTranslation(space="world"), [0.0, 0.0, 0.0]):
         removeAllCns(inObj)
-        print "Does not attach with values",inU,inV
+        print "Does not attach with values",inDetectionOffset
 
         if inDetectionOffset == [0.0, 0.0, 0.0]:
             inDetectionOffset = [0.0001, 0.0001, 0.0001]
@@ -3220,7 +3234,7 @@ def pathConstrain(inObject, inSource, tangent=True, parametric=False, addPercent
     #Create motion path node
     #We have to create with pathAnimation command to be able to change "parametric" attribute...
     motionPathNode = pc.pathAnimation(inObject, c=curveShape, name=name, follow=tangent, fractionMode=not parametric)
-    motionPathNode = pc.PyNode(motionPathNode)
+    motionPathNode = getNode(motionPathNode)
 
     #Disconnect all
     cons = pc.listConnections(motionPathNode)
@@ -3250,14 +3264,13 @@ def unpinAll(*args):
     pins = pc.ls(["*:*_PinIntoPosition","*_PinIntoPosition"], transforms=True)
 
     for pin in pins:
-        pinObj = pc.PyNode(pin)
-        cns = getConstraintsUsing(pinObj)
+        cns = getConstraintsUsing(pin)
         for c in cns:
             targets = getConstraintOwner(c)
             for target in targets:
                 compensateCns(target)
             pc.delete(c)
-        pc.delete(pinObj)
+        pc.delete(pin)
 
 def constrain(inObject, inSource, inType="Pose", inOffset=True, inAdditionnalArg=True, globalScalingFix=True):
     contraint = None
@@ -3273,8 +3286,8 @@ def constrain(inObject, inSource, inType="Pose", inOffset=True, inAdditionnalArg
 
     if inType == "Pin":
         pinName = inObject.name() + "_PinIntoPosition"
-        if pc.objExists(pinName):
-            pinObj = pc.PyNode(pinName)
+        pinObj = getNode(pinName)
+        if not pinObj is None:
             cns = getConstraintsUsing(pinObj)
             compensateCns(inObject)
             pc.delete(cns)
@@ -3357,7 +3370,7 @@ def getCnsOffset(inCns):
         
         sclCns = cnsName.replace("_prCns", "_sCns")
         if "_prCns" in cnsName and pc.objExists(sclCns):
-            s = getCnsOffset(pc.PyNode(sclCns))[2]
+            s = getCnsOffset(getNode(sclCns))[2]
     elif inCns.type() == "pointConstraint":
         t.x = pc.getAttr(cnsName + ".offsetX")
         t.y = pc.getAttr(cnsName + ".offsetY")
@@ -3391,7 +3404,7 @@ def setCnsOffset(inCns, t = dt.Vector(0.0,0.0,0.0), r = dt.EulerRotation(0.0,0.0
         
         sclCns = cnsName.replace("_prCns", "_sCns")
         if "_prCns" in cnsName and pc.objExists(sclCns):
-            setCnsOffset(pc.PyNode(sclCns), s = s)
+            setCnsOffset(getNode(sclCns), s = s)
     elif inCns.type() == "pointConstraint":
         pc.setAttr(cnsName + ".offsetX", t[0])
         pc.setAttr(cnsName + ".offsetY", t[1])
@@ -3527,13 +3540,8 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
         node = sources.get(sourceName)
 
         if node is None:
-            if not pc.objExists(sourceName):
-                matches = pc.ls("*:{0}".format(sourceName))
-                if matches > 0:
-                    node = matches[0]
-            else:
-                node = pc.PyNode(sourceName)
-            
+            node = getNode(sourceName, inConsiderNs=True)
+
             if node is None:
                 pc.warning("Can't find source object {0}".format(sourceName))
                 continue
@@ -3557,13 +3565,7 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
             continue
 
         targetName = con["target"]
-        target = None
-        if not pc.objExists(targetName):
-            matches = pc.ls("*:{0}".format(targetName))
-            if len(matches) > 0:
-                target = matches[0]
-        else:
-            target = pc.PyNode(targetName)
+        target = getNode(targetName, inConsiderNs=True)
 
         if target is None:
             pc.warning("Can't find target object {0}".format(targetName))
@@ -3630,12 +3632,7 @@ def loadPoses(inPoses, inObjects=None, inApply=True, inActivationAttr=None):
         node = sources.get(sourceName)
 
         if node is None:
-            if not pc.objExists(sourceName):
-                matches = pc.ls("*:{0}".format(sourceName))
-                if matches > 0:
-                    node = matches[0]
-            else:
-                node = pc.PyNode(sourceName)
+            node = getNode(sourceName, inConsiderNs=True)
             
             if node is None:
                 pc.warning("Can't find source object {0}".format(sourceName))
@@ -4147,17 +4144,17 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
         pc.warning(inObject.name() + " : Some deformers were not found, '"+ CONST_NULLINFNAME +"' joint will be created if it does not exists already")
         
         nullInf = ns + CONST_NULLINFNAME
-        nullInfObj = None
         nullInfValues = None
-        if not palt.exists(nullInf):
+
+        nullInfObj = getNode(nullInf)
+
+        if nullInfObj is None:
             parent = getParent(inObject, False, True)
 
             if not parent == None and not parent.namespace() == "":
                 nullInf = CONST_NULLINFNAME
 
             nullInfObj = createRigObject(parent, name=nullInf, type="Deformer")
-        else:
-            nullInfObj = pc.PyNode(nullInf)
 
         nullInfs.sort()
         nullInfs.reverse()
@@ -4329,9 +4326,9 @@ def getWeights(inObject, inInfluence=None):
     if not inInfluence is None:
         if not isinstance(inInfluence, int):
             inInfluence = getNode(inInfluence)
-            #print "influence node",inInfluence,"..."
+        else:
             inInfluence = infObjs.index(inInfluence)
-            #print "is n",inInfluence,"in",skin
+
         return [w * 100.0 for w in skin.getWeights(skin.getGeometry()[-1], influenceIndex=inInfluence)]
     else:
         rawWeights = list(skin.getWeights(skin.getGeometry()[-1]))
@@ -4432,7 +4429,7 @@ def addWeights(inObj, inInfluences, inWeights):
 
 
 def limitDeformers(inObj, inMax=4, inVerbose=False):
-    inObj = pc.PyNode(inObj)
+    inObj = getNode(inObj)
     skinCls = getSkinCluster(inObj)
     
     influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
@@ -4501,6 +4498,11 @@ def getInfluencedPoints(inObj, inInfluences):
 
     return ["{0}.vtx[{1}]".format(inObj, i) for i in list(set(points))]
 
+def getSkinPointCount(inSkin):
+    inObject, infs, weights, ns = inSkin
+
+    return len(weights) / len(infs)
+
 def storeSkin(inObject):
     skin = getSkinCluster(inObject)
     
@@ -4524,10 +4526,8 @@ def deserializeSkin(serializedSkin):
 
     try:
         objName, jointNames, weightsString, ns = serializedSkin.split(";")
-        obj=None
-        if pc.objExists(objName):
-            obj = pc.PyNode(objName)
-        else:
+        obj = getNode(objName)
+        if obj is None:
             objs = pc.ls("*:" + objName)
             if len(objs) > 0:
                 for subObj in objs:
@@ -4535,17 +4535,17 @@ def deserializeSkin(serializedSkin):
                     if shape != None and shape.type() in CONST_SKINNABLES:
                         obj = subObj
                         break
-        if obj != None:
-            weights = eval(weightsString)
-            joints = eval(jointNames)
-            if pc.objExists(joints[0]):
-                ns = ""
-            else:
-                objs = pc.ls("*:" + joints[0], type="joint")
-                if len(objs) > 0:
-                    ns = objs[0].namespace()
 
-            skin = [obj, joints, weights, ns]
+        weights = eval(weightsString)
+        joints = eval(jointNames)
+        if pc.objExists(joints[0]):
+            ns = ""
+        else:
+            objs = pc.ls("*:" + joints[0], type="joint")
+            if len(objs) > 0:
+                ns = objs[0].namespace()
+
+        skin = [obj, joints, weights, ns]
     except Exception as e:
         pc.warning("Deserialize skin error : " + str(e))
         return None
@@ -4608,6 +4608,11 @@ def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, in
         zeroOutDeformers(inSkin, inZeroInfs)
 
     obj = inSkin[0] if inObject == None else inObject
+
+    if obj is None:
+        pc.warning("No object given !")
+        return None
+
     ns = obj.namespace()
     infs = []
 
@@ -4672,15 +4677,25 @@ def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0,
             loadSkin(inSkin, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
     else:
         for inObject in inObjects:
-            found = False
+            pointCount = pc.polyEvaluate(inObject, vertex=True)
+            found = None
+
             for inSkin in inSkins:
-                if inObject.stripNamespace() == inSkin[0].split(":")[-1]:
+                if not inSkin[0] is None and inObject.stripNamespace() == inSkin[0].split(":")[-1]:
                     loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
-                    found = True
+                    found = inSkin
                     break
 
-        if not found:
-            pc.warning("Can't find skin for object "+ inObject.name())
+            if found is None:
+                #Second pass, apply to an object with matching pointCount
+                for inSkin in inSkins:
+                    if pointCount == getSkinPointCount(inSkin):
+                        loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
+                        found = inSkin
+                        break
+
+            if not found:
+                pc.warning("Can't find skin for object "+ inObject.name())
 
 def reSkin(inObjects):
     for inObject in inObjects:
@@ -4946,15 +4961,14 @@ def safeReplaceDeformers(ns, oldDefsStr, newDefStr, doDelete=False):
     oldDefs = []
     oldDefsSplit = [ns + ":" + defName for defName in oldDefsStr.split(",")] 
     for oldDef in oldDefsSplit:
-        if pc.objExists(oldDef):
-            oldDefs.append(pc.PyNode(oldDef))
+        obj = getNode(oldDef)
+        if not obj is None:
+            oldDefs.append(obj)
         else:
             pc.warning(oldDef + " does not exists !")
 
-    newDef = None
     newDefName = ns + ":" + newDefStr
-    if pc.objExists(newDefName):
-        newDef = pc.PyNode(newDefName)
+    newDef = getNode(newDefName)
 
     if len(oldDefs) > 0 and newDef != None:
         replaceDeformers(oldDefs, newDef, doDelete=doDelete)
@@ -5171,10 +5185,15 @@ def equilibrateSelPointsWeights(inRightToLeft = False, inPrefixes = None):
         equilibratePointWeight(selPoint, inRightToLeft, inPrefixes, inSkin, inInfs)
 
 def reorderDeformers(inObj, inTypesPriorities=None):
+
+    objName = inObj
+    if not isinstance(objName, basestring):
+        objName = objName.name()
+
     if inTypesPriorities == None:
         inTypesPriorities = type_priority
 
-    managedHistory = cmds.ls(cmds.listHistory(inObj, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
+    managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
     if len(managedHistory) < 2:
         return
 
@@ -5184,7 +5203,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
     iterations = 0
 
     if managedHistory != sortedHistory:
-        print "Need to reorder {0} deformers".format(inObj)
+        print "Need to reorder {0} deformers".format(objName)
         while managedHistory != sortedHistory:
             iterations += 1
             if maxIterations <= iterations:
@@ -5197,14 +5216,14 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                     if newIndex > 0:
                         #Embed reorderDeformers in try/except because it can fail if deformers are not correctly disconnected
                         try:
-                            cmds.reorderDeformers(sortedHistory[newIndex-1], managedHistory[i], inObj)
+                            cmds.reorderDeformers(sortedHistory[newIndex-1], managedHistory[i], objName)
                         except:
                             pass
 
-                        managedHistory = cmds.ls(cmds.listHistory(inObj, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
+                        managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
                         break
     else:
-        print "No need to reorder {0} deformers".format(inObj)
+        print "No need to reorder {0} deformers".format(objName)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                                _                   __     _   _        _ _           _          __  
@@ -5435,11 +5454,7 @@ def matchConnections(inNode, inRefNode, *args):
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":
-        realContainerName = inobject.name() + "_" + containerName
-        if pc.objExists(realContainerName):
-            inobject = pc.PyNode(realContainerName)
-        else:
-            inobject = None
+        inobject = getNode(inobject.name() + "_" + containerName)
 
     parameters = []
 
@@ -5450,7 +5465,7 @@ def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=
 
 def addProperty(inobject=None, name="NewProperty"):
     objectName = ""
-    if isinstance(inobject, str):
+    if isinstance(inobject, basestring):
         objectName = inobject
     else:
         objectName = inobject.name()
@@ -5489,10 +5504,11 @@ def addParameter(inobject=None, name="NewParam", inType="double", default=None, 
     if containerName != "":
         realContainerName = objectName + "_" + containerName
 
-        if pc.objExists(realContainerName):
-            inobject = pc.PyNode(realContainerName)
-        else:
+        containerNode = getNode(realContainerName)
+        if containerNode is None:
             inobject = addProperty(inobject, containerName)
+        else:
+            inobject = containerNode
 
         if isinstance(inobject, basestring):
             objectName = inobject
@@ -5824,7 +5840,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
     if inAttr is None and pc.attributeQuery(inAttrName , node=parent, exists=True):
         pc.deleteAttr(parent.attr(inAttrName))
 
-    switchAttr = inAttr or pc.PyNode(addParameter(parent, inAttrName, "enum;"+":".join([n.name() for n in inConstrainers])))
+    switchAttr = inAttr or getNode(addParameter(parent, inAttrName, "enum;"+":".join([n.name() for n in inConstrainers])))
     
     for inConstrainer in inConstrainers:
         name = "{0}_LazyTo_{1}".format(inConstrainer,inConstrained)
@@ -5917,9 +5933,7 @@ type = "Parent" or "Orient"
 """
 def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=False):
     # take care of switching contraints on "child"
-    print "applySwitchSpace", strType, strChild, strIndexAttr, listConstrainers,inLazy
-
-    childNode = pc.PyNode(strChild)
+    childNode = getNode(strChild)
 
     parent = getParent(childNode)
     if parent == None:
@@ -5941,7 +5955,7 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=F
     #Ge real constrainers
     for contrainer in listConstrainers:
         if pc.objExists(contrainer):
-            constrainerNodes.append(pc.PyNode(contrainer))
+            constrainerNodes.append(getNode(contrainer))
 
     objectNames = [n.stripNamespace() for n in constrainerNodes]
 
@@ -5953,7 +5967,7 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=F
 
     pc.deleteAttr(strIndexAttr)
     splitAttr = strIndexAttr.split(".")
-    attrHolderNode = pc.PyNode(splitAttr[0])
+    attrHolderNode = getNode(splitAttr[0])
     param = addParameter(attrHolderNode, splitAttr[1], "enum;"+":".join(objectNames))
 
     if inputCons != None and len(inputCons) > 0:
@@ -5970,7 +5984,7 @@ def applySwitchSpace(strType, strChild, strIndexAttr, listConstrainers, inLazy=F
 
     if inLazy:
         #print "tkc.createLazySwitch(tkc.getNode('" + parent.name() + "'), ["+",".join([("tkc.getNode('" + n.name() + "')") for n in constrainerNodes])+"], inAttr=tkc.getNode('" + param + "'), inTranslation="+str(strType == "Parent") + ")"
-        createLazySwitch(parent, constrainerNodes, inAttr=pc.PyNode(param), inTranslation=strType == "Parent")
+        createLazySwitch(parent, constrainerNodes, inAttr=getNode(param), inTranslation=strType == "Parent")
     else:
         constraints = []
         for contrainerNode in constrainerNodes:
@@ -6312,7 +6326,7 @@ def applySpreadDeforms(inCurves, inRefCurve, inRefParent, inRadius=0.0):
     '''
 
     #get positions by first cv global translation
-    refPosition = pc.PyNode(inRefCurve.name() + ".cv[0]").getPosition("world")
+    refPosition =  inRefCurve.cv[0].getPosition("world")
     
     dist = 1.0
 
@@ -6322,14 +6336,14 @@ def applySpreadDeforms(inCurves, inRefCurve, inRefParent, inRadius=0.0):
         else: 
             farestDist = 0.0
             for curv in inCurves:
-                position = pc.PyNode(curv.name() + ".cv[0]").getPosition("world")
+                position = curv.cv[0].getPosition("world")
                 dist = (position - refPosition).length()
                 if farestDist < dist:
                     farestDist = dist
             inRadius = farestDist * 1.1
         
     for curv in inCurves:
-        position = pc.PyNode(curv.name() + ".cv[0]").getPosition("world")
+        position = curv.cv[0].getPosition("world")
         if len(inCurves) == 1:
             factor = 1
         else:
@@ -6486,7 +6500,6 @@ def AEupdateDisplays(plug, slider):
 
     obj_Attr = plug.split(".")
     #pc.setAttr( plug, val )
-    #updateDisplay(pc.PyNode(obj_Attr[0]))
 
     #try to act on other selected Objects
     sel = pc.selected()
@@ -6511,7 +6524,7 @@ def AEupdateCBField(plug, CBField):
 
 def AEaddDisplaysDoubleMenu(plug, sliderLabel, annot ):
     obj_Attr = plug.split(".")
-    node = pc.PyNode(obj_Attr[0])
+    node = getNode(obj_Attr[0])
     props = []
         
     pc.columnLayout()
@@ -6655,13 +6668,17 @@ def getCharacters(inCharacters=[]):
         newChars = []
         for char in inCharacters:
             if isinstance(char, basestring):
-                if pc.objExists(char):
-                    newChars.append(pc.PyNode(char))
+                charNode = getNode(char)
+                if not charNode is None:
+                    newChars.append(charNode)
                 else:
                     charName = getCharacterName(char)
                     charRootName = stripMockNamespace(char + ":" + charName)
-                    if charName != "" and pc.objExists(charRootName):
-                        newChars.append(pc.PyNode(charRootName))
+                    if charName != "" :
+                        charRootNode = getNode(charRootName)
+                        if not charRootNode is None:
+                            newChars.append(charRootNode)
+
             else:
                 newChars.append(char)
         inCharacters = newChars
@@ -6775,9 +6792,7 @@ def orderControls(inControls):
     controlsDic = {}
 
     for control in inControls:
-        controlNode = control
-        if isinstance(control, str) or isinstance(control, unicode):
-            controlNode = pc.PyNode(control)
+        controlNode = getNode(control)
 
         prop = getProperty(controlNode, CONST_ATTRIBUTES)
         if prop != None:
