@@ -45,8 +45,11 @@ class OffsetAnim(Tool):
         super(OffsetAnim, self).execute(*args, **kwargs)
 
         sel = pc.ls(sl=True)
+
+        if len(sel) == 0:
+            sel = pc.ls(["*", "*:*"], type=tkc.ANIMTYPES)
+
         if len(sel) > 0 and (sel[0].type() == "transform" or sel[0].type() in tkc.ANIMTYPES):
-            #tkRig.jointsFromCurve(pc.selected()[0], inNbJoints=14, inSplineIK=True, inScl=True, inSquash=True, inClusters=False, inPrefix="Test")
             if self.arguments[1]:
                 offset = self.arguments[0]
                 for selItem in sel:
@@ -55,6 +58,5 @@ class OffsetAnim(Tool):
             else:
                 pc.keyframe(sel, edit=True, relative=True, timeChange=self.arguments[0])
 
-            
         else:
             self.warning("Please select some transforms or animCurves !")

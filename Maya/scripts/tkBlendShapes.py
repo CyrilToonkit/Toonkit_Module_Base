@@ -201,6 +201,57 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
 
     return dupe
 
+def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTargetPoints=None):
+    refShape = None
+
+    if inRef.type() == "mesh":
+        refShape = inRef
+    else:
+        refShapes = inRef.getShapes(noIntermediate=True)
+        for shape in refShapes:
+            if shape.type() == "mesh":
+                refShape = shape
+                break
+                
+        if refShape is None:
+            pc.warning(inRef.name() + " is not a mesh !!")
+            return False
+
+    targetShape = None
+
+    if inTarget.type() == "mesh":
+        targetShape = inTarget
+    else:
+        targetShapes = inTarget.getShapes(noIntermediate=True)
+        for shape in targetShapes:
+            if shape.type() == "mesh":
+                targetShape = shape
+                break
+                
+        if targetShape is None:
+            pc.warning(inTarget.name() + " is not a mesh !!")
+            return False
+
+    refPoints = inRefPoints or refShape.getPoints()
+    targetPoints = inTargetPoints or targetShape.getPoints()
+
+    for i in range(len(refPoints)):
+        if i >= len(targetPoints):
+            break
+
+        if inMap is None or i >= len(inMap):
+            targetPoints[i] = refPoints[i]
+        elif inMap[i] >= 0.9999:
+            targetPoints[i] = refPoints[i]
+        elif inMap[i] >= 0.0001:
+            targetPoints[i][0] = (1 - inMap[i]) * targetPoints[i][0] + inMap[i] * refPoints[i][0]
+            targetPoints[i][1] = (1 - inMap[i]) * targetPoints[i][1] + inMap[i] * refPoints[i][1]
+            targetPoints[i][2] = (1 - inMap[i]) * targetPoints[i][2] + inMap[i] * refPoints[i][2]
+
+    targetShape.setPoints(targetPoints)
+
+    return True
+
 def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshold=2.0, offset=0.0):
     if not sided:
         return _matchPointPositions(inRef, inTarget)
@@ -263,12 +314,27 @@ def matchPointPositions(inRef, inTarget, sided=False, rightToLeft=False, treshol
     _matchPointPositions(refShape, targetShape, weightMap, refPoints, targetPoints)
 
 def matchPointPositionsFromInfluences(inRef, inTarget, inInfluences, inSkinGeometry=None):
+    if not isinstance(inInfluences, (list, tuple)):
+        inInfluences = (inInfluences,)
+
+    skins = pc.listHistory(inInfluences[0], future=True, type="skinCluster")
+
+    assert len(skins) > 0,"No skinning connected to given influences ({0})".format(inInfluences)
+
     if inSkinGeometry is None:
         inSkinGeometry = inTarget
 
-    if not isinstance(inInfluences, (list, tuple)):
-        print "inInfluences is not a list !"
-        inInfluences = (inInfluences,)
+        shape = inSkinGeometry.getShape()
+
+        skinMatches = False
+        for skin in skins:
+            geos = skin.getGeometry()
+            if shape in geos:
+                skinMatches = True
+                break
+
+        if not skinMatches:
+            inSkinGeometry = skins[0].getGeometry()[0].getParent()
 
     weightMap = []
 
@@ -284,55 +350,10 @@ def matchPointPositionsFromInfluences(inRef, inTarget, inInfluences, inSkinGeome
 
     _matchPointPositions(inRef, inTarget, weightMap)
 
-def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTargetPoints=None):
-    refShape = None
-
-    if inRef.type() == "mesh":
-        refShape = inRef
-    else:
-        refShapes = inRef.getShapes(noIntermediate=True)
-        for shape in refShapes:
-            if shape.type() == "mesh":
-                refShape = shape
-                break
-                
-        if refShape is None:
-            pc.warning(inRef.name() + " is not a mesh !!")
-            return False
-
-    targetShape = None
-
-    if inTarget.type() == "mesh":
-        targetShape = inTarget
-    else:
-        targetShapes = inTarget.getShapes(noIntermediate=True)
-        for shape in targetShapes:
-            if shape.type() == "mesh":
-                targetShape = shape
-                break
-                
-        if targetShape is None:
-            pc.warning(inTarget.name() + " is not a mesh !!")
-            return False
-
-    refPoints = inRefPoints or refShape.getPoints()
-    targetPoints = inTargetPoints or targetShape.getPoints()
-
-    for i in range(len(refPoints)):
-        if i >= len(targetPoints):
-            break
-
-        if inMap is None or i >= len(inMap):
-            targetPoints[i] = refPoints[i]
-        elif inMap[i] >= 0.9999:
-            targetPoints[i] = refPoints[i]
-        elif inMap[i] >= 0.0001:
-            targetPoints[i][0] = (1 - inMap[i]) * targetPoints[i][0] + inMap[i] * refPoints[i][0]
-            targetPoints[i][1] = (1 - inMap[i]) * targetPoints[i][1] + inMap[i] * refPoints[i][1]
-            targetPoints[i][2] = (1 - inMap[i]) * targetPoints[i][2] + inMap[i] * refPoints[i][2]
-
-    targetShape.setPoints(targetPoints)
-    return True
+def cutBsFromInfluences(inRef, inTarget, inInfluences, inSkinGeometry=None):
+    for influence in inInfluences:
+        infMesh = duplicateAndClean(inTarget.name(), "{0}_{1}".format(inTarget.name(), str(influence.stripNamespace())))
+        matchPointPositionsFromInfluences(inRef, pc.PyNode(infMesh), influence)
 
 #cutLeftRight(pc.selected()[0], pc.selected()[1], 2.0)
 def cutLeftRight(inRef, inTarget, treshold=2.0):
@@ -345,6 +366,8 @@ def cutLeftRight(inRef, inTarget, treshold=2.0):
         mc.delete(inTarget.name() + "_Right")
     rightMesh = duplicateAndClean(inTarget.name(), inTarget.name() + "_Right")
     matchPointPositions(inRef, pc.PyNode(rightMesh), True, False, treshold=treshold)
+
+    return (leftMesh, rightMesh)
 
 def getCorrectives(inPose=""):
     pattern = POSE_GRP_NAME

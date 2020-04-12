@@ -5555,6 +5555,7 @@ def smooth(inModel, inSubdiv):
         for geo in ctrls:
             shapes = geo.getShapes()
             for shape in shapes:
+                shape.displaySmoothMesh.set(2)
                 pc.setAttr(geo.getShape().name() + ".smoothLevel", inSubdiv)
     pc.undoInfo(closeChunk=True)
 
@@ -6133,7 +6134,6 @@ def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
     name = inCtrl.name()
 
     #Place new control
-
     newCtrl = pc.group(empty=True, parent=inCtrl)
     newParent = pc.group(empty=True, parent=newCtrl, name=name + "_OrigParent")
 
@@ -6162,20 +6162,16 @@ def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
         shape.updateCurve()
 
     #Move properties
-
     props = tkc.getProperties(inCtrl)
 
     for prop in props:
         newCtrl.addChild(prop)
 
     #Rename
-
-
     inCtrl.rename(name + "_Orig")
     newCtrl.rename(name)
 
     #Replace in sets
-
     sets = inCtrl.listSets()
     for thisSet in sets:
         thisSet.remove(inCtrl)
@@ -6183,13 +6179,13 @@ def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
 
     #Reparent
     tkc.matchTRS(newParent, inCtrl.getParent())
+
     newParent.addChild(inCtrl)
 
     #Set neutral
     tkc.setNeutralPose(newCtrl)
 
     #Match channels
-
     for channel in tkc.CHANNELS:
         attr = inCtrl.attr(channel)
         newAttr = newCtrl.attr(channel)
@@ -6197,6 +6193,9 @@ def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
         newAttr.setLocked(attr.isLocked())
         newAttr.setKeyable(attr.isKeyable())
         newAttr.showInChannelBox(attr.isInChannelBox())
+
+    #TODO Match custom attributes
+
 
     return newCtrl
 
