@@ -154,7 +154,22 @@ OUT3DS = {
     "plusMinusAverage":         "output3D",
     "vectorProduct":            "output",
     "nearestPointOnCurve":      "position",
-    "decomposeMatrix":          "outputTranslate"
+    "decomposeMatrix":          "outputTranslate",
+    "condition":                "outColor",
+}
+
+IN1DS = {
+    "condition":                "firstTerm",
+}
+
+OUT1DS = {
+    "plusMinusAverage":         "output1D",
+    "vectorProduct":            "outputX",
+    "nearestPointOnCurve":      "positionX",
+    "decomposeMatrix":          "outputTranslateX",
+    "condition":                "outColorR",
+    "multDoubleLinear":         "output",
+    "reverse":                  "outputX",
 }
 
 # Profiling
@@ -352,6 +367,22 @@ def formatAttr(inAttr, stripNamespace=False, inSeparator=ATTR_SEPARATOR):
 
     return "{0}{1}{2}".format(nodeName, inSeparator, short)
 
+def get1DOut(inObj):
+    inObj = getNode(inObj)
+
+    if isinstance(inObj, pc.general.Attribute):
+        return inObj
+
+    return inObj.attr(OUT1DS.get(inObj.type(), "output"))
+
+def get1DIn(inObj):
+    inObj = getNode(inObj)
+
+    if isinstance(inObj, pc.general.Attribute):
+        return inObj
+
+    return inObj.attr(IN1DS.get(inObj.type(), "input"))
+
 def get3DOut(inObj):
     inObj = getNode(inObj)
 
@@ -423,6 +454,13 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
     return node.outColorR if not outVectors else node.outColor
 
 @profiled
+def boolAnd(inAttr1, inAttr2, **kwargs):
+    return condition(mul(inAttr1, inAttr2), 0, "!=", 1, 0)
+
+@profiled
+def boolOr(inAttr1, inAttr2, **kwargs):
+    return condition(add(inAttr1, inAttr2), 0, ">", 1, 0)
+
 def conditionOr(inAttr, inCond, **kwargs):
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
@@ -447,10 +485,13 @@ def conditionOr(inAttr, inCond, **kwargs):
 
     return inCond
 
+
+
 @profiled
 def conditionAnd(inAttr, inCond, **kwargs):
     oldCond = None
-    oldConds = inAttr.listConnections(source=True, destination=False, type="condition")
+    oldConds = inAttr.listConnections(source=True, destination=False)
+    print "++oldConds",oldConds
     if len(oldConds) > 0:
         oldCond = oldConds[0]
 
@@ -459,10 +500,18 @@ def conditionAnd(inAttr, inCond, **kwargs):
         inAttr.setLocked(False)
 
     if not oldCond is None:
-        if oldCond.name() != inCond.node().name():
-            oldCond.outColorR.disconnect(inAttr)
+        oldCondOut = get1DOut(oldCond)
+        print "++oldCond",oldCond,"oldCondOut",oldCondOut
 
-            inCond = condition(inCond.node().firstTerm.listConnections(plugs=True)[0], inCond.node().secondTerm.get(), "!=", oldCond.outColorR, inCond.node().colorIfFalseR.get())
+        if oldCond.name() != inCond.node().name():
+            print "++oldCondOut.disconnect(",inAttr
+            oldCondOut.disconnect(inAttr)
+
+            if oldCond.type() == "condition" and inCond.type() == "condition":
+                inCond = condition(inCond.node().firstTerm.listConnections(plugs=True)[0], inCond.node().secondTerm.get(), "!=", oldCondOut, inCond.node().colorIfFalseR.get())
+            else:
+                inCond = boolAnd(inCond, oldCondOut)
+
             inCond >> inAttr
     else:
         inCond >> inAttr

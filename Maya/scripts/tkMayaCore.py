@@ -5419,6 +5419,12 @@ def getAllConnections(inAttr, inSource=True, inDestination=True):
     return cons
 
 def getNodeConnections(inNode, *args, **kwargs):
+    """
+    kwargs includes :
+        inSource (default True)
+        inDestination (default True)
+        inDisconnect (default False)
+    """
     cons = []
     for arg in args:
         cons.extend(getAllConnections(inNode.attr(arg), kwargs.get("inSource", True), kwargs.get("inDestination", True)))
@@ -5449,8 +5455,22 @@ def setNodeConnections(inCons, inNode=None):
 
         linkOutput >> inputAttr
 
-def matchConnections(inNode, inRefNode, *args):
-    setNodeConnections(getNodeConnections(inRefNode, *args), inNode)
+def matchConnections(inNode, inRefNode, *args, **kwargs):
+    """
+    kwargs includes :
+        inSource (default True)
+        inDestination (default True)
+        inDisconnect (default False)
+        inShape (default False)
+    """
+    setNodeConnections(getNodeConnections(inRefNode, *args, **kwargs), inNode)
+
+    if kwargs.get("inShape", False) and inNode.type() == "transform" and inRefNode.type() == "transform":
+        shape = inNode.getShape()
+        refShape = inRefNode.getShape()
+
+        if not shape is None and not refShape is None:
+            setNodeConnections(getNodeConnections(refShape, *args, **kwargs), shape)
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":

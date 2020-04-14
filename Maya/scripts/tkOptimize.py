@@ -801,7 +801,7 @@ def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVis
     else:
         tkn.conditionAnd(inObj.nodeState, inCond)
 
-def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inDropProxy=None, inExistingProxies=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True, **kwargs):
+def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inDropProxy=None, inExistingProxies=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True, inNeedProxies=True, **kwargs):
     if inRootsKeep is None and inRootsRemove is None:
         raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
 
@@ -901,161 +901,162 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     geos.extend(siblingsGeos)
 
-    #Find and hide "forcedProxies"
-    if not inForceProxy is None:
-        for forcedProxy in inForceProxy:
-            forcedProxyList = pc.ls(["*:"+forcedProxy, forcedProxy])
-            print "forcedProxyList",forcedProxyList
-            if len(forcedProxyList) > 0:
-                node = forcedProxyList[0]
-                if node.type() == "transform":
-                    node = node.getShape()
-                if not node in geos:
-                    geos.append(node)
+    if inNeedProxies:
+        #Find and hide "forcedProxies"
+        if not inForceProxy is None:
+            for forcedProxy in inForceProxy:
+                forcedProxyList = pc.ls(["*:"+forcedProxy, forcedProxy])
+                if len(forcedProxyList) > 0:
+                    node = forcedProxyList[0]
+                    if node.type() == "transform":
+                        node = node.getShape()
+                    if not node in geos:
+                        geos.append(node)
 
-    forcedOrphans = []
-    #Find and exclude "droppedProxies"
-    if not inDropProxy is None:
-        for droppedProxy in inDropProxy:
-            droppedProxyList = pc.ls(["*:"+droppedProxy, droppedProxy])
+        forcedOrphans = []
+        #Find and exclude "droppedProxies"
+        if not inDropProxy is None:
+            for droppedProxy in inDropProxy:
+                droppedProxyList = pc.ls(["*:"+droppedProxy, droppedProxy])
 
-            if len(droppedProxyList) > 0:
-                node = droppedProxyList[0]
+                if len(droppedProxyList) > 0:
+                    node = droppedProxyList[0]
 
-                forcedOrphans.append(node)
-                forcedOrphans.extend(node.getShapes())
+                    forcedOrphans.append(node)
+                    forcedOrphans.extend(node.getShapes())
 
     proxies = []
 
     for geo in geos:
         print "-",geo,geo.type()
-        """
-        if not geo.type() == "mesh":
-            continue
-        """
+
         if not isinstance(geo, pc.nodetypes.DagNode):
             deactivate(geo, cond, condVis)
             continue
 
-        transform = geo.getParent()
         underGeo = None
-        isOrphanGeo = True
-        keptTopInfs = []
 
-        geoSkin = tkc.getSkinCluster(geo)
-        if not geoSkin is None:
-            keptTopInfs = geoSkin.influenceObjects()
+        if inNeedProxies:
+            transform = geo.getParent()
+            isOrphanGeo = True
+            keptTopInfs = []
 
-        remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
+            geoSkin = tkc.getSkinCluster(geo)
+            if not geoSkin is None:
+                keptTopInfs = geoSkin.influenceObjects()
 
-        otherDeformers = [d for d in geo.listHistory() if d.type() in ["blendShape", "wrap"]]
+            remainingTopInfs = [inf for inf in keptTopInfs if inf.name() in deformersRemaining]
 
+            otherDeformers = [d for d in geo.listHistory() if d.type() in ["blendShape", "wrap"]]
 
-        #'Live' blendshape targets
-        #------------------------------------
-        blendShapes = geo.listHistory(type="blendShape")
-        for blendShape in blendShapes:
-            print "blendShape",blendShape
+            #'Live' blendshape targets
+            #------------------------------------
+            blendShapes = geo.listHistory(type="blendShape")
+            for blendShape in blendShapes:
+                print "blendShape",blendShape
 
-            if pc.objExists(blendShape):
-                cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
-                for con in cons:
-                    skin = tkc.getSkinCluster(con)
-                    if not skin is None:
-                        BSinfs = skin.influenceObjects()
-                        #Determine if most of the influences are kept or dropped
-                        keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
+                if pc.objExists(blendShape):
+                    cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
+                    for con in cons:
+                        skin = tkc.getSkinCluster(con)
+                        if not skin is None:
+                            BSinfs = skin.influenceObjects()
+                            #Determine if most of the influences are kept or dropped
+                            keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
 
-                        print "keptInfs", len(keptInfs),keptInfs
-                        print "remainingTopInfs", len(remainingTopInfs),remainingTopInfs                          
+                            print "keptInfs", len(keptInfs),keptInfs
+                            print "remainingTopInfs", len(remainingTopInfs),remainingTopInfs                          
 
-                        if len(keptInfs) > len(remainingTopInfs):
-                            underGeo = con
-                            break
+                            if len(keptInfs) > len(remainingTopInfs):
+                                underGeo = con
+                                break
 
-        isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None 
+            isOrphanGeo = len(remainingTopInfs) == 0 and len(replacingDeformers) == 0 and underGeo is None 
 
-        if isOrphanGeo:
-            if transform.stripNamespace() in inKeepOrphans:
-                isOrphanGeo  = False
-        elif geo in forcedOrphans:
-            isOrphanGeo  = True
+            if isOrphanGeo:
+                if transform.stripNamespace() in inKeepOrphans:
+                    isOrphanGeo  = False
+            elif geo in forcedOrphans:
+                isOrphanGeo  = True
 
-        print " isOrphanGeo",isOrphanGeo
-        print " underGeo",underGeo
-        print " inIgnoreTags",len(inIgnoreTags),inIgnoreTags
-        print " len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([transform], inIgnoreTags))
-        print " visible",tkc.isVisibleAfterAll(geo)
-        isSafe = False
+            print " isOrphanGeo",isOrphanGeo
+            print " underGeo",underGeo
+            print " inIgnoreTags",len(inIgnoreTags),inIgnoreTags
+            print " len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([transform], inIgnoreTags))
+            print " visible",tkc.isVisibleAfterAll(geo)
+            isSafe = False
 
-        if inIgnoreTags is None or len(inIgnoreTags) == 0 or len(tkt.getTags([transform], inIgnoreTags)) == 0:
-            if not isOrphanGeo and tkc.isVisibleAfterAll(geo):
-                infsToRemove = []
+            if inIgnoreTags is None or len(inIgnoreTags) == 0 or len(tkt.getTags([transform], inIgnoreTags)) == 0:
+                if not isOrphanGeo and tkc.isVisibleAfterAll(geo):
+                    infsToRemove = []
 
-                for inf in keptTopInfs:
-                    if inf in removedDeformers:
-                        infsToRemove.append(inf)
+                    for inf in keptTopInfs:
+                        if inf in removedDeformers:
+                            infsToRemove.append(inf)
 
-                #print " infs",len(keptTopInfs),keptTopInfs
-                #print " infsToRemove",len(infsToRemove),infsToRemove
+                    #print " infs",len(keptTopInfs),keptTopInfs
+                    #print " infsToRemove",len(infsToRemove),infsToRemove
 
-                if geo.type() == "mesh":
-                    proxy = None
+                    if geo.type() == "mesh":
+                        proxy = None
 
-                    shortName = transform.stripNamespace()
-                    if shortName in inExistingProxies:
-                        existingProxy = inExistingProxies[shortName]
+                        shortName = transform.stripNamespace()
+                        if shortName in inExistingProxies:
+                            existingProxy = inExistingProxies[shortName]
 
-                        existingProxyTransforms = pc.ls(["*:"+existingProxy, existingProxy])
-                        if len(existingProxyTransforms) > 0:
-                            proxy = existingProxyTransforms[0]
+                            existingProxyTransforms = pc.ls(["*:"+existingProxy, existingProxy])
+                            if len(existingProxyTransforms) > 0:
+                                proxy = existingProxyTransforms[0]
 
-                    if proxy is None:
-                        #Create geometry proxy
+                        if proxy is None:
+                            #Create geometry proxy
+                            #------------------------
+                            proxy = tkc.getNode(tkc.duplicateAndClean(transform.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False, inResetDisplayType=False))
+                            
+                            #Copy visibility connections
+                            tkc.matchConnections(proxy, transform, "visibility", "overrideEnabled", "overrideVisibility", inSource=True, inDestination=False, inShape=True)
+
+                            if inPolyReduceMin < inPolyReduceMax:
+                                tkc.polyReduceComplexity(proxy, inPolyReduceMin, inPolyReduceMax)
+
+                            infsLeft = len(keptTopInfs) - len(infsToRemove)
+
+                            newSkin = None
+                            if not underGeo is None:
+                                print " Proxy",proxy,"created with gator under",underGeo,"approach" 
+                                tkc.gator([proxy], underGeo)
+                                newSkin = tkc.getSkinCluster(proxy)
+                                dupeInfs = newSkin.influenceObjects()
+
+                                infsToRemove = []
+
+                                for inf in dupeInfs:
+                                    if inf in removedDeformers:
+                                        infsToRemove.append(inf)
+
+                                if len(infsToRemove) > 0:
+                                    print "infsToRemove", len(infsToRemove),infsToRemove
+                                pc.skinCluster(newSkin,e=True,ri=infsToRemove)
+                            elif infsLeft == 0:
+                                if len(replacingDeformers) > 0:
+                                    print " Proxy",proxy,"created with replacingDeformers approach",proxy,replacingDeformers
+                                    newSkin = pc.skinCluster(proxy,replacingDeformers, name=proxy.name() + "_skinCluster", toSelectedBones=True)
+                                elif len(deformersRemaining) > 0:
+                                    print " Proxy",proxy,"created with deformersRemaining approach" ,proxy,deformersRemaining
+                                    newSkin = pc.skinCluster(proxy,deformersRemaining, name=proxy.name() + "_skinCluster", toSelectedBones=True)
+                            else:
+                                print " Proxy",proxy,"created with gator",geo,"approach" 
+                                tkc.gator([proxy], geo)
+                                newSkin = tkc.getSkinCluster(proxy)
+                                pc.skinCluster(newSkin,e=True,ri=infsToRemove)
+
+                            tkRig.hammerCenter(proxy, inThreshold=kwargs.get("inThreshold", 10.0))
+                            pc.skinPercent(newSkin, proxy, pruneWeights=0.005 )
+                            removedInfs = tkc.removeUnusedInfs(newSkin)
+
+                        proxies.append(proxy)
+                        deactivate(proxy, inverse, inverseVis, inKeepVisible=not inHide, inKeepActive=inKeepActive)
                         #------------------------
-                        proxy = tkc.getNode(tkc.duplicateAndClean(transform.name(), inTargetName=("$REF_dupe" if inName is None else "$REF_" + inName), inMuteDeformers=False, inResetDisplayType=False))
-                        
-                        if inPolyReduceMin < inPolyReduceMax:
-                            tkc.polyReduceComplexity(proxy, inPolyReduceMin, inPolyReduceMax)
-
-                        infsLeft = len(keptTopInfs) - len(infsToRemove)
-
-                        newSkin = None
-                        if not underGeo is None:
-                            print " Proxy",proxy,"created with gator under",underGeo,"approach" 
-                            tkc.gator([proxy], underGeo)
-                            newSkin = tkc.getSkinCluster(proxy)
-                            dupeInfs = newSkin.influenceObjects()
-
-                            infsToRemove = []
-
-                            for inf in dupeInfs:
-                                if inf in removedDeformers:
-                                    infsToRemove.append(inf)
-
-                            if len(infsToRemove) > 0:
-                                print "infsToRemove", len(infsToRemove),infsToRemove
-                            pc.skinCluster(newSkin,e=True,ri=infsToRemove)
-                        elif infsLeft == 0:
-                            if len(replacingDeformers) > 0:
-                                print " Proxy",proxy,"created with replacingDeformers approach",proxy,replacingDeformers
-                                newSkin = pc.skinCluster(proxy,replacingDeformers, name=proxy.name() + "_skinCluster", toSelectedBones=True)
-                            elif len(deformersRemaining) > 0:
-                                print " Proxy",proxy,"created with deformersRemaining approach" ,proxy,deformersRemaining
-                                newSkin = pc.skinCluster(proxy,deformersRemaining, name=proxy.name() + "_skinCluster", toSelectedBones=True)
-                        else:
-                            print " Proxy",proxy,"created with gator",geo,"approach" 
-                            tkc.gator([proxy], geo)
-                            newSkin = tkc.getSkinCluster(proxy)
-                            pc.skinCluster(newSkin,e=True,ri=infsToRemove)
-
-                        tkRig.hammerCenter(proxy, inThreshold=kwargs.get("inThreshold", 10.0))
-                        pc.skinPercent(newSkin, proxy, pruneWeights=0.005 )
-                        removedInfs = tkc.removeUnusedInfs(newSkin)
-
-                    proxies.append(proxy)
-                    deactivate(proxy, inverse, inverseVis, inKeepVisible=not inHide, inKeepActive=inKeepActive)
-                    #------------------------
 
         #Connect "old" geometry
         #------------------------
