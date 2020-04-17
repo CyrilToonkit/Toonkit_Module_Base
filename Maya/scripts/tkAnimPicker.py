@@ -206,3 +206,33 @@ def show(*args):
     #print "mods & 8",mods & 8
 
     load(mods & 8, forceRebuild=rebuild)
+
+DUMPED_WINDOW = None
+PICKER_WINDOW_NAME = "ctrl_picker_window"
+
+def toggle():
+    global DUMPED_WINDOW
+    existsOne = True
+
+    try:
+        DUMPED_WINDOW = (
+            pc.window(PICKER_WINDOW_NAME, query=True, topLeftCorner=True),
+            pc.window(PICKER_WINDOW_NAME, query=True, width=True),
+            pc.window(PICKER_WINDOW_NAME, query=True, height=True),
+            )
+    except:
+        existsOne = False
+
+    if existsOne:
+        while existsOne:
+            try:
+                pc.deleteUI(PICKER_WINDOW_NAME, window=True)
+            except:
+                existsOne = False
+    else:
+        show(True)
+        
+        if not DUMPED_WINDOW is None:
+            pc.window(PICKER_WINDOW_NAME, edit=True, topLeftCorner=DUMPED_WINDOW[0])
+            pc.window(PICKER_WINDOW_NAME, edit=True, width=DUMPED_WINDOW[1])
+            pc.window(PICKER_WINDOW_NAME, edit=True, height=DUMPED_WINDOW[2])

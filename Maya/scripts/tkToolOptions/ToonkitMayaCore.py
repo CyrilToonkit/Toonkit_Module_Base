@@ -31,7 +31,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.41.1"
+VERSIONINFO = "1.5.42.29"
 
 MENU_NAME = "tkMainMenu"
 
@@ -82,14 +82,19 @@ HOTKEYS =   {
                         "code":"import tkMayaSIBar as tksi;tksi.toggleUI()"
                     },
                 "showSynopTiK":
-                    {"key":"Q" , "ctrl":True , "alt":False, "mel":False,
+                    {"key":"C" , "ctrl":True , "alt":False, "mel":False,
                         "desc":"Show SynopTiK view",
                         "code":"import tkMayaCore as tkc;tkc.showSynopTiK()"
                     },
                 "showAnimPicker":
                     {"key":"X" , "ctrl":True , "alt":False, "mel":False,
                         "desc":"Show AnimPicker",
-                        "code":"import anim_picker.tkAnimPicker;anim_picker.tkAnimPicker.show()"
+                        "code":"import tkAnimPicker;tkAnimPicker.show()"
+                    },
+                "toggleAnimPicker":
+                    {"key":"Q" , "ctrl":True , "alt":False, "mel":False,
+                        "desc":"Toggle AnimPicker",
+                        "code":"import tkAnimPicker;tkAnimPicker.toggle()"
                     },
                 "showSkinpaster":
                     {"key":"A" , "ctrl":True , "alt":False, "mel":True,
@@ -173,13 +178,17 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("showSIBARCtrl", True, None, "Ctrl", False, "HotKeys.showSIBAR")
         self.options.addOption("showSIBARAlt", False, None, "Alt", False, "HotKeys.showSIBAR")
 
-        self.options.addOption("showSynopTiKKey", "Q", None, "Key", False, "HotKeys.showSynopTiK")
+        self.options.addOption("showSynopTiKKey", "C", None, "Key", False, "HotKeys.showSynopTiK")
         self.options.addOption("showSynopTiKCtrl", True, None, "Ctrl", False, "HotKeys.showSynopTiK")
         self.options.addOption("showSynopTiKAlt", False, None, "Alt", False, "HotKeys.showSynopTiK")
 
         self.options.addOption("showAnimPickerKey", "X", None, "Key", False, "HotKeys.showAnimPicker")
         self.options.addOption("showAnimPickerCtrl", True, None, "Ctrl", False, "HotKeys.showAnimPicker")
         self.options.addOption("showAnimPickerAlt", False, None, "Alt", False, "HotKeys.showAnimPicker")
+
+        self.options.addOption("toggleAnimPickerKey", "Q", None, "Key", False, "HotKeys.toggleAnimPicker")
+        self.options.addOption("toggleAnimPickerCtrl", True, None, "Ctrl", False, "HotKeys.toggleAnimPicker")
+        self.options.addOption("toggleAnimPickerAlt", False, None, "Alt", False, "HotKeys.toggleAnimPicker")
 
         self.options.addOption("showSkinpasterKey", "A", None, "Key", False, "HotKeys.showSkinpaster")
         self.options.addOption("showSkinpasterCtrl", True, None, "Ctrl", False, "HotKeys.showSkinpaster")
