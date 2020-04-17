@@ -230,14 +230,18 @@ def match(inPattern, inString, inVariables=None):
 
     return not re.search(curReg, inString) is None
 
-def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAllowDifferent=None):
+def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAddVariables=None, inAllowDifferent=None, inUseDifferent=False):
     variables = {}
     matched = match(inSourcePattern, inSourcePath, variables)
+
+    if not inAddVariables is None:
+        inAddVariables.update(variables)
+        variables.update(inAddVariables)
 
     if matched:
         path = resolvePath(inDestinationPattern, variables)
 
-        if path is None and inAllowDifferent != None:
+        if (path is None or inUseDifferent) and inAllowDifferent != None:
             variables2 = variables.copy()
             inDestinationPattern2 = inDestinationPattern
 
@@ -245,21 +249,24 @@ def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAllowDiffer
                 newValue = value.get("value")
                 newPattern = value.get("pattern")
                 
-                if not newValue is None:
-                    variables2[variableName] = newValue
+                if variableName in variables2:
+                    if not newValue is None:
+                        variables2[variableName] = newValue
+                    else:
+                        del variables2[variableName]
+
+                    if not newPattern is None:
+                        variables = re.findall(RE_VARIABLES, inDestinationPattern2)
+
+                        for variable in variables:
+                            if variable != variableName:
+                                continue
+                            variableName2, variableReg2 = splitReVariable(variable)
+                            oldPattern = variable
+                            newPattern = joinReVariable(variable, newPattern)
+                            inDestinationPattern2 = inDestinationPattern2.replace(oldPattern, newPattern)
                 else:
-                    del variables2[variableName]
-
-                if not newPattern is None:
-                    variables = re.findall(RE_VARIABLES, inDestinationPattern2)
-
-                    for variable in variables:
-                        if variable != variableName:
-                            continue
-                        variableName2, variableReg2 = splitReVariable(variable)
-                        oldPattern = variable
-                        newPattern = joinReVariable(variable, newPattern)
-                        inDestinationPattern2 = inDestinationPattern2.replace(oldPattern, newPattern)
+                    variables2[variableName] = value
 
             return resolvePath(inDestinationPattern2, variables2)
 
