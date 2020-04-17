@@ -1,0 +1,3 @@
+[submodule "Maya/scripts/Toonkit_Core"]
+	path = Maya/scripts/Toonkit_Core
+	url = https://github.com/CyrilToonkit/Toonkit_Core.git

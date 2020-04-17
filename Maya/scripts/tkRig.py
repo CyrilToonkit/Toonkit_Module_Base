@@ -39,7 +39,7 @@ import math
 import operator
 import tempfile
 
-import tkCore as tc
+import Toonkit_Core.tkCore as tc
 
 import pymel.core as pc
 import maya.cmds as mc
