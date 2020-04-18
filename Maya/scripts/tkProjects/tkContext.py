@@ -230,7 +230,7 @@ def match(inPattern, inString, inVariables=None):
 
     return not re.search(curReg, inString) is None
 
-def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAddVariables=None, inAllowDifferent=None, inUseDifferent=False):
+def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAcceptUndefinedResults=False, inAddVariables=None, inAllowDifferent=None, inUseDifferent=False):
     variables = {}
     matched = match(inSourcePattern, inSourcePath, variables)
 
@@ -239,7 +239,11 @@ def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAddVariable
         variables.update(inAddVariables)
 
     if matched:
-        path = resolvePath(inDestinationPattern, variables)
+        path = None
+        if inAcceptUndefinedResults:
+            path = expandVariables(inDestinationPattern, variables)
+        else:
+            path = resolvePath(inDestinationPattern, variables)
 
         if (path is None or inUseDifferent) and inAllowDifferent != None:
             variables2 = variables.copy()
@@ -268,7 +272,12 @@ def translate(inSourcePath, inSourcePattern, inDestinationPattern, inAddVariable
                 else:
                     variables2[variableName] = value
 
-            return resolvePath(inDestinationPattern2, variables2)
+            result = None
+            if inAcceptUndefinedResults:
+                result = expandVariables(inDestinationPattern2, variables2)
+            else:
+                result = resolvePath(inDestinationPattern2, variables2)
+            return result
 
         return path
 
