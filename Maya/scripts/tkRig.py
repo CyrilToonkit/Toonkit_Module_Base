@@ -52,7 +52,7 @@ import tkSIGroups
 import PAlt as palt
 import tkNodeling as tkn
 import tkExpressions
-import tkProjects.tkContext as context
+import Toonkit_Core.tkProjects.tkContext as context
 
 import logging
 
