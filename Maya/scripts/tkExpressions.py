@@ -62,6 +62,7 @@ print Expr().compile(expr)
 import math
 import re
 import logging
+logging.basicConfig()
 import sys
 
 __author__ = "Cyril GIBAUD - Toonkit"

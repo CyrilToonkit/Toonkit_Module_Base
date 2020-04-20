@@ -66,6 +66,8 @@ import os
 import sys
 import re
 import logging
+logging.basicConfig()
+
 import base64
 import hashlib
 from string import ascii_lowercase

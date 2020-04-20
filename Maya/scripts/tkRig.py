@@ -55,7 +55,7 @@ import tkExpressions
 import Toonkit_Core.tkProjects.tkContext as context
 
 import logging
-
+logging.basicConfig()
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.WARN)
 

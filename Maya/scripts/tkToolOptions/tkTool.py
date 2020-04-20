@@ -84,6 +84,9 @@ class Tool(object):
 
         return inTool
 
+    def getToolsRepos(self):
+        return ["tkToolOptions"]
+
     def getChildTool(self, inToolName):
         if inToolName in self.children:
             return self.children[inToolName]
@@ -92,7 +95,12 @@ class Tool(object):
 
         if sys.version_info >= (2,7):
             import importlib
-            mod = importlib.import_module("tkToolOptions."+inToolName)
+            for repo in self.getToolsRepos():
+                try:
+                    mod = importlib.import_module("{0}.{1}".format(repo, inToolName))
+                    break
+                except:
+                    pass
         else:
             mod = __import__(inToolName)
 
