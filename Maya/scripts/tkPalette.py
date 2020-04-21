@@ -26,6 +26,7 @@
 import os
 from itertools import izip
 
+import pymel.core as pc
 import maya.cmds as mc
 import maya.mel as mel
 
@@ -50,8 +51,8 @@ def assignShader(inMaterial, inObj, inSG=None, inFaces=None):
     #return None
     shape = inObj
     if mc.nodeType(inObj) == "transform":
-        shapes = mc.listRelatives(inObj, shapes=True)
-        if len(shapes) > 0:
+        shapes = mc.listRelatives(inObj, shapes=True, fullPath=True)
+        if not shapes is None and len(shapes) > 0:
             shape = shapes[0]
         else:
             mc.warning("Can't find any shapes on object %s" % inObj)
@@ -85,7 +86,7 @@ def getShaders(inObj, inFirstOnly=True):
     shaders = []
     shapes = [inObj]
     if mc.nodeType(inObj) == "transform":
-        shapes = mc.listRelatives(inObj, shapes=True)
+        shapes = mc.listRelatives(inObj, shapes=True, fullPath=True)
 
     #Will store plugs where connections are coming from, to take only the first one into account
     managedPlugs = []
@@ -271,7 +272,9 @@ def setColors():
 
 def colorCommand(inColor):
     global PREVIZ_COLORS
-    selection = mc.ls(sl=True)
+    selection = [n.name() for n in pc.selected()]
+
+    print "selection",selection
 
     if len(selection) == 0:
         mc.warning("Please select some objects to color")
@@ -299,48 +302,46 @@ def getFromScene(inManagedOnly=False):
 
     PREVIZ_COLORS = {}
 
-    meshes = mc.ls(type="mesh")
+    meshes = pc.ls(type="mesh")
 
     for mesh in meshes:
-        if mc.getAttr(mesh + ".intermediateObject"):
+        if mesh.intermediateObject.get():
             continue
-        #and (not inManagedOnly or mesh in managed):
-        parents = mc.listRelatives(mesh, parent=True)
-        if parents != None and len(parents) > 0:
-            shortName = parents[0].split(":")[-1]
 
-            if inManagedOnly and not shortName in managed:
-                continue
+        shortName = mesh.getParent().name().split(":")[-1]
 
-            if shortName in excluded:
-                if not EXCLUDED_COLOR in PREVIZ_COLORS:
-                    PREVIZ_COLORS[EXCLUDED_COLOR] = []
-                PREVIZ_COLORS[EXCLUDED_COLOR].append(shortName)
-                continue
+        if inManagedOnly and not shortName in managed:
+            continue
 
-            shaders = getShaders(mesh, False)
-            if len(shaders) > 0:
-                if len(shaders) > 1:
-                    #print "Multiple shaders",mesh,shaders
-                    for shader in shaders:
-                        faces = getShaderFaces(mesh, shader)
-                        if len(faces) == 0:
-                            mc.warning("Can't get shader faces from {0} on {1}".format(shader, mesh))
-                            continue
-                        color = to0_255(mc.getAttr(shader + ".color")[0])
-                        if not color in PREVIZ_COLORS:
-                            PREVIZ_COLORS[color] = []
+        if shortName in excluded:
+            if not EXCLUDED_COLOR in PREVIZ_COLORS:
+                PREVIZ_COLORS[EXCLUDED_COLOR] = []
+            PREVIZ_COLORS[EXCLUDED_COLOR].append(shortName)
+            continue
 
-                        PREVIZ_COLORS[color].append("{0}.{1}".format(shortName, ";".join(faces)))
-                else:
-                    shader = shaders[0]
+        shaders = getShaders(mesh.name(), False)
+        if len(shaders) > 0:
+            if len(shaders) > 1:
+                #print "Multiple shaders",mesh,shaders
+                for shader in shaders:
+                    faces = getShaderFaces(mesh.name(), shader)
+                    if len(faces) == 0:
+                        mc.warning("Can't get shader faces from {0} on {1}".format(shader, mesh.name()))
+                        continue
                     color = to0_255(mc.getAttr(shader + ".color")[0])
                     if not color in PREVIZ_COLORS:
                         PREVIZ_COLORS[color] = []
 
-                    PREVIZ_COLORS[color].append(shortName)
+                    PREVIZ_COLORS[color].append("{0}.{1}".format(shortName, ";".join(faces)))
             else:
-                mc.warning("Can't get any shader from {0} !".format(mesh))
+                shader = shaders[0]
+                color = to0_255(mc.getAttr(shader + ".color")[0])
+                if not color in PREVIZ_COLORS:
+                    PREVIZ_COLORS[color] = []
+
+                PREVIZ_COLORS[color].append(shortName)
+        else:
+            mc.warning("Can't get any shader from {0} !".format(mesh.name()))
 
     initUI()
     tkc.deleteUnusedNodes()
@@ -552,13 +553,15 @@ def connectControls():
 
 def initUI(*args):
     meshesT=[]
-    meshes = mc.ls(type="mesh")
+    meshes = pc.ls(type="mesh")
 
     for mesh in meshes:
-        if not mc.getAttr(mesh + ".intermediateObject"):
-            parents = mc.listRelatives(mesh, parent=True)
-            if parents != None and len(parents) > 0 and not (parents[0] in meshesT):
-                meshesT.append(parents[0])
+        if mesh.intermediateObject.get():
+            continue
+
+        meshesT.append(mesh.getParent().name())
+
+    list(set(meshesT))
 
     managedMeshes = []
     mc.textScrollList("tkPalManagedLB", edit=True, removeAll=True)
