@@ -25,7 +25,7 @@ Maya scene batch script launcher
 """
 
 import tkBatcher
-from tkToolOptions.tkOptions import Options
+from Toonkit_Core.tkToolOptions.tkOptions import Options
 
 def do(inDataPath):
     data = Options(None, inDataPath)

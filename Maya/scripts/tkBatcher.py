@@ -35,7 +35,7 @@ import maya.cmds as mc
 import tkMayaCore as tkc
 import locationModule
 import Toonkit_Core.tkProjects.tkContext as tkContext
-from tkToolOptions.tkOptions import Options
+from Toonkit_Core.tkToolOptions.tkOptions import Options
 
 __author__ = "Cyril GIBAUD - Toonkit"
 

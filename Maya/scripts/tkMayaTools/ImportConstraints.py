@@ -19,7 +19,7 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
-from tkOptions import Options
+from Toonkit_Core.tkToolOptions.tkOptions import Options
 from tkMayaTool import MayaTool as Tool
 
 import tkMayaCore as tkc

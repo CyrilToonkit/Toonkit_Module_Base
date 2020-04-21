@@ -43,7 +43,7 @@ import os
 -------------------------------------------------------------------------------
 """
 
-from tkOptions import Options
+from Toonkit_Core.tkToolOptions.tkOptions import Options
 from tkMayaTool import MayaTool as Tool
 
 import pymel.core as pc

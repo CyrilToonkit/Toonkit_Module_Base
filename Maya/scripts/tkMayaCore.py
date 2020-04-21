@@ -129,11 +129,11 @@ import pymel.core.datatypes as dt
 from pymel import versions
 
 import locationModule
-from tkToolOptions.tkOptions import Options
+from Toonkit_Core.tkToolOptions.tkOptions import Options
 import OscarZmqString as ozs
 import OscarZmqMayaString as ozms
 import PAlt as palt
-import tkToolOptions.ToonkitMayaCore as ToonkitMayaCore
+import tkMayaTools.ToonkitMayaCore as ToonkitMayaCore
 import tkNodeling as tkn
 
 __author__ = "Cyril GIBAUD - Toonkit"
