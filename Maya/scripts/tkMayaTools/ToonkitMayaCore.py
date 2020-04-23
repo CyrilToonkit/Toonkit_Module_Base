@@ -24,6 +24,7 @@ import os
 import pymel.core as pc
 
 import locationModule
+import Toonkit_Core.tkCore as tc
 from Toonkit_Core.tkToolOptions.tkOptions import Options
 from tkMayaTool import MayaTool as Tool
 
@@ -227,6 +228,13 @@ class ToonkitMayaCore(Tool):
 
         if kwargs["option"].name == "debug":
             self.debug = kwargs["new"]
+            tc.getTool().options["debug"] = kwargs["new"]
+            tc.getTool().debug = kwargs["new"]
+            tc.getTool().saveOptions()
+
+        elif kwargs["option"].name == "project":
+            tc.getTool().options["project"] = kwargs["new"]
+            tc.getTool().saveOptions()
 
         elif kwargs["option"].name == "hidemenu":
             if kwargs["new"]:
