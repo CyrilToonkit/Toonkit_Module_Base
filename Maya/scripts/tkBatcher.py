@@ -351,6 +351,8 @@ def batcherInit(inPath):
         if "loadRefs" in options:
             mc.checkBox("batcherLoadReferencesCB", edit=True, value=options["loadRefs"])
 
+    initUI()
+
 def batcherOpenClick(*args):
     oldPath = mc.textField("batcherFilePathLE", query=True, text=True)
     dirname, filename = os.path.split(oldPath)
@@ -457,6 +459,51 @@ def batcherExploreSelectedClick(*args):
         path = nodesText[0].split("(")[1][:-1]
         subprocess.Popen(r'explorer /select,"'+path+'"')
 
+def batcherExportFilesClick(*args):
+    if RESULTS is None or len(RESULTS) == 0:
+        pc.warning("No results yet !")
+        return
+
+    choosenFile = mc.fileDialog2(caption="Export you file list", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
+
+    if choosenFile != None and len(choosenFile) > 0:
+        choosenFile = choosenFile[0]
+
+        with open(choosenFile, "w") as f:
+            f.write("\r\n".join([pc.textField("batcherPathLE", query=True, text=True)] + RESULTS.keys()))
+
+def batcherImportFilesClick(*args):
+    choosenFile = mc.fileDialog2(caption="Select your file list", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
+
+    if choosenFile != None and len(choosenFile) > 0:
+        global RESULTS
+        mc.textScrollList("batcherNodesLB", edit=True, removeAll=True)
+        RESULTS = {}
+
+        choosenFile = choosenFile[0]
+
+        content = None
+
+        with open(choosenFile) as f:
+            content = f.readlines()
+
+        if not content is None and len(content) > 0:
+            pattern=None
+            if "{" in content[0]:
+                pattern = content.pop(0).rstrip("\r\n")
+            pc.textField("batcherPathLE", edit=True, text=pattern or "{filePath}")
+
+            for line in content:
+                fullPath = line.rstrip("\r\n")
+                folderName,fileName = os.path.split(fullPath)
+
+                variables = {}
+                if pattern is None:
+                    RESULTS[fullPath] = {"filePath":fullPath}
+                    pc.textScrollList("batcherNodesLB", edit=True, append="{0} ({1})".format(fileName, fullPath))
+                elif(tkContext.match(pattern, fullPath, inVariables=variables)):
+                    RESULTS[fullPath] = variables
+
 def connectControls():
     #mc.textField("batcherPathLE", edit=True, cc=initUI)
     mc.button("batcherRefreshPathBT", edit=True, c=initUI)
@@ -474,6 +521,11 @@ def connectControls():
     mc.button("batcherImportSelectedBT", edit=True, c=batcherImportSelectedClick)
     mc.button("batcherReferenceSelectedBT", edit=True, c=batcherReferenceSelectedClick)
     mc.button("batcherExploreSelectedCB", edit=True, c=batcherExploreSelectedClick)
+
+    mc.button("batcherExportFilesBT", edit=True, c=batcherExportFilesClick)
+    mc.button("batcherImportFilesBT", edit=True, c=batcherImportFilesClick)
+
+    
 
 def initUI(*args):
     global RESULTS
