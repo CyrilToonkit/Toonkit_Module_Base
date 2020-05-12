@@ -425,6 +425,49 @@ def addToGroup(inGroupName, inObjects=[]):
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+def regRenameNode(inSearchPattern, inReplace, inConsiderNamespaces=True, inType=None, inShapeType=None):
+    """
+    Work with a tkPattern with the part to replace in brackets for instance : {start:.*}Cut(030){end:.*}
+    
+    returns the list of renamed pymel nodes
+    """
+    
+    mayaPattern = context.replaceVariables(inSearchPattern).replace("(","").replace(")","")
+    regPattern = context.toReg(inSearchPattern)
+    
+    renamed = []
+
+    mayaPatterns = [mayaPattern]
+    
+    if inConsiderNamespaces and not ":" in mayaPattern:
+        mayaPatterns = ["*:" + mayaPattern, "*:*:" + mayaPattern, mayaPattern]
+
+    kwargs = {}
+    if not inType is None:
+        kwargs["type"] = inType
+
+    matchingObjs = pc.ls(mayaPatterns, **kwargs)
+
+    for matchingObj in matchingObjs:
+        if not inShapeType is None:
+            shape = None
+            if hasattr(matchingObj, "getShape"):
+                shape = matchingObj.getShape()
+            if shape is None or shape.type() != inShapeType:
+                continue
+        
+        #Flip group
+        newPattern = "(" + regPattern.replace("(", "_CLOSINGPARENTHESIS_").replace(")", "(").replace("_CLOSINGPARENTHESIS_", ")") + ")"
+
+        oldName = matchingObj.name()
+        replaced = re.sub(newPattern, r"\g<1>" + inReplace + r"\g<2>", matchingObj.name())
+
+        if replaced != oldName:
+            matchingObj.rename(replaced)
+            renamed.append(matchingObj)
+
+    return renamed
+
 def buildAttr(inObject, inAttrDict, **kwargs):
     """
     Create or modify an attribute
