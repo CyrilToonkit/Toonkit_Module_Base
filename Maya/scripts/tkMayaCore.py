@@ -2700,9 +2700,11 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
         inMesh = inMesh.getShape()
     else:
         inTransform = inMesh.getParent()
-        
-    closestNode = pc.createNode("closestPointOnMesh", name=inMesh.name() + "_closestPoint")
-    pc.connectAttr(inMesh.name() + ".outMesh", closestNode.name() + ".inMesh")
+
+    isMesh = inMesh.type() == "mesh"
+
+    closestNode = pc.createNode("closestPointOnMesh" if isMesh else "closestPointOnSurface", name=inMesh.name() + "_closestPoint")
+    pc.connectAttr(inMesh.name() + (".outMesh" if isMesh else ".worldSpace[0]"), closestNode.name() + (".inMesh" if isMesh else ".inputSurface"))
     
     #Very stupid trick to get "object space" tranformations
     loc = pc.group(name="ObjectSpaceGetter",empty=True)
@@ -2723,17 +2725,21 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
     closestValues["position"] = (pc.getAttr(closestNode.name() + ".positionX"),pc.getAttr(closestNode.name() + ".positionY"),pc.getAttr(closestNode.name() + ".positionZ"))
     closestValues["u"] = pc.getAttr(closestNode.name() + ".parameterU")
     closestValues["v"] = pc.getAttr(closestNode.name() + ".parameterV")
-    closestValues["normal"] = (pc.getAttr(closestNode.name() + ".normalX"),pc.getAttr(closestNode.name() + ".normalY"),pc.getAttr(closestNode.name() + ".normalZ"))
-    closestValues["face"] = pc.getAttr(closestNode.name() + ".closestFaceIndex")
-    closestValues["vertex"] = pc.getAttr(closestNode.name() + ".closestVertexIndex")
-    
+    if isMesh:
+        closestValues["normal"] = (pc.getAttr(closestNode.name() + ".normalX"),pc.getAttr(closestNode.name() + ".normalY"),pc.getAttr(closestNode.name() + ".normalZ"))
+        closestValues["face"] = pc.getAttr(closestNode.name() + ".closestFaceIndex")
+        closestValues["vertex"] = pc.getAttr(closestNode.name() + ".closestVertexIndex")
+    else:
+        spans = isMesh.spansUV.get()
+        closestValues["u"] /= float(spans[0])
+        closestValues["v"] /= float(spans[1])
+
     if not inKeepNode:
         pc.delete(closestNode)
 
     return closestValues
 
 def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicule=True, inEnsureAttachment=True, inDetectionOffset=[0.0, 0.0, 0.0]):
-    #print "constrainToPoint",inObj, inRef, inOffset, inU, inV, useFollicule, inEnsureAttachment
     createdObjects = []
 
     if inU == None or inV == None:
@@ -2758,7 +2764,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         # creat follicle
         fol = pc.createNode( 'follicle', name=inObj +'_to_'+inRef.stripNamespace()+'_fol' )
 
-        # let's do a dirty special case for follicles applied in the case of a geoContrainer
+        # let's do a dirty special case for forollicles applied in the case of a geoContrainer
         #Spere_GeoCons:GeoConstrainer_Constrained_Output
         #Spere_GeoCons:GeoConstrainer_Root_RigParameters
 
@@ -2808,8 +2814,13 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
 
             parentObj = inObj.getParent()
 
+        isMesh = geoMesh.type() == "mesh"
+
         # connect
-        geoMesh.outMesh >> fol.inputMesh
+        if isMesh:
+            geoMesh.outMesh >> fol.inputMesh
+        else:
+            geoMesh.worldSpace[0] >> fol.inputSurface
 
         multMatrix = pc.createNode( 'multMatrix', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_multMatrix")
         geoMesh.worldMatrix[0] >> multMatrix.matrixIn[0]
