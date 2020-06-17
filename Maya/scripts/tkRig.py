@@ -297,6 +297,49 @@ def OscarRemoveControls(inControls, inHide=True, ns="*"):
             if modified:
                 prop.attr(attr).set(value)
 
+def getOscarNodesParams(inAttrShortName, inPrint=True):
+    
+    values = {}
+    
+    rootParams = pc.ls(["*:*_Root_SetupParameters", "*:*_Root_RigParameters", "*_Root_SetupParameters", "*_Root_RigParameters"])
+    
+    for rootParam in rootParams:
+        nodeName = str(rootParam.stripNamespace())
+        if "_Root_SetupParameters" in nodeName:
+            nodeName = nodeName[:nodeName.index("_Root_SetupParameters")]
+        else:
+            nodeName = nodeName[:nodeName.index("_Root_RigParameters")]
+
+        attrShortName = "{0}_{1}".format(nodeName, inAttrShortName)
+        
+        attrName = "{0}.{1}".format(rootParam.name(), attrShortName)
+        
+        if pc.objExists(attrName):
+            attr = rootParam.attr(attrShortName)
+            value = attr.get()
+            values[attr] = value
+            
+            if inPrint:
+                print attrName,":",value
+
+    return values
+
+def setOscarNodesParams(inAttrShortName, inAttrValue):
+    
+    rootParams = pc.ls(["*:*_Root_SetupParameters", "*:*_Root_RigParameters", "*_Root_SetupParameters", "*_Root_RigParameters"])
+    
+    for rootParam in rootParams:
+        nodeName = str(rootParam.stripNamespace())
+        if "_Root_SetupParameters" in nodeName:
+            nodeName = nodeName[:nodeName.index("_Root_SetupParameters")]
+        else:
+            nodeName = nodeName[:nodeName.index("_Root_RigParameters")]
+
+        attrShortName = "{0}_{1}".format(nodeName, inAttrShortName)
+        
+        if pc.objExists("{0}.{1}".format(rootParam.name(), attrShortName)):
+            rootParam.attr(attrShortName).set(inAttrValue)
+
 def refreshFrame():
     pc.currentTime(pc.currentTime())
 
@@ -2630,6 +2673,20 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
                         sclPow.outputX >> joints[i].sz
     return joints
 
+
+def makeStraightCurve(inName="curve1", inLength=3000, inPoints=10, inDegree=2, inAxis=2, inDirection=1):
+    increment = inLength/(inPoints - 1.0)
+    
+    xyz = [0.0, 0.0, 0.0]
+
+    points = [xyz[:]]
+    
+    for i in range(inPoints - 1):
+        xyz[inAxis] += increment * inDirection
+        points.append(xyz[:])
+        
+    return tkc.curve(points, inName, degree=inDegree)
+
 """
 import motionPathRig as mp
 reload(mp)
@@ -2643,7 +2700,7 @@ if len(sel) > 0:
 
 mp.motionPathRig(inCurve, inNb=10, inLength=10)
 """
-def motionPathRig(inCurve, inNb=10, inLength=10, inName="motionPathRig"):
+def motionPathRig(inCurve, inNb=10, inLength=10, inName="motionPathRig", inOscLayer=False, inOscPathAttrs=False, inCustomPathAttrs=None, inLocMax=100):
     """
     print "inCurve",inCurve
     print "inNb", inNb
@@ -2654,121 +2711,206 @@ def motionPathRig(inCurve, inNb=10, inLength=10, inName="motionPathRig"):
     upVCurve.ty.set(2.0)
     tkc.freezeTransform(upVCurve)
 
-    #upVCurveRebuilt = pc.rebuildCurve(upVCurve, ch=True, rpo=0, rt=0, end=1, kr=0, kcp=0, kep=1, kt=0, s=300, d=2, tol=0.01)[0]
+    parentKwargs = {"world":True}
+    curveParent = inCurve.getParent()
+    if not curveParent is None:
+        parentKwargs = {"parent":curveParent}
 
-    #Create the base spline rig (arbitrarily towards +Z)
-    clusters = clusterize(inCurve)
-    upVClusters = clusterize(upVCurve)
+    container = pc.group(empty=True, name=inCurve.name() + "_Root", **parentKwargs)
+    pathContainer = pc.group(empty=True, name=inCurve.name() + "_Path", parent=container)
+    rigContainer = pc.group(empty=True, name=inCurve.name() + "_Rig", parent=container)
 
-    container = pc.group(empty=True, world=True, name=inCurve.name() + "_Root")
+    pathContainer.addChild(inCurve)
+    pathContainer.addChild(upVCurve)
 
-    i = 0
-    for cluster in clusters:
-        ctrl = tkc.createRigObject(refObject=container, name=inCurve.name() + "_Ctrl1", type="Null", mode="child", match=False)
+    curveShape = inCurve.getShape()
 
-        ctrl.tx.set(cluster.rotatePivotX.get())
-        ctrl.ty.set(cluster.rotatePivotY.get())
-        ctrl.tz.set(cluster.rotatePivotZ.get())
+    #Create path "controllers" and deformers
+    controllers = []
+    deformers = []
 
-        ctrl.ry.set(-90)
+    for cv in inCurve.getShape().getCVs():
+        ctrl = tkc.createRigObject(refObject=pathContainer, name=inCurve.name() + "_Ctrl1", type="Null", mode="child", match=False)
+        ctrl.t.set(cv.x, cv.y, cv.z)
+        controllers.append(ctrl)
 
-        ctrl.addChild(cluster)
-        ctrl.addChild(upVClusters[i])
+        deform = tkc.createRigObject(refObject=ctrl, name=inCurve.name() + "_Def1", type="Deformer", mode="child", match=True)
+        deformers.append(deform)
 
-        i += 1
+    pc.skinCluster(deformers + [inCurve], maximumInfluences=1, toSelectedBones=True)
+    pc.skinCluster(deformers + [upVCurve], maximumInfluences=1, toSelectedBones=True)
 
     #Create main control and attributes
-    mainCtrl = tkc.createRigObject(refObject=None, name="Main_Ctrl", type="Null", mode="child", match=False)
+    mainCtrl = tkc.createRigObject(refObject=container, name="Main_Ctrl", type="Null", mode="child", match=False)
 
-    tkc.addParameter(inobject=mainCtrl, name="Follow", inType="int", default=0, min=0, max=1, softmin=0, softmax=1, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
-    tkc.addParameter(inobject=mainCtrl, name="Locomotion", inType="double", default=0, min=-1000000, max=1000000, softmin=-100, softmax=100, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="Locomotion", inType="double", default=0, min=-1000000, max=1000000, softmin=-inLocMax, softmax=inLocMax, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
     tkc.addParameter(inobject=mainCtrl, name="FromEnd", inType="int", default=0, min=0, max=1, softmin=0, softmax=1, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
-    tkc.addParameter(inobject=mainCtrl, name="Scale", inType="double", default=1.0, min=0.001, max=1000, softmin=.1, softmax=10, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
-    
+    tkc.addParameter(inobject=mainCtrl, name="Flipped", inType="int", default=0, min=0, max=1, softmin=0, softmax=1, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="Scale", inType="double", default=1.0, min=0.001, max=1000000, softmin=0.001, softmax=10, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="SmoothPath", inType="double", default=0.0, min=0.0, max=1000000, softmin=0.0, softmax=10.0, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+     
+    if inOscLayer:
+        tkc.addParameter(inobject=mainCtrl, name="OscAmplitude", inType="double", default=0.0, min=0.0, max=1000000, softmin=0.0, softmax=10, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+        tkc.addParameter(inobject=mainCtrl, name="OscFrequency", inType="double", default=1.0, min=0.001, max=1000000, softmin=0.001, softmax=10, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+        tkc.addParameter(inobject=mainCtrl, name="OscOffset", inType="double", default=0.0, min=-1000000, max=1000000, softmin=-inLocMax, softmax=inLocMax, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+
     tkc.addParameter(inobject=mainCtrl, name="U", inType="double", default=0, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+    tkc.addParameter(inobject=mainCtrl, name="AbsoluteLocomotion", inType="double", default=0, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
     tkc.addParameter(inobject=mainCtrl, name="Length", inType="double", default=inLength, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
     tkc.addParameter(inobject=mainCtrl, name="Number", inType="int", default=inNb, min=None, max=None, softmin=None, softmax=None, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
     
     mainCtrl.ty.set(5)
 
-    #Extract curve Info and calculate U in "Follow" or "Locomotion" modes
-    curveShape = inCurve.getShape()
-    upVCurveShape = upVCurve.getShape()
+    #Apply smooth operators
+    smooth = pc.smoothCurve(inCurve.name() + ".cv[*]", ch=1)[1]
+    mainCtrl.SmoothPath >> smooth.smoothness
 
+    smooth = pc.smoothCurve(upVCurve.name() + ".cv[*]", ch=1)[1]
+    mainCtrl.SmoothPath >> smooth.smoothness
+
+    #Extract curve Info and calculate U
     curveInfo = pc.createNode("curveInfo", name=inCurve.name() + "_info")
     curveShape.worldSpace[0] >> curveInfo.inputCurve
 
-    #Prepare 'from end' condition
-    fromEndCond = pc.createNode("condition", name=inCurve.name() + "_fromEnd_cond")
-    fromEndCond.secondTerm.set(1)
-    mainCtrl.FromEnd >> fromEndCond.firstTerm
+    #Prepare 'from end' condition (AbsoluteLocomotion)
+    tkn.condition(mainCtrl.FromEnd, 1, "==",
+        tkn.sub(curveInfo.arcLength, mainCtrl.Locomotion),
+        mainCtrl.Locomotion) >> mainCtrl.AbsoluteLocomotion
 
-    fromEnd_minus = pc.createNode("plusMinusAverage", name=inCurve.name() + "_fromEnd_minus")
-    fromEnd_minus.operation.set(2)#substract
-    curveInfo.arcLength >> fromEnd_minus.input1D[0]
-    mainCtrl.Locomotion >> fromEnd_minus.input1D[1]
-
-    fromEnd_minus.output1D >> fromEndCond.colorIfTrueR
-    mainCtrl.Locomotion >> fromEndCond.colorIfFalseR
-
-    scaleMul = pc.createNode("multDoubleLinear", name=mainCtrl.name() + "_scale_mul")
-    mainCtrl.Scale >> scaleMul.input1
-    fromEndCond.outColorR >> scaleMul.input2
-
-    lengthDivide = pc.createNode("multiplyDivide", name=mainCtrl.name() + "_length_divide")
-    lengthDivide.operation.set(2)
-    scaleMul.output >> lengthDivide.input1X
-    curveInfo.arcLength >> lengthDivide.input2X
-
-    lengthDivide.outputX >> mainCtrl.U
-
-    #sectionLength
-    mainCtrl.Length >> lengthDivide.input1Y
-    mainCtrl.Number >> lengthDivide.input2Y
+    #Divide the absolute locomotion by arcLength to get desired U
+    tkn.div(mainCtrl.AbsoluteLocomotion, curveInfo.arcLength) >> mainCtrl.U
     
-    sectionDivide = pc.createNode("multiplyDivide", name=mainCtrl.name() + "_section_divide")
-    sectionDivide.operation.set(2)
-    lengthDivide.outputY >> sectionDivide.input1X
-    curveInfo.arcLength >> sectionDivide.input2X
+    finalLength = tkn.mul(mainCtrl.Length, mainCtrl.Scale)
+
+    #Divide length by number of sections (Number - 1), then by arcLen, to get the length of 1 section
+    sectionLength = tkn.div(tkn.div(finalLength, tkn.add(mainCtrl.Number, -1)), curveInfo.arcLength)
+
+    locs = []
+    upVs = []
 
     #Create motion rig
     for i in range(inNb):
 
+        #Create "Up"
         up = pc.spaceLocator(name="{0}_Up_{1:02d}".format(inName, i))
+        upCns = tkc.pathConstrain(up, upVCurve, tangent=False, parametric=False, addPercent=False)
+        rigContainer.addChild(up)
+        upVs.append(up)
 
-        upCns = tkc.pathConstrain(up, upVCurve, tangent=True, parametric=False, addPercent=False)
-
+        #Create "Loc"
         loc = pc.spaceLocator(name="{0}_Loc_{1:02d}".format(inName, i))
-
         locCns = tkc.pathConstrain(loc, inCurve, tangent=True, parametric=False, addPercent=False)
+        rigContainer.addChild(loc)
+        locs.append(loc)
+
         locCns.frontAxis.set(0)#X
         locCns.upAxis.set(1)#Y
+        mainCtrl.Flipped >> locCns.inverseFront
 
         locCns.worldUpType.set(1)#Object Up
         up.worldMatrix[0] >> locCns.worldUpMatrix
 
         #U value
-        if i > 0:
-            sectionMul = pc.createNode("multDoubleLinear", name=loc.name() + "_section_mul")
-            sectionDivide.outputX >> sectionMul.input1
-            sectionMul.input2.set(i)
+        sectionIndex = tkn.condition(mainCtrl.Flipped, 1, "==", inNb - i - 1, i)
+        uValue = tkn.add(mainCtrl.U, tkn.mul(sectionIndex, sectionLength))
 
-            sectionAdd = pc.createNode("addDoubleLinear", name=loc.name() + "_section_add")
-            mainCtrl.U >> sectionAdd.input1
-            sectionMul.output >> sectionAdd.input2
+        uValue >> locCns.uValue
+        uValue >> upCns.uValue
 
-            sectionAdd.output >> upCns.uValue
-            sectionAdd.output >> locCns.uValue
-        else:
-            mainCtrl.U >> upCns.uValue
-            mainCtrl.U >> locCns.uValue
+    #Create oscillation Layer
+    oscLocs = None
+    oscUpVs = None
+    oscDeformers = None
+
+    if inOscLayer:
+        oscLocs = []
+        oscUpVs = []
+        oscDeformers = []
+
+        expr = "sin(({0} + {1} + {2}) * {3} * 0.15) * {4} * 20 * {5}"
+
+        oscContainer = pc.group(empty=True, name=inCurve.name() + "_Osc", parent=rigContainer)
+
+        #Create additionnal curves
+        rigPoints = []
+        upVPoints = []
+
+        for i in range(inNb):
+            reversedIndex = inNb - i - 1
+            loc = locs[reversedIndex]
+            rigPoints.append(loc.t.get())
+            upVPoints.append(upVs[reversedIndex].t.get())
+
+            #Add deformer with sine wave expression
+            deform = tkc.createRigObject(refObject=loc, name="{0}_OscCurve_Def{1}".format(inName, reversedIndex), type="Deformer", mode="child", match=True)
+            deform.radius.set(.5)
+            oscDeformers.append(deform)
+
+        oscCurve = tkc.curve(rigPoints, "{0}_OscCurve".format(inName), parent=oscContainer, degree=curveShape.degree())
+        oscUpVCurve = tkc.curve(upVPoints, "{0}_OscCurve_UPV".format(inName), parent=oscContainer, degree=curveShape.degree())
+
+        #Extract curve Info and calculate U
+        oscCurveInfo = pc.createNode("curveInfo", name=oscCurve.name() + "_info")
+        oscCurve.getShape().worldSpace[0] >> oscCurveInfo.inputCurve
+
+        #Divide length by number of sections (Number - 1), then by arcLen, to get the length of 1 section
+        oscAbsSectionLength = tkn.div(finalLength, tkn.add(mainCtrl.Number, -1))
+        oscSectionLength = tkn.div(oscAbsSectionLength, oscCurveInfo.arcLength)
+        
+        #Create motion rig
+        for i in range(inNb):
+
+            #Create "Up"
+            up = pc.spaceLocator(name="{0}_OscUp_{1:02d}".format(inName, i))
+            upCns = tkc.pathConstrain(up, oscUpVCurve, tangent=False, parametric=False, addPercent=False)
+            oscContainer.addChild(up)
+            oscUpVs.append(up)
+
+            #Create "Loc"
+            loc = pc.spaceLocator(name="{0}_OscLoc_{1:02d}".format(inName, i))
+            locCns = tkc.pathConstrain(loc, oscCurve, tangent=True, parametric=False, addPercent=False)
+            tkc.addParameter(inobject=loc, name="Oscillate", inType="double", default=1.0, min=-1000000, max=1000000, softmin=0.0, softmax=10, nicename="", expose=True, containerName="", readOnly=False, booleanType=0, skipIfExists=True, keyable=True)
+            oscContainer.addChild(loc)
+            oscLocs.append(loc)
+
+            locCns.frontAxis.set(0)#X
+            locCns.upAxis.set(1)#Y
+            locCns.inverseFront.set(True)
+
+            locCns.worldUpType.set(1)#Object Up
+            up.worldMatrix[0] >> locCns.worldUpMatrix
+
+            #U value
+            sectionOffset = tkn.mul(oscSectionLength, i)
+
+            sectionOffset >> locCns.uValue
+            sectionOffset >> upCns.uValue
+
+            #cond = tkn.condition(mainCtrl.Flipped, 1, "==", -1, 1)
+
+            code = "{0} = {1}".format(
+                oscDeformers[i].tz.name(),
+                expr.format(tkn.mul(tkn.mul(mainCtrl.Locomotion, tkn.condition(mainCtrl.Flipped, 1, "==", -1, 1)), tkn.condition(mainCtrl.FromEnd, 1, "==", -1, 1)),
+                    mainCtrl.OscOffset,
+                    tkn.mul(oscAbsSectionLength, -i),
+                    mainCtrl.OscFrequency,
+                    mainCtrl.OscAmplitude,
+                    loc.Oscillate)
+                )
+
+            node = pc.expression(s=code, name="{0}_OscCurve_Def1_Expr".format(inName))
+            pc.expression(node, edit=True, alwaysEvaluate=False)
+
+        pc.skinCluster(oscDeformers + [oscCurve], maximumInfluences=1, toSelectedBones=True)
+        pc.skinCluster(oscDeformers + [oscUpVCurve], maximumInfluences=1, toSelectedBones=True)
+
+        return (controllers, oscLocs or locs)
 
 """
 import SuperIK
 reload(SuperIK)
 SuperIK.createSuperIK(pc.selected()[0], pc.selected()[1], pc.selected()[2], pc.selected()[3])
 """
-
 def createSuperIK(inCtrl, *args):
     if len(args) == 3:
         createSuperIKLink(inCtrl, args[0], inValue=1.0)

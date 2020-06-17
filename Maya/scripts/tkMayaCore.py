@@ -1012,6 +1012,8 @@ def getOscarType(node):
         oscartype = "Curve"
     elif mayatype == "mesh":
         oscartype = "Mesh"
+    elif mayatype == "nurbsSurface":
+        oscartype = "Nurbs"
     elif mayatype == "lattice":
         oscartype = "Lattice"
     elif mayatype == "baselattice":
@@ -2694,6 +2696,7 @@ def setDisplay(node, trs=(dt.Vector(0.0,0.0,0.0), dt.EulerRotation(0.0,0.0,0.0),
         
 
 def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
+    print "closestPoint(", inMesh, inPositions, inKeepNode
     inTransform = inMesh
     
     if inMesh.type() == "transform":
@@ -2706,6 +2709,8 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
     closestNode = pc.createNode("closestPointOnMesh" if isMesh else "closestPointOnSurface", name=inMesh.name() + "_closestPoint")
     pc.connectAttr(inMesh.name() + (".outMesh" if isMesh else ".worldSpace[0]"), closestNode.name() + (".inMesh" if isMesh else ".inputSurface"))
     
+    print "closestNode",closestNode
+
     #Very stupid trick to get "object space" tranformations
     loc = pc.group(name="ObjectSpaceGetter",empty=True)
     pc.setAttr(loc.name() + ".tx", inPositions[0])
@@ -2722,15 +2727,16 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
 
     closestValues = {}
     
-    closestValues["position"] = (pc.getAttr(closestNode.name() + ".positionX"),pc.getAttr(closestNode.name() + ".positionY"),pc.getAttr(closestNode.name() + ".positionZ"))
-    closestValues["u"] = pc.getAttr(closestNode.name() + ".parameterU")
-    closestValues["v"] = pc.getAttr(closestNode.name() + ".parameterV")
+    closestValues["position"] = (closestNode.positionX.get(), closestNode.positionY.get(), closestNode.positionZ.get())
+    closestValues["u"] = closestNode.parameterU.get()
+    closestValues["v"] = closestNode.parameterV.get()
+
     if isMesh:
-        closestValues["normal"] = (pc.getAttr(closestNode.name() + ".normalX"),pc.getAttr(closestNode.name() + ".normalY"),pc.getAttr(closestNode.name() + ".normalZ"))
-        closestValues["face"] = pc.getAttr(closestNode.name() + ".closestFaceIndex")
-        closestValues["vertex"] = pc.getAttr(closestNode.name() + ".closestVertexIndex")
+        closestValues["normal"] = (closestNode.normalX.get(), closestNode.normalY.get(), closestNode.normalZ.get())
+        closestValues["face"] = closestNode.closestFaceIndex.get()
+        closestValues["vertex"] = closestNode.closestVertexIndex.get()
     else:
-        spans = isMesh.spansUV.get()
+        spans = inMesh.spansUV.get()
         closestValues["u"] /= float(spans[0])
         closestValues["v"] /= float(spans[1])
 
@@ -2740,6 +2746,8 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
     return closestValues
 
 def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicule=True, inEnsureAttachment=True, inDetectionOffset=[0.0, 0.0, 0.0]):
+    print "constrainToPoint(", inObj, inRef, inOffset, inU, inV, useFollicule, inEnsureAttachment, inDetectionOffset
+
     createdObjects = []
 
     if inU == None or inV == None:
@@ -3819,6 +3827,10 @@ def getPointsCount(inObject):
         shapes = getShapes(inObject)
         if len(shapes) > 0:
             return pc.getAttr(shapes[0] + ".sDivisions") * pc.getAttr(shapes[0] + ".tDivisions") * pc.getAttr(shapes[0] + ".uDivisions")
+    if oscarType == "Nurbs":
+        shapes = getShapes(inObject)
+        if len(shapes) > 0:
+            return shapes[0].numCVsInU() * shapes[0].numCVsInV()
     else:
         return pc.polyEvaluate(inObject, vertex=True)
 
@@ -4337,7 +4349,6 @@ def getWeights(inObject, inInfluence=None):
     if not inInfluence is None:
         if not isinstance(inInfluence, int):
             inInfluence = getNode(inInfluence)
-        else:
             inInfluence = infObjs.index(inInfluence)
 
         return [w * 100.0 for w in skin.getWeights(skin.getGeometry()[-1], influenceIndex=inInfluence)]
@@ -6660,6 +6671,122 @@ def showSynopTiK():
         #print str(cmdLine)
         subprocess.Popen(SYNOPTIKPATH + " " + " ".join(cmdLine))
 
+DEFORMERS_CRITERIA = [
+    {
+        "name":"unused",
+        "pattern":"{Prefix}_HandRig_Hand_Deform",
+    },
+    {
+        "name":"unused",
+        "type":"joint",
+        "typeNegate":True,
+    },
+    {
+        "name":"twists",
+        "pattern":"{Prefix}_Twist{Location:(_Up|_Dwn)*}_{Number:[0-9]*}_Deform",
+    },
+    {
+        "name":"semi",
+        "pattern":"{Prefix}_Semi_Deform",
+    },
+    {
+        "name":"eyes",
+        "pattern":"{Prefix}_Eye_{Suffix}",
+    },
+    {
+        "name":"tongue",
+        "pattern":"{Prefix}Tongue_{Suffix}",
+    },
+    {
+        "name":"breath",
+        "pattern":"{Prefix}_Breath_{Suffix}",
+    },
+    {
+        "name":"teeth",
+        "pattern":"{Prefix}_Teeth_{Suffix}",
+    },
+    {
+        "name":"fingers",
+        "pattern":"{Prefix}_HandRig_{Suffix}",
+        "parent":"body",
+    },
+    {
+        "name":"squash",
+        "pattern":"{Prefix}Head_Squash_{Suffix}",
+    },
+    {
+        "name":"worldDef",
+        "pattern":"{Prefix}World_Main_Deform",
+    },
+]
+
+def objectMatches(inObject, inCriterion):
+    pattern = inCriterion.get("pattern")
+    if not pattern is None and not "{" in pattern:
+        pattern = "{{value:{0}}}".format(pattern)
+    patternDiffer = inCriterion.get("patternNegate", False)
+    
+    type = inCriterion.get("type")
+    if not type is None and not "{" in type:
+        type = "{{value:{0}}}".format(type)
+    typeDiffer = inCriterion.get("typeNegate", False)
+
+    if not pattern is None and ctx.match(pattern, inObject.name()) == patternDiffer:
+        return False
+
+    if not type is None and ctx.match(type, inObject.type()) == typeDiffer:
+        return False
+
+    return True
+
+def filterObjects(inObjects, inCriteria, inDefaultName="unfiltered", inCreateSets=True, inRootSetName="filtered"):
+    default=inObjects[:]
+    
+    collections = {}
+    
+    for obj in inObjects:
+        matchingCriterion=None
+        
+        for criterion in inCriteria:
+            if objectMatches(obj, criterion):
+                matchingCriterion = criterion
+                break
+                
+        if not matchingCriterion is None:
+            default.remove(obj)
+            
+            if not matchingCriterion["name"] in collections:
+                collections[matchingCriterion["name"]] = [obj]
+            else:
+                collections[matchingCriterion["name"]].append(obj)
+
+    if len(default) > 0:
+        if inDefaultName in collections:
+            collections[inDefaultName].extend(default)
+        else:
+            collections[inDefaultName] = default
+    
+    if inCreateSets:
+        mayaSets = []
+        for name, content in collections.iteritems():
+            pc.select(content)
+            mayaSets.append(pc.sets(name=name))
+        
+        if len(mayaSets) > 0:
+            pc.select(mayaSets, noExpand=True)
+            pc.sets(name=inRootSetName)
+            
+            criteriaDict={i["name"]:i for i in inCriteria}
+            
+            for mayaSet in mayaSets:
+                if mayaSet.name() in criteriaDict:
+                    parent = criteriaDict[mayaSet.name()].get("parent")
+                    if not parent is None and pc.objExists(parent):
+                        pc.sets(parent, forceElement=mayaSet)
+
+    return collections
+
+
 def getAssets(inCategory=""):
     assets=[]
     assetsProps = pc.ls("*:*" + CONST_KEYSETSPROP)
@@ -6967,6 +7094,41 @@ def checkGeometry(obj):
         print "No problems found on " + obj.name()
         
     return problems == 0
+
+ALLOWEDNODES = ["transform", "joint", "skinCluster", "ffd", "baseLattice", "wrap", "blendShape", "groupParts", "groupId", "shadingEngine"]
+TYPES = ["mesh", "lattice", "nurbsCurve", "nurbsSurface"]
+
+def checkHistory(inObjects=None, inAllowedNodes=None, inCheckTypes=None):
+    inAllowedNodes = inAllowedNodes or ALLOWEDNODES
+    inCheckTypes = inCheckTypes or TYPES
+    
+    objs = None
+
+    if not inObjects is None:
+        if not isinstance(inObjects, (list, tuple)):
+            inObjects = [inObjects]
+
+        objs = [obj for obj in tkc.getNodes(inObjects) if obj.type() in inAllowedNodes]
+    else:
+        objs = pc.ls(type=inCheckTypes)
+
+    allAllowed = inAllowedNodes + inCheckTypes
+
+    defectObjects = []
+
+    for obj in objs:
+        forbidden = [defo for defo in pc.listHistory(obj) if not defo.type() in allAllowed]
+        
+        if len(forbidden) > 0:
+            defectObjects.append(obj)
+            pc.warning("{0} have forbidden history ({1})".format(obj, ",".join(["{0}[{1}]".format(n.name(), n.type()) for n in objs])))
+
+    if len(defectObjects) > 0:
+        pc.select(defectObjects)
+    else:
+        print "No problematic history found on given objects ({0})".format(",".join([n.name() for n in objs]))
+
+    return defectObjects
 
 def killTurtle(*args):
     pc.mel.eval("ilrClearScene")

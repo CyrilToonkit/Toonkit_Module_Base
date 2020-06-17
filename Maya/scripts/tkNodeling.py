@@ -491,9 +491,11 @@ def conditionOr(inAttr, inCond, **kwargs):
 
 @profiled
 def conditionAnd(inAttr, inCond, **kwargs):
+    print "conditionAnd",inAttr,inCond
+
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False)
-    print "++oldConds",oldConds
+    #print "++oldConds",oldConds
     if len(oldConds) > 0:
         oldCond = oldConds[0]
 
@@ -503,10 +505,10 @@ def conditionAnd(inAttr, inCond, **kwargs):
 
     if not oldCond is None:
         oldCondOut = get1DOut(oldCond)
-        print "++oldCond",oldCond,"oldCondOut",oldCondOut
+        #print "++oldCond",oldCond,"oldCondOut",oldCondOut
 
         if oldCond.name() != inCond.node().name():
-            print "++oldCondOut.disconnect(",inAttr
+            #print "++oldCondOut.disconnect(",inAttr
             oldCondOut.disconnect(inAttr)
 
             if oldCond.type() == "condition" and inCond.type() == "condition":

@@ -351,10 +351,16 @@ def matchPointPositionsFromInfluences(inRef, inTarget, inInfluences, inSkinGeome
     _matchPointPositions(inRef, inTarget, weightMap)
 
 def cutBsFromInfluences(inRef, inTarget, inInfluences, inSkinGeometry=None):
-    for influence in inInfluences:
-        infMesh = duplicateAndClean(inTarget.name(), "{0}_{1}".format(inTarget.name(), str(influence.stripNamespace())))
-        matchPointPositionsFromInfluences(inRef, pc.PyNode(infMesh), influence)
+    results = []
 
+    for influence in inInfluences:
+        infMesh = duplicateAndClean(inTarget.name(), "{0}_{1}".format(inRef.name(), str(influence.stripNamespace())))
+        node = pc.PyNode(infMesh)
+        results.append(node)
+
+        matchPointPositionsFromInfluences(inRef, node, influence, inSkinGeometry=inSkinGeometry)
+
+    return results
 #cutLeftRight(pc.selected()[0], pc.selected()[1], 2.0)
 def cutLeftRight(inRef, inTarget, treshold=2.0):
     if mc.objExists(inTarget.name() + "_Left"):

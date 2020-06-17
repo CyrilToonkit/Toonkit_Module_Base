@@ -764,46 +764,53 @@ def deletePTAttributes(inExceptPattern=None, inExceptParamsPattern=None, inDropS
 
     return uselessAttributes
 
-def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVisible=False, inKeepActive=None, inRecur=0):
+def deactivate(inObj, inCond=None, inCondVis=None, inExceptTypes=None, inKeepVisible=False, inKeepActive=None, inRecur=0, inDeactivated=None):
     #print " " * inRecur + "DEACTIVATE",inObj,inCond,inCondVis,inExceptTypes
     if not inKeepActive is None and inObj.name() in inKeepActive:
         return
+
+    inDeactivated = inDeactivated if not inDeactivated is None else []
 
     if isinstance(inObj, pc.nodetypes.Transform):
         if not inKeepVisible:
             if inCondVis is None:
                 inObj.v.set(0)
             else:
-                tkn.conditionAnd(inObj.v, inCondVis)
-        
+                if not inObj.v.name() in inDeactivated:
+                    tkn.conditionAnd(inObj.v, inCondVis)
+                    inDeactivated.append(inObj.v.name())
+
         for shape in inObj.getShapes():
-            deactivate(shape, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inKeepActive=inKeepActive, inRecur=inRecur+1)
+            deactivate(shape, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inKeepActive=inKeepActive, inRecur=inRecur+1, inDeactivated=inDeactivated)
 
     elif isinstance(inObj, pc.nodetypes.Mesh):
         if not inKeepVisible:
             if inCondVis is None:
                 inObj.v.set(0)
             else:
-                tkn.conditionAnd(inObj.v, inCondVis)
+                if not inObj.v in inDeactivated:
+                    tkn.conditionAnd(inObj.v, inCondVis)
+                    inDeactivated.append(inObj.v)
 
         defs = pc.listHistory(inObj, gl=True, pdo=True, lf=True, f=False, il=2)
         if defs != None:
             for deform in defs:
                 if pc.attributeQuery("envelope" , node=deform, exists=True):
                     if inExceptTypes is None or not deform.type() in inExceptTypes:
-                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inKeepActive=inKeepActive, inRecur=inRecur+1)
-                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inKeepActive=inKeepActive, inRecur=inRecur+1)
-    # else:# else:
-    #    pc.warning("Don't know how to deactivate {0} of type {1}".format(inObj, type(inObj)))
+                        deactivate(deform, inCond=inCond, inCondVis=inCondVis, inExceptTypes=inExceptTypes, inKeepVisible=inKeepVisible, inKeepActive=inKeepActive, inRecur=inRecur+1, inDeactivated=inDeactivated)
 
     if inCond is None:
         inObj.nodeState.set(2)
     else:
-        tkn.conditionAnd(inObj.nodeState, inCond)
+        if not inObj.nodeState.name() in inDeactivated:
+            tkn.conditionAnd(inObj.nodeState, inCond)
+            inDeactivated.append(inObj.nodeState.name())
 
 def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateValue=1, inName=None, inReplaceDeformers=None, inIgnoreTags=["hd"], inKeepOrphans=None, inForceProxy=None, inDropProxy=None, inExistingProxies=None, inKeepActive=None, inPolyReduceMin=0, inPolyReduceMax=0, inHide=True, inNeedProxies=True, **kwargs):
     if inRootsKeep is None and inRootsRemove is None:
         raise ValueError("inRootsKeep and inRootsRemove can't both be None !")
+
+    deactivated = []
 
     inKeepOrphans = inKeepOrphans or []
 
@@ -840,7 +847,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     for cn in cnsAll:
         #DEACTTIVATE CONSTRAINT
-        deactivate(cn, cond, condVis, inKeepActive=inKeepActive)
+        deactivate(cn, cond, condVis, inKeepActive=inKeepActive, inDeactivated=deactivated)
 
     if len(externalOwners) > 0:
         pc.warning("External Owners : {0} {1}".format(len(externalOwners), externalOwners))
@@ -931,7 +938,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
         print "-",geo,geo.type()
 
         if not isinstance(geo, pc.nodetypes.DagNode):
-            deactivate(geo, cond, condVis)
+            deactivate(geo, cond, condVis, inDeactivated=deactivated)
             continue
 
         underGeo = None
@@ -1055,19 +1062,20 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                             removedInfs = tkc.removeUnusedInfs(newSkin)
 
                         proxies.append(proxy)
-                        deactivate(proxy, inverse, inverseVis, inKeepVisible=not inHide, inKeepActive=inKeepActive)
+                        deactivate(proxy, inverse, inverseVis, inKeepVisible=not inHide, inKeepActive=inKeepActive, inDeactivated=deactivated)
                         #------------------------
 
         #Connect "old" geometry
         #------------------------
-        deactivate(geo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(geo), inKeepActive=inKeepActive)
+        deactivate(geo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(geo), inKeepActive=inKeepActive, inDeactivated=deactivated)
 
         if underGeo is not None:
             #DEACTTIVATE GEOMETRY
-            deactivate(underGeo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(underGeo), inKeepActive=inKeepActive)
+            deactivate(underGeo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(underGeo), inKeepActive=inKeepActive, inDeactivated=deactivated)
 
     print "geos",len(geos),geos
     print "proxies",len(proxies),proxies
+    print "deactivated",len(deactivated),deactivated
 
 def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS", inDisconnectConflicting=False, inRecut=True, inRecutTreshold=2.0, inUseTopLevel=False):
     if inShapeAliases is None:
