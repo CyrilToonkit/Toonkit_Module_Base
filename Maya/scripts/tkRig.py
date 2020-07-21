@@ -4866,7 +4866,7 @@ def storePoseInPlace(inObjects=None):
 
     for obj in inObjects:
         pose = saveSimplePose([obj])
-        decorate(obj, pose)
+        tkc.decorate(obj, pose)
 
 def loadPoseInPlace(inObjects=None, inNs=None):
     inObjects = inObjects or pc.selected()
@@ -4875,7 +4875,7 @@ def loadPoseInPlace(inObjects=None, inNs=None):
         pose = {}
 
         for obj in inObjects:
-            decoration = readDecoration(obj)
+            decoration = tkc.readDecoration(obj)
             if len(decoration) > 0:
                 pose.update(decoration)
 
