@@ -1736,7 +1736,19 @@ def addBuffer(inTarget, inSuffix=CONST_BUFFERSUFFIX):
     pc.setAttr(name + ".visibility", keyable=False)
 
     matchTRS(myBuffer, inTarget)#, inLocalApproach=True)
+
+    #Unlock / relock
+    attrs = {}
+    for channel in CHANNELS:
+        attr = inTarget.attr(channel)
+        attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+        attr.setLocked(False)
+
     pc.parent(inTarget, myBuffer)
+
+    for channel, info in attrs.iteritems():
+        attr = inTarget.attr(channel)
+        attr.setLocked(info[0])
 
     return myBuffer
 
@@ -4449,21 +4461,46 @@ def addWeights(inObj, inInfluences, inWeights):
     #Finally set weights
     setWeights(inObj, [n.name() for n in newInfs], newWeights)
 
+def getPointInfluences(inSkin, inInfluences, inPointIndex):
+    NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
 
-def limitDeformers(inObj, inMax=4, inVerbose=False):
-    inObj = getNode(inObj)
-    skinCls = getSkinCluster(inObj)
+    NSkin = len(inSkin)
+    NVerts = NSkin / NInfs
     
-    influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
+    return [inSkin[i] for i in range(inPointIndex, NSkin , NVerts)]
+
+def setPointInfluences(inSkin, inInfluences, inPointIndex, inValues):
+    NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
+
+    NSkin = len(inSkin)
+    NVerts = NSkin / NInfs
     
-    pointsN = pc.polyEvaluate(inObj, vertex=True)
+    for i in range(inPointIndex, NSkin , NVerts):
+        inSkin[i] = inValues.pop(0)
+        
+    return inSkin
+
+def _limitDeformers(inSkin, inInfluences, inMax=4, inVerbose=False, inProgress=True):
+    NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
+
+    NSkin = len(inSkin)
+    pointsN = NSkin / NInfs
     
+    gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+    if inProgress:
+        pc.progressBar( gMainProgressBar,
+                edit=True,
+                beginProgress=True,
+                isInterruptable=False,
+                status="Limit deformers...",
+                maxValue=pointsN)
+
     for i in range(pointsN):
-        values = pc.skinPercent( skinCls, '{0}.vtx[{1}]'.format(inObj, i), query=True, value=True)
+        values = getPointInfluences(inSkin, inInfluences, i)
         
         inf_vals = []
         for j in range(len(values)):
-            inf_vals.append([influences[j], values[j]])
+            inf_vals.append([inInfluences[j], values[j]])
 
         #sort by value
         inf_vals.sort(key=lambda v: -v[1])
@@ -4485,8 +4522,8 @@ def limitDeformers(inObj, inMax=4, inVerbose=False):
             if inVerbose:
                 print "{0} have {1} deformers on vertex {2} ({3} to remove)".format(inObj, counter, i, counter - inMax)
 
-            currentTotal = 1.0 - remainingWeight
-            mul = 1.0 / currentTotal
+            currentTotal = 100.0 - remainingWeight
+            mul = 100.0 / currentTotal
             
             for inf_val in inf_vals:
                 if inf_val[1] <= 0.0:
@@ -4495,9 +4532,28 @@ def limitDeformers(inObj, inMax=4, inVerbose=False):
                 inf_val[1] = inf_val[1] * mul
             
             #resort
-            inf_vals.sort(key=lambda v: influences.index(v[0]))
+            inf_vals.sort(key=lambda v: inInfluences.index(v[0]))
             
-            pc.skinPercent( skinCls, '{0}.vtx[{1}]'.format(inObj, i), transformValue=inf_vals)
+            setPointInfluences(inSkin, inInfluences, i, [l[1] for l in inf_vals])
+            
+        if inProgress:
+            pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+    if inProgress:
+        pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+    return inSkin
+
+def limitDeformers(inObj, inMax=4, inVerbose=False, inProgress=True):
+    inObj = getNode(inObj)
+    skinCls = getSkinCluster(inObj)
+
+    skin = getWeights(inObj)
+    influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
+    
+    skin = _limitDeformers(skin, influences, inMax=inMax, inVerbose=inVerbose, inProgress=inProgress)
+    
+    setWeights(inObj, inInfluences=influences, inValues=skin, inMode=0, inOpacity=1.0, inNormalize=True)
 
 def getInfluencedPoints(inObj, inInfluences):
     points = []
@@ -4558,7 +4614,9 @@ def deserializeSkin(serializedSkin):
                         obj = subObj
                         break
 
-        weights = eval(weightsString)
+        weightsString = weightsString.strip("[]")
+        weights = [float(f) for f in weightsString.split(",")]
+
         joints = eval(jointNames)
         if pc.objExists(joints[0]):
             ns = ""
@@ -5611,6 +5669,37 @@ def addParameter(inobject=None, name="NewParam", inType="double", default=None, 
         pc.setAttr(objectName + "." + name, keyable=False, channelBox=True, lock=True )
 
     return objectName + "." + name
+
+DECORATE_PREFIX = "TkDecorate_"
+def decorate(inObj, inAttrs, inPrefix=DECORATE_PREFIX):
+    """Add attributes on an dagobject (with an added prefix), based on a dictionary key/values"""
+
+    for attrName, attrValue in inAttrs.iteritems():
+        attrName = inPrefix + attrName
+
+        if not pc.hasAttr(inObj, attrName):
+            inObj.addAttr(attrName, dataType='string')
+
+        inObj.attr(attrName).set(str(attrValue), type="string")
+
+def readDecoration(inObj, inPrefix=DECORATE_PREFIX):
+    """Read a dagobject custom attributes (starting with a prefix) and return them in a dictionary"""
+    attrs = getParameters(inObj)
+
+    decoration = {}
+
+    for attr in attrs:
+        if attr.startswith(inPrefix):
+            value = inObj.attr(attr).get()
+            #Brute-force deserialize the value
+            try:
+                value = eval(value)
+            except:
+                pass
+
+            decoration[attr[len(inPrefix):]] = value
+
+    return decoration
 
 PPDTYPES= { "int":"Int32Array",
             "vector":"vectorArray",

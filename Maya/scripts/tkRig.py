@@ -820,35 +820,43 @@ def createControlLayer(inRefObj, inRigObj, considerPosition=False, considerRotat
     tkc.matchTRS(parentMatcher, parentObj)
     if not localOnly:
         tkc.constrain(parentMatcher, parentObj)
+    #lock
+    for channel in tkc.CHANNELS:
+        attr = parentMatcher.attr(channel).setLocked(True)
 
     localSpace = pc.group(name=inRigObj.name() + "_localSpace", empty=True, parent=inRefObj)
     tkc.matchTRS(localSpace, inRigObj)
+    #lock
+    for channel in tkc.CHANNELS:
+        attr = localSpace.attr(channel).setLocked(True)
 
     localMatcher = pc.group(name=inRigObj.name() + "_localMatcher", empty=True, parent=parentMatcher)
     tkc.matchTRS(localMatcher, inRigObj)
-    
+
     if not pc.attributeQuery( inAttrName,node=inRigObj ,exists=True ):
-        pc.addAttr(inRigObj, at="long", longName=inAttrName, keyable=True, defaultValue=1.0, minValue=0.0, maxValue=1.0, softMinValue=0.0, softMaxValue=1.0)
+        pc.addAttr(inRigObj, longName=inAttrName, keyable=True, defaultValue=1.0, minValue=0.0, maxValue=1.0, softMinValue=0.0, softMaxValue=1.0)
         pc.setAttr("{0}.{1}".format(inRigObj.name(), inAttrName), 1)
 
-    cns = tkc.constrain(localMatcher, localSpace)
+    tkc.constrain(localMatcher, localSpace)
+    cns = tkc.constrain(localMatcher, parentMatcher)
+
+    #lock
+    for channel in tkc.CHANNELS:
+        attr = localMatcher.attr(channel).setLocked(True)
+
+    target0Name = localSpace.stripNamespace()+"W0"
+    target1Name = parentMatcher.stripNamespace()+"W1"
+
+    activationAttr = tkn.mul(tkc.getNode(inGlobalBlendAttrName), inRigObj.attr(inAttrName))
+    activationAttr >> cns.attr(target0Name)
+    tkn.reverse(activationAttr) >> cns.attr(target1Name)
+
     if considerRotation:
-        connectThrough(localMatcher.name() + ".rx", buffer.name() + ".rx", inRigObj.name() + "." + inAttrName, inGlobalBlendAttrName)
-        connectThrough(localMatcher.name() + ".ry", buffer.name() + ".ry", inRigObj.name() + "." + inAttrName, inGlobalBlendAttrName)
-        connectThrough(localMatcher.name() + ".rz", buffer.name() + ".rz", inRigObj.name() + "." + inAttrName, inGlobalBlendAttrName)
-    else:
-        pc.disconnectAttr(cns.name() + ".constraintRotateX", localMatcher.name() + ".rotateX")
-        pc.disconnectAttr(cns.name() + ".constraintRotateY", localMatcher.name() + ".rotateY")
-        pc.disconnectAttr(cns.name() + ".constraintRotateZ", localMatcher.name() + ".rotateZ")
+        localMatcher.r >> buffer.r
 
     if considerPosition:
-        connectThrough(localMatcher.name() + ".tx", buffer.name() + ".tx", inRigObj.name() + "." + inAttrName, inGlobalBlendAttrName)
-        connectThrough(localMatcher.name() + ".ty", buffer.name() + ".ty", inRigObj.name() + "." + inAttrName, inGlobalBlendAttrName)
-        connectThrough(localMatcher.name() + ".tz", buffer.name() + ".tz", inRigObj.name() + "." + inAttrName, inGlobalBlendAttrName)
-    else:
-        pc.disconnectAttr(cns.name() + ".constraintTranslateX", localMatcher.name() + ".translateX")
-        pc.disconnectAttr(cns.name() + ".constraintTranslateY", localMatcher.name() + ".translateY")
-        pc.disconnectAttr(cns.name() + ".constraintTranslateZ", localMatcher.name() + ".translateZ")
+        localMatcher.t >> buffer.t
+
 """
 Old version of the template, we will need more info to manage a whole rig
 ----------------------------
@@ -996,7 +1004,7 @@ def injectControlLayer(inCLRootName, inRigRootName, inTemplate, inAttrHolder=Non
 
             if inAttrHolder != None:
                 if not pc.attributeQuery( inAttrName,node=inAttrHolder, exists=True):
-                    pc.addAttr(inAttrHolder, at="long", longName=inAttrName, keyable=True, defaultValue=0.0, minValue=0.0, maxValue=1.0, softMinValue=0.0, softMaxValue=1.0)
+                    pc.addAttr(inAttrHolder, longName=inAttrName, keyable=True, defaultValue=0.0, minValue=0.0, maxValue=1.0, softMinValue=0.0, softMaxValue=1.0)
                 globalAttr = "{0}.{1}".format(inAttrHolder, inAttrName)
 
             createControlLayer(pc.PyNode(templateObj), pc.PyNode(rigObj), connectionData[1], connectionData[2], localOnly, inAttrHolder, inAttrName, globalAttr)
@@ -1037,6 +1045,18 @@ def clusterize(inCurve):
         clusters.append(clusterComponents[1])
         
     return clusters
+
+def forceParentSpace(inInputAttr, inSpaceAttr, inSpaceForcedValue):
+    inInputAttr = tkc.getNode(inInputAttr)
+    inSpaceAttr = tkc.getNode(inSpaceAttr)
+ 
+    inputs = inSpaceAttr.listConnections(source=False, destination=True, plugs=True)
+    
+    newOutput = tkn.condition(inInputAttr, 0, ">", inSpaceForcedValue, inSpaceAttr)
+    
+    for oldInput in inputs:
+        print newOutput, ">>", oldInput
+        newOutput >> oldInput
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____  _             _             
@@ -4840,6 +4860,25 @@ def getBaker(inNode):
         if locked:
             connectedAttr.lock()
     return baker
+
+def storePoseInPlace(inObjects=None):
+    inObjects = inObjects or pc.selected()
+
+    for obj in inObjects:
+        pose = saveSimplePose([obj])
+        decorate(obj, pose)
+
+def loadPoseInPlace(inObjects=None, inNs=""):
+    inObjects = inObjects or pc.selected()
+
+    pose = {}
+
+    for obj in inObjects:
+        decoration = readDecoration(obj)
+        if len(decoration) > 0:
+            pose.update(decoration)
+
+    loadSimplePose(pose, inNamespace=inNs)
 
 def createPose(inCurves, inName="newPose"):
     poseGroup = pc.group(empty=True, name=inName)
