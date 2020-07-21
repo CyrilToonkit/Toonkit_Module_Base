@@ -4868,17 +4868,20 @@ def storePoseInPlace(inObjects=None):
         pose = saveSimplePose([obj])
         decorate(obj, pose)
 
-def loadPoseInPlace(inObjects=None, inNs=""):
+def loadPoseInPlace(inObjects=None, inNs=None):
     inObjects = inObjects or pc.selected()
 
-    pose = {}
+    if len(inObjects) > 0:
+        pose = {}
 
-    for obj in inObjects:
-        decoration = readDecoration(obj)
-        if len(decoration) > 0:
-            pose.update(decoration)
+        for obj in inObjects:
+            decoration = readDecoration(obj)
+            if len(decoration) > 0:
+                pose.update(decoration)
 
-    loadSimplePose(pose, inNamespace=inNs)
+        inNs = inNs or str(inObjects[0].namespace())
+
+        loadSimplePose(pose, inNamespace=inNs)
 
 def createPose(inCurves, inName="newPose"):
     poseGroup = pc.group(empty=True, name=inName)
