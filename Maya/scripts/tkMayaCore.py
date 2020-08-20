@@ -3885,6 +3885,12 @@ def getPoints(inObject, normalized=True):
                         for u in range(nu):
                             point = crvShapes[0].point(s, t, u)
                             pos.append(((point.x - offset[0])/scale[0], (point.y - offset[1])/scale[1], (point.z - offset[2])/scale[2]))
+
+        elif crvShapes[0].type() == "nurbsSurface":
+            points = crvShapes[0].getCVs()
+            for point in points:
+                pos.append(((point.x - offset[0])/scale[0], (point.y - offset[1])/scale[1], (point.z - offset[2])/scale[2]))
+
         else:
             pc.warning("Unknown Geometry type : " + crvShapes[0].type())
 
