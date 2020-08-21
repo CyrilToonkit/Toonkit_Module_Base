@@ -5535,24 +5535,36 @@ def getNodeConnections(inNode, *args, **kwargs):
     baked = str(cons)
     return cons
 
-def setNodeConnections(inCons, inNode=None):
+def setNodeConnections(inCons, inNode=None, inDestination=False):
     for linkOutput, linkInput in inCons:
+        outputAttr = linkOutput
         inputAttr = linkInput
 
         if not inNode is None:
-            inputName = linkInput.split(".")[-1]
+            if inDestination:
 
-            if not pc.attributeQuery(inputName, node=inNode, exists=True):
-                pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), inputName))
-                continue
+                outputName = linkOutput.split(".")[-1]
 
-            inputAttr = inNode.attr(inputName)
+                if not pc.attributeQuery(outputName, node=inNode, exists=True):
+                    pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), outputName))
+                    continue
+
+                outputAttr = inNode.attr(outputName)
+            else:
+                
+                inputName = linkInput.split(".")[-1]
+
+                if not pc.attributeQuery(inputName, node=inNode, exists=True):
+                    pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), inputName))
+                    continue
+
+                inputAttr = inNode.attr(inputName)
 
         if len(inputAttr.listConnections()) > 0:
             pc.warning("Can't 'setNodeConnections', '{0}' already connected !".format(inputAttr))
             continue
 
-        linkOutput >> inputAttr
+        outputAttr >> inputAttr
 
 def matchConnections(inNode, inRefNode, *args, **kwargs):
     """
