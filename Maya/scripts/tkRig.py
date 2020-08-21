@@ -2554,6 +2554,56 @@ def pointOnCurveRig(inCurve, inStartObj, inEndObj, inObjects=None, inInter=3, in
 
     return objects
 
+def createOnSurface(inObject, UNumber=1, VNumber=1, UStart=0.0, UEnd=1.0, VStart=0.0, VEnd=1.0, UClosed=False, VClosed=False):
+    if inObject.type() == "transform":
+        shp = inObject.getShape()
+        if not shp is None and (shp.type() == "mesh" or shp.type() == "nurbsSurface"):
+            inObject = shp
+
+    shpT = inObject.getParent()
+
+    
+    stepU = 1.0
+    if UNumber == 1:
+        UStart = UStart + UEnd / 2.0
+    else:
+        UDivs = UNumber - 1
+        if UClosed:
+            UDivs = UNumber
+
+        stepU = (UEnd - UStart) / UDivs
+    curU = UStart
+
+    stepV = 1.0
+    if VNumber == 1:
+        VStart = VStart + VEnd / 2.0
+    else:
+        VDivs = VNumber - 1
+        if VClosed:
+            VDivs = VNumber
+
+        stepV = (VEnd - VStart) / VDivs
+    curV = VStart
+
+    for nu in range(UNumber):
+        curV = VStart
+
+        for nv in range(VNumber):
+            loc = pc.spaceLocator(name=shpT.name() + "_loc_{0}_{1}".format(nu+1, nv+1), position=[0.0,0.0,0.0])
+            grp = pc.group()
+            cns = tkc.constrainToPoint(loc, shpT, inOffset=False, inU=curU, inV=curV)
+
+            pc.parent(loc.getParent(), world=True)
+            pc.delete(grp)
+
+            sources = cns[0].listHistory(levels=1, type="multMatrix")
+            if len(sources) > 0:
+                sources[0].matrixIn[0].disconnect()
+
+            curV += stepV
+
+        curU += stepU
+
 def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSquash=False, inClusters=False, inPrefix=None):
     
     crvShape = inCurve
@@ -5749,7 +5799,7 @@ else
 #def mirror(inModelName, inControlsNames, inPose)
 
 def getGeometries(inModel):
-    geoNames = ["Geometries", "model", "*geo_grp","*geo*"]
+    geoNames = ["Geometries", "model", "*geo_grp"]
     
     geoNullName = None
     for geoName in geoNames:
