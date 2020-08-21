@@ -2708,7 +2708,7 @@ def setDisplay(node, trs=(dt.Vector(0.0,0.0,0.0), dt.EulerRotation(0.0,0.0,0.0),
         
 
 def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
-    print "closestPoint(", inMesh, inPositions, inKeepNode
+    #print "closestPoint(", inMesh, inPositions, inKeepNode
     inTransform = inMesh
     
     if inMesh.type() == "transform":
@@ -2721,7 +2721,7 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
     closestNode = pc.createNode("closestPointOnMesh" if isMesh else "closestPointOnSurface", name=inMesh.name() + "_closestPoint")
     pc.connectAttr(inMesh.name() + (".outMesh" if isMesh else ".worldSpace[0]"), closestNode.name() + (".inMesh" if isMesh else ".inputSurface"))
     
-    print "closestNode",closestNode
+    #print "closestNode",closestNode
 
     #Very stupid trick to get "object space" tranformations
     loc = pc.group(name="ObjectSpaceGetter",empty=True)
@@ -2748,9 +2748,19 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
         closestValues["face"] = closestNode.closestFaceIndex.get()
         closestValues["vertex"] = closestNode.closestVertexIndex.get()
     else:
-        spans = inMesh.spansUV.get()
-        closestValues["u"] /= float(spans[0])
-        closestValues["v"] /= float(spans[1])
+        #spans = inMesh.spansUV.get()
+
+        rangeU = inMesh.mmu.get()
+        rangeU = rangeU[1] - rangeU[0]
+
+        rangeV = inMesh.mmv.get()
+        rangeV = rangeV[1] - rangeV[0]
+
+        if rangeU != 1.0:
+            closestValues["u"] /= rangeU
+
+        if rangeV != 1.0:
+            closestValues["v"] /= rangeV
 
     if not inKeepNode:
         pc.delete(closestNode)
