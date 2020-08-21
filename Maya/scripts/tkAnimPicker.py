@@ -177,6 +177,13 @@ def load(edit=False, multi=False, path=None, debug=False, forceRebuild=False):
                         mergePickers(mainPicker, nodeData)
                     else:
                         mainPicker = nodeData
+
+                    #Add optional "_Lite" versions on the fly
+                    litePath = pickerFile.replace(".pkr", "_Lite.pkr")
+                    if os.path.isfile(litePath):
+                        nodeData = anim_picker.handlers.file_handlers.read_data_file(litePath)
+                        resolveReferences(nodeData, pickerNs)
+                        mergePickers(mainPicker, nodeData)
                 else:
                     pc.warning("Synoptic picker file " + pickerFile + " not found !")
 
