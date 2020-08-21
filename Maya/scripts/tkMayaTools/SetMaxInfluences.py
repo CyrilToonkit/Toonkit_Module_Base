@@ -36,6 +36,7 @@ class SetMaxInfluences(Tool):
 
         self.options = Options(inPath=self.getOptionsPath())
         self.options.addOption("MaxInfs", 8, "Max influences", "Max influences")
+        self.options.addOption("Sharpen", .5, "Sharpen", "Sharpen", inMin=0.0, inMax=1.0)
 
         if not self.options.isSaved():
             self.saveOptions()
