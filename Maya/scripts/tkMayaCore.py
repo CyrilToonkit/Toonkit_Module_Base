@@ -4486,7 +4486,7 @@ def setPointInfluences(inSkin, inInfluences, inPointIndex, inValues):
         
     return inSkin
 
-def _limitDeformers(inSkin, inInfluences, inMax=4, inVerbose=False, inProgress=True):
+def _limitDeformers(inSkin, inInfluences, inMax=4, inSharpen=.5, inVerbose=True, inProgress=True):
     NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
 
     NSkin = len(inSkin)
@@ -4511,22 +4511,22 @@ def _limitDeformers(inSkin, inInfluences, inMax=4, inVerbose=False, inProgress=T
         #sort by value
         inf_vals.sort(key=lambda v: -v[1])
         
-        counter = 1
+        counter = 0
         remainingWeight = 0
         
         for inf_val in inf_vals:
             if inf_val[1] <= 0.0:
                 break
-                
+            
+            counter += 1
+
             if counter > inMax:
                 remainingWeight += inf_val[1]
                 inf_val[1] = 0
 
-            counter += 1
-
         if remainingWeight >= 0.0001:
             if inVerbose:
-                print "{0} have {1} deformers on vertex {2} ({3} to remove)".format(inObj, counter, i, counter - inMax)
+                print "{0} deformers on vertex {1} ({2} to remove)".format(counter, i, counter - inMax)
 
             currentTotal = 100.0 - remainingWeight
             mul = 100.0 / currentTotal
@@ -4536,6 +4536,9 @@ def _limitDeformers(inSkin, inInfluences, inMax=4, inVerbose=False, inProgress=T
                     break
     
                 inf_val[1] = inf_val[1] * mul
+
+                if inSharpen > 0.0:
+                    inf_val[1] = (1-inSharpen) * inf_val[1] + inSharpen * (inf_val[1] * inf_val[1])
             
             #resort
             inf_vals.sort(key=lambda v: inInfluences.index(v[0]))
@@ -4550,14 +4553,14 @@ def _limitDeformers(inSkin, inInfluences, inMax=4, inVerbose=False, inProgress=T
 
     return inSkin
 
-def limitDeformers(inObj, inMax=4, inVerbose=False, inProgress=True):
+def limitDeformers(inObj, inMax=4, inSharpen=.5, inVerbose=False, inProgress=True):
     inObj = getNode(inObj)
     skinCls = getSkinCluster(inObj)
 
     skin = getWeights(inObj)
     influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
     
-    skin = _limitDeformers(skin, influences, inMax=inMax, inVerbose=inVerbose, inProgress=inProgress)
+    skin = _limitDeformers(skin, influences, inMax=inMax, inSharpen=inSharpen, inVerbose=inVerbose, inProgress=inProgress)
     
     setWeights(inObj, inInfluences=influences, inValues=skin, inMode=0, inOpacity=1.0, inNormalize=True)
 
