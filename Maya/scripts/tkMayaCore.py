@@ -3395,19 +3395,21 @@ def constrain(inObject, inSource, inType="Pose", inOffset=True, inAdditionnalArg
 
     return contraint
 
-def getCnsOffset(inCns):
+def getCnsOffset(inCns, inIndex=0):
     t = dt.Vector(0.0,0.0,0.0)
     r = dt.EulerRotation(0.0,0.0,0.0)
     s = (1.0,1.0,1.0)
     cnsName = inCns.name()
     
     if inCns.type() == "parentConstraint":
-        t.x = pc.getAttr(cnsName + ".target[0].targetOffsetTranslateX")
-        t.y = pc.getAttr(cnsName + ".target[0].targetOffsetTranslateY")
-        t.z = pc.getAttr(cnsName + ".target[0].targetOffsetTranslateZ")
-        r.x = pc.getAttr(cnsName + ".target[0].targetOffsetRotateX")
-        r.y = pc.getAttr(cnsName + ".target[0].targetOffsetRotateY")
-        r.z = pc.getAttr(cnsName + ".target[0].targetOffsetRotateZ")
+        baseString = ".target["+str(inIndex)+"].targetOffset"
+
+        t.x = pc.getAttr(cnsName + baseString + "TranslateX")
+        t.y = pc.getAttr(cnsName + baseString + "TranslateY")
+        t.z = pc.getAttr(cnsName + baseString + "TranslateZ")
+        r.x = pc.getAttr(cnsName + baseString + "RotateX")
+        r.y = pc.getAttr(cnsName + baseString + "RotateY")
+        r.z = pc.getAttr(cnsName + baseString + "RotateZ")
         
         sclCns = cnsName.replace("_prCns", "_sCns")
         if "_prCns" in cnsName and pc.objExists(sclCns):
@@ -3432,16 +3434,18 @@ def getCnsOffset(inCns):
     
     return [t, r, s]
 
-def setCnsOffset(inCns, t = dt.Vector(0.0,0.0,0.0), r = dt.EulerRotation(0.0,0.0,0.0), s = (1.0,1.0,1.0)):
+def setCnsOffset(inCns, t = dt.Vector(0.0,0.0,0.0), r = dt.EulerRotation(0.0,0.0,0.0), s = (1.0,1.0,1.0), inIndex=0):
     cnsName = inCns.name()
 
     if inCns.type() == "parentConstraint":
-        pc.setAttr(cnsName + ".target[0].targetOffsetTranslateX", t[0])
-        pc.setAttr(cnsName + ".target[0].targetOffsetTranslateY", t[1])
-        pc.setAttr(cnsName + ".target[0].targetOffsetTranslateZ", t[2])
-        pc.setAttr(cnsName + ".target[0].targetOffsetRotateX", r[0])
-        pc.setAttr(cnsName + ".target[0].targetOffsetRotateY", r[1])
-        pc.setAttr(cnsName + ".target[0].targetOffsetRotateZ", r[2])
+        baseString = ".target["+str(inIndex)+"].targetOffset"
+
+        pc.setAttr(cnsName + baseString + "TranslateX", t[0])
+        pc.setAttr(cnsName + baseString + "TranslateY", t[1])
+        pc.setAttr(cnsName + baseString + "TranslateZ", t[2])
+        pc.setAttr(cnsName + baseString + "RotateX", r[0])
+        pc.setAttr(cnsName + baseString + "RotateY", r[1])
+        pc.setAttr(cnsName + baseString + "RotateZ", r[2])
         
         sclCns = cnsName.replace("_prCns", "_sCns")
         if "_prCns" in cnsName and pc.objExists(sclCns):
@@ -3505,12 +3509,19 @@ def storeConstraints(inObjects, inRemove=False, inPath=None):
     for obj in inObjects:
         cons = getConstraints(obj)
         for con in cons:
-            offset = getCnsOffset(con)
-            offset = [[offset[0][0], offset[0][1], offset[0][2]],[offset[1][0], offset[1][1], offset[1][2]],[offset[2][0], offset[2][1], offset[2][2]]]
-            constraints.append({"source":str(obj.stripNamespace()),
-                                "target":str(getConstraintTargets(con)[0].stripNamespace()),
-                                "type":con.type(),
-                                "offset":offset})
+            targets = getConstraintTargets(con)
+            index = 0
+            for target in targets:
+
+                offset = getCnsOffset(con, index)
+                offset = [[offset[0][0], offset[0][1], offset[0][2]],[offset[1][0], offset[1][1], offset[1][2]],[offset[2][0], offset[2][1], offset[2][2]]]
+
+                constraints.append({"source":str(obj.stripNamespace()),
+                                    "target":str(target.stripNamespace()),
+                                    "type":con.type(),
+                                    "offset":offset})
+                index += 1
+
             if inRemove:
                 pc.delete(con)
 
@@ -3578,6 +3589,11 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
 
     for con in inConstraints:
         sourceName = con["source"]
+
+        #TODO : Manage every objects in inObjects (right now only the first one is taken into account) 
+        if not inObjects is None and len(inObjects) > 0:
+            sourceName = str(inObjects[0].stripNamespace())
+
         node = sources.get(sourceName)
 
         if node is None:
@@ -3597,9 +3613,18 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
         for node in nodes:
             removeAllCns(node)
 
+    oldNode = None
+    oldType = None
+    offsetIndex = 0
+
     for con in inConstraints:
 
         sourceName = con["source"]
+
+        #TODO : Manage every objects in inObjects (right now only the first one is taken into account) 
+        if not inObjects is None and len(inObjects) > 0:
+            sourceName = str(inObjects[0].stripNamespace())
+        
         node = sources.get(sourceName)
         
         if node is None:
@@ -3612,13 +3637,20 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
             pc.warning("Can't find target object {0}".format(targetName))
             continue
 
-        print "constrain({0}, {1}, '{2}')".format(node, target, con["type"])
-
+        #print "constrain({0}, {1}, '{2}')".format(node, target, con["type"])
+        
         newCns = constrain(node, target, con["type"])
+        if node == oldNode and con["type"] == oldType:
+            offsetIndex += 1
+        else:
+            oldNode = node
+            oldType = con["type"]
+            offsetIndex = 0
+
         if not inMaintainOffset and con["type"] != "follicle":
             setCnsOffset(newCns,    t = dt.Vector(con["offset"][0][0],con["offset"][0][1],con["offset"][0][2]),
                                     r = dt.EulerRotation(con["offset"][1][0],con["offset"][1][1],con["offset"][1][2]),
-                                    s = (con["offset"][2][0],con["offset"][2][1],con["offset"][2][2]))
+                                    s = (con["offset"][2][0],con["offset"][2][1],con["offset"][2][2]), inIndex=offsetIndex)
 
 def storePoses(inObjects, customOnly=False, containerName="", keyableOnly=True, inPath=None):
     poses = []
