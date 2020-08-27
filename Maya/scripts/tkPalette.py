@@ -22,7 +22,14 @@
 
 """
     Geometry colors manager
+
+    TODO :
+    -Manage Transparencies
+    -Manage shader types (lambert/blinn/phong)
+    -Colors palettes/presets
+    -Improve UI (thumbnail, selection perservation)
 """
+
 import os
 from itertools import izip
 
@@ -149,6 +156,47 @@ def getShaderFaces(inObject, inShader):
                 faces.extend(mc.getAttr("{0}.{1}".format(con, "objectGrpCompList")))
 
     return faces
+
+def gatorShaders(inObj, inRef):
+    if inRef.type() == "transform":
+        inRef = inRef.getShape()
+
+    shaders = tkp.getShaders(inRef.name(), False)
+
+    if len(shaders) == 1:
+        tkp.assignShader(shaders[0], inObj.name())
+        return
+
+    baseShader = None
+    faceShaders = [None] * inRef.numFaces()
+
+    for shader in shaders:
+        faces = deserializeComponents(tkp.getShaderFaces(inRef.name(), shader))
+
+        if faces is None or len(faces) == 0:
+            baseShader = shader
+            continue
+
+        for i in range(len(faces)):
+            faceShaders[faces[i]] = shader
+
+    sample = sampleGeometry(inObj, inRef)
+
+    shaders_faces = {}
+
+    totalFaces = 0
+
+    for i in range(len(sample)):
+        refPolygonIndex = sample[i]
+        shader = faceShaders[refPolygonIndex]
+
+        if shader in shaders_faces:
+            shaders_faces[shader].append(i)
+        else:
+            shaders_faces[shader] = [i]
+
+    for shader, faces in shaders_faces.iteritems():
+        tkp.assignShader(shader, inObj.name(), inFaces=serializeComponents(faces))
 
 def roundColor(inColor):
     return (round(inColor[0], 2), round(inColor[1], 2), round(inColor[2], 2))

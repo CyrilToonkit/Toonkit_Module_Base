@@ -4045,7 +4045,108 @@ def polyReduceComplexity (inObj, inMinComplx, inMaxComplx, inMinPercent = 0, inM
                         pc.polyReduce(inObj,p=inMaxPercent, **inPolyReduceArguments)
                     except:
                         pc.warning("Can't reduce " + inObj)
-    return;
+    return
+
+POLYTOPOLY = "PolyToPoly"
+POINTTOPOINT = "PointToPoint"
+
+def sampleGeometry(inObj, inRef, inType=POLYTOPOLY, inProgress=True):
+    if inObj.type() == "transform":
+        inObj = inObj.getShape()
+
+    if inRef.type() == "transform":
+        inRef = inRef.getShape()
+
+    sampling = []
+
+    if inType == POLYTOPOLY:
+        points = inObj.getPoints(space="world")
+
+        numFaces = inObj.numFaces()
+
+        if inProgress:
+            gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+
+            pc.progressBar( gMainProgressBar,
+            edit=True,
+            beginProgress=True,
+            isInterruptable=True,
+            status="Gatoring...",
+            maxValue=numFaces)
+
+        for i in range(numFaces):
+            #get polygon center
+            ids = inObj.getPolygonVertices(i)
+            centerPoint = points[ids[0]]
+            for j in range(1,len(ids)): 
+                centerPoint += points[ids[j]]
+            centerPoint /= len(ids)
+
+            closestPoint, closestFaceId = inRef.getClosestPoint(centerPoint, space="world")
+            sampling.append(closestFaceId)
+
+            if inProgress:
+                pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+        if inProgress:
+            pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+    else:
+        pc.warning("Sampling type " + inType + " is not implemented !")
+
+    return sampling
+
+def deserializeComponents(inFacesStrs):
+    if not isinstance(inFacesStrs, (list, tuple)):
+        inFacesStrs = (inFacesStrs,)
+
+    facesIndices = []
+
+    reg = re.compile(r".*\[([0-9:]+)\]")
+
+    for faceStr in inFacesStrs:
+        match = reg.match(faceStr)
+
+        if not match is None:
+            strDigits = match.groups()[0]
+
+            if ":" in strDigits:
+                start, end = strDigits.split(":")
+                facesIndices.extend(range(int(start), int(end) + 1))
+            else:
+                facesIndices.append(int(strDigits))
+
+    return facesIndices
+
+def serializeComponents(inIndices, inComponentTag="f"):
+    inFacesStrs = []
+
+    inIndices.sort()
+
+    start = inIndices[0]
+    last = start - 1
+
+    for i in range(len(inIndices)):
+        currentIndex = inIndices[i]
+        if currentIndex - last == 1:#continue range
+            last = currentIndex
+        else:#push range
+            if last != start:
+                inFacesStrs.append("{0}[{1}:{2}]".format(inComponentTag, start, last))
+            else:
+                inFacesStrs.append("{0}[{1}]".format(inComponentTag, start))
+
+            start = currentIndex
+            last = currentIndex
+
+    if last != start:
+        inFacesStrs.append("{0}[{1}:{2}]".format(inComponentTag, start, last))
+    else:
+        inFacesStrs.append("{0}[{1}]".format(inComponentTag, start))
+
+    start = currentIndex
+    last = currentIndex
+
+    return inFacesStrs
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____        __                            _   _             
