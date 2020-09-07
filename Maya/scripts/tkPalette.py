@@ -161,17 +161,17 @@ def gatorShaders(inObj, inRef):
     if inRef.type() == "transform":
         inRef = inRef.getShape()
 
-    shaders = tkp.getShaders(inRef.name(), False)
+    shaders = getShaders(inRef.name(), False)
 
     if len(shaders) == 1:
-        tkp.assignShader(shaders[0], inObj.name())
+        assignShader(shaders[0], inObj.name())
         return
 
     baseShader = None
     faceShaders = [None] * inRef.numFaces()
 
     for shader in shaders:
-        faces = deserializeComponents(tkp.getShaderFaces(inRef.name(), shader))
+        faces = tkc.deserializeComponents(getShaderFaces(inRef.name(), shader))
 
         if faces is None or len(faces) == 0:
             baseShader = shader
@@ -180,7 +180,7 @@ def gatorShaders(inObj, inRef):
         for i in range(len(faces)):
             faceShaders[faces[i]] = shader
 
-    sample = sampleGeometry(inObj, inRef)
+    sample = tkc.sampleGeometry(inObj, inRef)
 
     shaders_faces = {}
 
@@ -196,7 +196,7 @@ def gatorShaders(inObj, inRef):
             shaders_faces[shader] = [i]
 
     for shader, faces in shaders_faces.iteritems():
-        tkp.assignShader(shader, inObj.name(), inFaces=serializeComponents(faces))
+        assignShader(shader, inObj.name(), inFaces=tkc.serializeComponents(faces))
 
 def roundColor(inColor):
     return (round(inColor[0], 2), round(inColor[1], 2), round(inColor[2], 2))

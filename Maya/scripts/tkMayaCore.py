@@ -120,6 +120,7 @@ import time
 import xml.dom.minidom as minidom
 from threading import Timer
 from timeit import default_timer
+from functools import partial
 
 import maya.cmds as cmds
 import pymel.core as pc
@@ -7385,6 +7386,128 @@ def checkHistory(inObjects=None, inAllowedNodes=None, inCheckTypes=None):
 
 def killTurtle(*args):
     pc.mel.eval("ilrClearScene")
+
+NS_TOKEN = "$NS"
+def createView(inNs, inHookObj, inName=NS_TOKEN+"_face_cam", inKeySets=None, inExclude=None, inInclude=None,
+    inIncludeTypes=None, inOffset=None, inFrameOn=None, inWindowSize=(800, 600)):
+
+    inKeySets = inKeySets or []
+    if not isinstance(inKeySets, (list, tuple)):
+        inKeySets = (inKeySets,)
+
+    inExclude = inExclude or []
+    if not isinstance(inExclude, (list, tuple)):
+        inExclude = (inExclude,)
+
+    inInclude = inInclude or []
+    if not isinstance(inInclude, (list, tuple)):
+        inInclude = (inInclude,)
+
+    inIncludeTypes = inIncludeTypes or []
+    if not isinstance(inIncludeTypes, (list, tuple)):
+        inIncludeTypes = (inIncludeTypes,)
+
+    inOffset = inOffset or ([0.0] * 6)
+    while len(inOffset) < 6:
+        inOffset.append(0.0)
+
+    inFrameOn = inFrameOn or []
+    if not isinstance(inFrameOn, (list, tuple)):
+        inFrameOn = (inFrameOn,)
+
+    modelName = inNs.rstrip(":")
+
+    cam = inName.replace(NS_TOKEN, modelName)
+    windowName = cam + "UI"
+    camNode = None
+
+    tkc.storeSelection()
+
+    if pc.window(windowName, exists=True):
+        pc.deleteUI(windowName)
+
+    if not pc.objExists(cam):
+        faceCtrl = tkc.getNode(inNs + inHookObj)
+        camRootName = cam + "_Root"
+        camNode = pc.camera()[0]
+        camNode.rename(cam)
+        
+        camNode.focalLength.set(100)
+
+        camGroupNode = pc.group(name=camRootName)
+        constraintNode = tkc.constrain(camGroupNode ,faceCtrl, "Pose", False)
+
+        constraintNode.target[0].targetOffsetTranslate.targetOffsetTranslateX.set(inOffset[0])
+        constraintNode.target[0].targetOffsetTranslate.targetOffsetTranslateY.set(inOffset[1])
+        constraintNode.target[0].targetOffsetTranslate.targetOffsetTranslateZ.set(inOffset[2])
+        constraintNode.target[0].targetOffsetRotate.targetOffsetRotateX.set(inOffset[3])
+        constraintNode.target[0].targetOffsetRotate.targetOffsetRotateY.set(inOffset[4])
+        constraintNode.target[0].targetOffsetRotate.targetOffsetRotateZ.set(inOffset[5])
+
+        pc.viewPlace(camNode, lookAt=faceCtrl.getTranslation(space="world"))
+        camNode.rotate.set([0.0,0.0,0.0])
+        
+        framedObjects = []
+        for obj in inFrameOn:
+            if pc.objExists(inNs + inHookObj):
+                framedObjects.append(inNs + inHookObj)
+        
+        if len(framedObjects) > 0:
+            pc.select(framedObjects)
+            pc.viewFit(camNode)
+    else:
+        camNode = pc.PyNode(cam)
+
+    win = pc.window(windowName, wh=inWindowSize, t=windowName)
+    pc.paneLayout()
+    mp = pc.modelPanel(cam=camNode.name())
+    pc.modelEditor(mp, edit=True, displayAppearance="smoothShaded", wireframeOnShaded=True, headsUpDisplay=False)
+
+    def cleanModelPanel(inModelPanelName):
+        pc.isolateSelect(inModelPanelName, state=False)
+        pc.deleteUI(inModelPanelName, panel=True)
+
+    pc.window(win, edit=True, closeCommand=partial(cleanModelPanel, mp))
+
+    isolate = []
+
+    if len(inIncludeTypes) > 0: 
+       isolate.extend([n.name() for n in pc.ls(inNs+"*", type="mesh")])
+
+    ctrls = []
+
+    for keySet in inKeySets:
+        print keySet,tkc.getKeyables(keySet, [modelName])
+        ctrls.extend(tkc.getKeyables(keySet, [modelName]))
+
+    isolate.append([n for n in ctrls if not n.split(":")[-1] in inExclude])
+
+    for inc in inInclude:
+        isolate.extend(pc.ls(inNs + inc))
+
+    print "isolate",isolate
+
+    if len(isolate) > 0:
+        pc.select(isolate)
+        pc.isolateSelect(mp, state=True)
+    else:
+        pc.warning("No objects found to isolate ! (KeySet(s) : {0}, including : {1},excluding : {2})".format(inKeySets, inExclude, inInclude))
+
+    pc.showWindow(win)
+
+    tkc.loadSelection()
+
+"""
+#Facial cam
+excluded = ["Left_Eye_Target","Left_Spec_Target","LookAt","Spec_LookAt", "Spec_Aim", "Right_Eye_Target","Right_Spec_Target"]
+offsets = [3.0, -70.0, 0.0, 90.0, 90.0, 0.0]
+createView("sun_fds_rig_v004:", "TK_Neck_Head_Output", inName=NS_TOKEN+"_face_cam", inKeySets="Facial_Main", inExclude=excluded, inIncludeTypes=["mesh"], inOffset=offsets)
+
+#UI cam
+included = ["Facial_GUI", "*_Frame", "*_TextHolder"]
+offsets = [0.0, 1.25, 194.0, 0.0, 0.0, 0.0]
+createView("sun_fds_rig_v004:", "Facial_GUI", inName=NS_TOKEN+"_ui_cam", inKeySets="Facial_GUI", inInclude=included, inOffset=offsets, inFrameOn="Facial_GUI")
+"""
 
 def closeAllWindows(*args):
     mainWindow = pc.mel.eval("$melVariable=$gMainWindow")

@@ -5828,7 +5828,7 @@ def smooth(inModel, inSubdiv):
     pc.undoInfo(openChunk=True)
     ctrls = getGeometries(inModel)
     if len(ctrls)>0:
-        pc.displaySmoothness(ctrls, polygonObject=3)
+        pc.displaySmoothness(ctrls, polygonObject=(3 if inSubdiv > 0 else 1))
         for geo in ctrls:
             shapes = geo.getShapes()
             for shape in shapes:
@@ -5836,14 +5836,31 @@ def smooth(inModel, inSubdiv):
                 pc.setAttr(geo.getShape().name() + ".smoothLevel", inSubdiv)
     pc.undoInfo(closeChunk=True)
 
-def selectSet(inModel, inSet="All", inAdd=False):
+def selectSet(inModel, inSet="All", inAdd=False, inExclude=None):
+
+    inExclude = inExclude or []
+
+    if not isinstance(inModel, (list, tuple)):
+        inModel = (inModel,) 
+
     pc.undoInfo(openChunk=True)
-    ctrls = tkc.getKeyables(inSet, [inModel])
+    ctrls = tkc.getKeyables(inSet, inModel)
+
+    #ctrls
+    for excludedObj in inExclude:
+        for model in inModel:
+            ns = model
+            if len(ns) > 0:
+                ns = ns + ":"
+
+            if (ns + excludedObj) in ctrls:
+                ctrls.remove(ns + excludedObj)
+
     if len(ctrls)>0:
         pc.select(ctrls, replace=not inAdd, add=inAdd)
     elif not inAdd:
         pc.select(clear=True)
-        #pc.error("No character selected or key set don't exists ("+ inSet  +") !")
+
     pc.undoInfo(closeChunk=True)
 
 def createKeySetsGroups(inCharacters=[], prefix="", suffix="_ctrls_set"):
