@@ -7421,13 +7421,13 @@ def createView(inNs, inHookObj, inName=NS_TOKEN+"_face_cam", inKeySets=None, inE
     windowName = cam + "UI"
     camNode = None
 
-    tkc.storeSelection()
+    storeSelection()
 
     if pc.window(windowName, exists=True):
         pc.deleteUI(windowName)
 
     if not pc.objExists(cam):
-        faceCtrl = tkc.getNode(inNs + inHookObj)
+        faceCtrl = getNode(inNs + inHookObj)
         camRootName = cam + "_Root"
         camNode = pc.camera()[0]
         camNode.rename(cam)
@@ -7435,7 +7435,7 @@ def createView(inNs, inHookObj, inName=NS_TOKEN+"_face_cam", inKeySets=None, inE
         camNode.focalLength.set(100)
 
         camGroupNode = pc.group(name=camRootName)
-        constraintNode = tkc.constrain(camGroupNode ,faceCtrl, "Pose", False)
+        constraintNode = constrain(camGroupNode ,faceCtrl, "Pose", False)
 
         constraintNode.target[0].targetOffsetTranslate.targetOffsetTranslateX.set(inOffset[0])
         constraintNode.target[0].targetOffsetTranslate.targetOffsetTranslateY.set(inOffset[1])
@@ -7477,15 +7477,12 @@ def createView(inNs, inHookObj, inName=NS_TOKEN+"_face_cam", inKeySets=None, inE
     ctrls = []
 
     for keySet in inKeySets:
-        print keySet,tkc.getKeyables(keySet, [modelName])
-        ctrls.extend(tkc.getKeyables(keySet, [modelName]))
+        ctrls.extend(getKeyables(keySet, [modelName]))
 
     isolate.append([n for n in ctrls if not n.split(":")[-1] in inExclude])
 
     for inc in inInclude:
         isolate.extend(pc.ls(inNs + inc))
-
-    print "isolate",isolate
 
     if len(isolate) > 0:
         pc.select(isolate)
@@ -7495,7 +7492,7 @@ def createView(inNs, inHookObj, inName=NS_TOKEN+"_face_cam", inKeySets=None, inE
 
     pc.showWindow(win)
 
-    tkc.loadSelection()
+    loadSelection()
 
 """
 #Facial cam
