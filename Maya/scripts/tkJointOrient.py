@@ -22,6 +22,7 @@
 
 import re
 import math
+import os
 
 import maya.api.OpenMaya as api
 import pymel.core as pc
@@ -30,57 +31,59 @@ import tkMayaCore as tkc
 import tkNodeling as tkn
 
 """
+import tkJointOrient as tkj
+
 DEFAULT_PRESET = {
-    "inPrimary":0,
+    "inPrimary":0,#X
     "inPrimaryNegate":False,
-    "inSecondary":2,
-    "inSecondaryType":0,
+    "inSecondary":2,#Z
+    "inSecondaryType":0,#World vector
     "inSecondaryData":[0.0, 0.0, 1.0],
     "inSecondaryNegate":False
 }
 
 LEFT_ARM_IK_PRESET_0 = {
-    "inSecondaryType":2,
+    "inSecondaryType":2,#UpVChildren
     "inSecondaryNegate":True
 }
 
 LEFT_ARM_IK_PRESET_1 = {
-    "inSecondaryType":3,
+    "inSecondaryType":3,#UpVParent
     "inSecondaryNegate":True
 }
 
 RIGHT_ARM_IK_PRESET_0 = {
     "inPrimaryNegate":True,
-    "inSecondaryType":2,
+    "inSecondaryType":2,#UpVChildren
     "inSecondaryNegate":True
 }
 
 RIGHT_ARM_IK_PRESET_1 = {
     "inPrimaryNegate":True,
-    "inSecondaryType":3,
+    "inSecondaryType":3,#UpVParent
     "inSecondaryNegate":True
 }
 
 FINGER_PRESET_0 = {
     "inSecondary":1,
-    "inSecondaryType":2
+    "inSecondaryType":2#UpVChildren
 }
 
 FINGER_PRESET_1 = {
     "inSecondary":1,
-    "inSecondaryType":3
+    "inSecondaryType":3#UpVParent
 }
 
 LEG_IK_PRESET_0 = {
     "inPrimary":1,
     "inPrimaryNegate":True,
-    "inSecondaryType":2,
+    "inSecondaryType":2,#UpVChildren
 }
 
 LEG_IK_PRESET_1 = {
     "inPrimary":1,
     "inPrimaryNegate":True,
-    "inSecondaryType":3
+    "inSecondaryType":3#UpVParent
 }
 
 FOOT_PRESET = {
@@ -90,19 +93,21 @@ FOOT_PRESET = {
     "inSecondaryData":[0.0, 1.0, 0.0],
 }
 
-tkj.writePreset(pc.PyNode("Character1_Hips"), inPrimaryChild="Character1_Spine")
-tkj.writePreset(pc.PyNode("Character1_Spine2"), inPrimaryChild="Character1_Neck")
+SKELETAL_PREFIX = "Character1_"
 
-tkj.writePreset(pc.PyNode("Character1_LeftArm"), **LEFT_ARM_IK_PRESET_0)
-tkj.writePreset(pc.PyNode("Character1_LeftForeArm"), **LEFT_ARM_IK_PRESET_1)
-tkj.writePreset(pc.PyNode("Character1_LeftHand"), inPrimaryChild="Character1_LeftHandMiddle1")
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "Hips"), inPrimaryChild=SKELETAL_PREFIX + "Spine")
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "Spine2"), inPrimaryChild=SKELETAL_PREFIX + "Neck")
+
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftArm"), **LEFT_ARM_IK_PRESET_0)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftForeArm"), **LEFT_ARM_IK_PRESET_1)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftHand"), inPrimaryChild=SKELETAL_PREFIX + "LeftHandMiddle1")
 
 fingers = [
-        ["Character1_LeftHandThumb1", "Character1_LeftHandThumb2", "Character1_LeftHandThumb3"],
-        ["Character1_LeftHandIndex1", "Character1_LeftHandIndex2", "Character1_LeftHandIndex3"],
-        ["Character1_LeftHandMiddle1", "Character1_LeftHandMiddle2", "Character1_LeftHandMiddle3"],
-        ["Character1_LeftHandRing1", "Character1_LeftHandRing2", "Character1_LeftHandRing3"],
-        ["Character1_LeftHandPinky1", "Character1_LeftHandPinky2", "Character1_LeftHandPinky3"]
+        [SKELETAL_PREFIX + "LeftHandThumb1", SKELETAL_PREFIX + "LeftHandThumb2", SKELETAL_PREFIX + "LeftHandThumb3"],
+        [SKELETAL_PREFIX + "LeftHandIndex1", SKELETAL_PREFIX + "LeftHandIndex2", SKELETAL_PREFIX + "LeftHandIndex3"],
+        [SKELETAL_PREFIX + "LeftHandMiddle1", SKELETAL_PREFIX + "LeftHandMiddle2", SKELETAL_PREFIX + "LeftHandMiddle3"],
+        [SKELETAL_PREFIX + "LeftHandRing1", SKELETAL_PREFIX + "LeftHandRing2", SKELETAL_PREFIX + "LeftHandRing3"],
+        [SKELETAL_PREFIX + "LeftHandPinky1", SKELETAL_PREFIX + "LeftHandPinky2", SKELETAL_PREFIX + "LeftHandPinky3"]
     ]
 
 for finger in fingers:
@@ -111,16 +116,16 @@ for finger in fingers:
         tkj.writePreset(pc.PyNode(digit), **(FINGER_PRESET_0 if i < 2 else FINGER_PRESET_1))
         i += 1
 
-tkj.writePreset(pc.PyNode("Character1_RightArm"), **RIGHT_ARM_IK_PRESET_0)
-tkj.writePreset(pc.PyNode("Character1_RightForeArm"), **RIGHT_ARM_IK_PRESET_1)
-tkj.writePreset(pc.PyNode("Character1_RightHand"), inPrimaryChild="Character1_RightHandMiddle1")
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightArm"), **RIGHT_ARM_IK_PRESET_0)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightForeArm"), **RIGHT_ARM_IK_PRESET_1)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightHand"), inPrimaryChild=SKELETAL_PREFIX + "RightHandMiddle1")
 
 fingers = [
-        ["Character1_RightHandThumb1", "Character1_RightHandThumb2", "Character1_RightHandThumb3"],
-        ["Character1_RightHandIndex1", "Character1_RightHandIndex2", "Character1_RightHandIndex3"],
-        ["Character1_RightHandMiddle1", "Character1_RightHandMiddle2", "Character1_RightHandMiddle3"],
-        ["Character1_RightHandRing1", "Character1_RightHandRing2", "Character1_RightHandRing3"],
-        ["Character1_RightHandPinky1", "Character1_RightHandPinky2", "Character1_RightHandPinky3"]
+        [SKELETAL_PREFIX + "RightHandThumb1", SKELETAL_PREFIX + "RightHandThumb2", SKELETAL_PREFIX + "RightHandThumb3"],
+        [SKELETAL_PREFIX + "RightHandIndex1", SKELETAL_PREFIX + "RightHandIndex2", SKELETAL_PREFIX + "RightHandIndex3"],
+        [SKELETAL_PREFIX + "RightHandMiddle1", SKELETAL_PREFIX + "RightHandMiddle2", SKELETAL_PREFIX + "RightHandMiddle3"],
+        [SKELETAL_PREFIX + "RightHandRing1", SKELETAL_PREFIX + "RightHandRing2", SKELETAL_PREFIX + "RightHandRing3"],
+        [SKELETAL_PREFIX + "RightHandPinky1", SKELETAL_PREFIX + "RightHandPinky2", SKELETAL_PREFIX + "RightHandPinky3"]
     ]
 
 for finger in fingers:
@@ -129,20 +134,32 @@ for finger in fingers:
         tkj.writePreset(pc.PyNode(digit), **(FINGER_PRESET_0 if i < 2 else FINGER_PRESET_1))
         i += 1
 
-tkj.writePreset(pc.PyNode("Character1_LeftUpLeg"), **LEG_IK_PRESET_0)
-tkj.writePreset(pc.PyNode("Character1_LeftLeg"), **LEG_IK_PRESET_1)
-tkj.writePreset(pc.PyNode("Character1_LeftFoot"), **FOOT_PRESET)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftUpLeg"), **LEG_IK_PRESET_0)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftLeg"), **LEG_IK_PRESET_1)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftFoot"), **FOOT_PRESET)
 
-tkj.writePreset(pc.PyNode("Character1_RightUpLeg"), **LEG_IK_PRESET_0)
-tkj.writePreset(pc.PyNode("Character1_RightLeg"), **LEG_IK_PRESET_1)
-tkj.writePreset(pc.PyNode("Character1_RightFoot"), **FOOT_PRESET)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightUpLeg"), **LEG_IK_PRESET_0)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightLeg"), **LEG_IK_PRESET_1)
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightFoot"), **FOOT_PRESET)
 
-tkj.orientJointPreset(pc.PyNode("Character1_Hips"), DEFAULT_PRESET)
+tkj.orientJointPreset(pc.PyNode(SKELETAL_PREFIX + "Hips"), DEFAULT_PRESET)
 """
 
+
+
+
+
+
+
+
+
 """
+Axis:
+---------------------------
 inPrimary : 0=x, 1=y, 2=z
 inSecondary : 0=x, 1=y, 2=z
+---------------------------
+
 """
 def aim(inTransform,  inPrimary=0, inPrimaryDirection=None, inPrimaryPoint=None, inPrimaryNegate=False, inSecondary=1, inSecondaryDirection=None, inSecondaryPoint=None, inSecondaryNegate=False, inPreserveChildren=False):
     #print "aim", inTransform, "inPrimary=", inPrimary, "inPrimaryDirection=", inPrimaryDirection, "inPrimaryPoint=", inPrimaryPoint, "inPrimaryNegate=", inPrimaryNegate, "inSecondary=", inSecondary, "inSecondaryDirection=", inSecondaryDirection, "inSecondaryPoint=", inSecondaryPoint, "inSecondaryNegate=", inSecondaryNegate, "inPreserveChildren=", inPreserveChildren
@@ -156,7 +173,6 @@ def aim(inTransform,  inPrimary=0, inPrimaryDirection=None, inPrimaryPoint=None,
     origPos = inTransform.getTranslation(space='world')
     
     #Calculate axis vectors
-
     if inPrimary == 2:
         if inSecondary == 0:
             inPrimary = 1
@@ -506,6 +522,32 @@ def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPatte
                 obj.attr(attrs[inLockCenter]).setLocked(True)
 
 #createSymmetry()
+
+def bakeOrientJoint(inJoints=None):
+    inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
+    
+    for joint in inJoints:
+        joint.rx.set(joint.rx.get() + joint.jointOrientX.get())
+        joint.jointOrientX.set(0.0)
+        
+        joint.ry.set(joint.ry.get() + joint.jointOrientY.get())
+        joint.jointOrientY.set(0.0)
+        
+        joint.rz.set(joint.rz.get() + joint.jointOrientZ.get())
+        joint.jointOrientZ.set(0.0)
+        
+def resetOrientJoint(inJoints=None):
+    inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
+    
+    for joint in inJoints:
+        joint.jointOrientX.set(joint.jointOrientX.get() + joint.rx.get())
+        joint.rx.set(0.0)
+        
+        joint.jointOrientY.set(joint.jointOrientY.get() + joint.ry.get())
+        joint.ry.set(0.0)
+        
+        joint.jointOrientZ.set(joint.jointOrientZ.get() + joint.rz.get())
+        joint.rz.set(0.0)
 
 def disconnectSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inConsiderHierarchy=True):
     if inObjects is None:
