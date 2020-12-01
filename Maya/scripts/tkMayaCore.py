@@ -131,11 +131,13 @@ from pymel import versions
 
 import locationModule
 from Toonkit_Core.tkToolOptions.tkOptions import Options
+import Toonkit_Core.tkProjects.tkContext as ctx
 import OscarZmqString as ozs
 import OscarZmqMayaString as ozms
 import PAlt as palt
 import tkMayaTools.ToonkitMayaCore as ToonkitMayaCore
 import tkNodeling as tkn
+
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -1129,7 +1131,7 @@ def isVisibleAfterAll(inObj, inDownStream=True, inUpStream=True):
     if not parent is None:
         visibilites = [isVisibleAfterAll(parent, inDownStream=False)]
 
-    visibilites.extend([inObj.v.get(), not inObj.overrideEnabled.get() or inObj.overrideVisibility.get()])
+    visibilites.extend([inObj.visibility.get(), not inObj.overrideEnabled.get() or inObj.overrideVisibility.get()])
 
     if inObj.type() == "transform" and inDownStream:
         shapes = inObj.getShapes(noIntermediate=True)
