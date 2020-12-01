@@ -32,75 +32,131 @@ import tkNodeling as tkn
 
 """
 import tkJointOrient as tkj
+reload(tkj)
+
+SKELETAL_PREFIX = ""
 
 DEFAULT_PRESET = {
-    "inPrimary":0,#X
+    "inPrimary":1,#Y
+    "inPrimaryType":2,#towards child
+    "inPrimaryData":[0.0, 1.0, 0.0],
     "inPrimaryNegate":False,
+
     "inSecondary":2,#Z
     "inSecondaryType":0,#World vector
-    "inSecondaryData":[0.0, 0.0, 1.0],
+    "inSecondaryData":[0.0, 0.0, -1.0],
     "inSecondaryNegate":False
 }
 
+LEFT_SHOULDER_PRESET_0 = {
+    "inPrimary":0,#X
+    "inSecondaryData":[0.0, 0.0, 1.0],
+}
+
+RIGHT_SHOULDER_PRESET_0 = {
+    "inPrimary":0,#X
+    "inPrimaryNegate":True,
+    "inSecondaryData":[0.0, 0.0, 1.0],
+}
+
 LEFT_ARM_IK_PRESET_0 = {
+    "inPrimary":0,#X
     "inSecondaryType":2,#UpVChildren
     "inSecondaryNegate":True
 }
 
 LEFT_ARM_IK_PRESET_1 = {
+    "inPrimary":0,#X
     "inSecondaryType":3,#UpVParent
     "inSecondaryNegate":True
 }
 
+LEFT_HAND_PRESET_0 = {
+    "inPrimary":0,#X
+    "inSecondaryType":4,#UpVParentParent
+    "inSecondaryNegate":True,
+    "inPrimaryChild":SKELETAL_PREFIX + "LeftHandMiddle1",
+}
+
+RIGHT_HAND_PRESET_0 = {
+    "inPrimary":0,#X
+    "inPrimaryNegate":True,
+    "inSecondaryType":4,#UpVParentParent
+    "inSecondaryNegate":True,
+    "inPrimaryChild":SKELETAL_PREFIX + "RightHandMiddle1",
+}
+
 RIGHT_ARM_IK_PRESET_0 = {
+    "inPrimary":0,#X
     "inPrimaryNegate":True,
     "inSecondaryType":2,#UpVChildren
     "inSecondaryNegate":True
 }
 
 RIGHT_ARM_IK_PRESET_1 = {
+    "inPrimary":0,#X
     "inPrimaryNegate":True,
     "inSecondaryType":3,#UpVParent
     "inSecondaryNegate":True
 }
 
-FINGER_PRESET_0 = {
+LEFT_FINGER_PRESET_0 = {
+    "inPrimary":0,#X
     "inSecondary":1,
     "inSecondaryType":2#UpVChildren
 }
 
-FINGER_PRESET_1 = {
+LEFT_FINGER_PRESET_1 = {
+    "inPrimary":0,#X
+    "inSecondary":1,
+    "inSecondaryType":3#UpVParent
+}
+
+RIGHT_FINGER_PRESET_0 = {
+    "inPrimary":0,#X
+    "inPrimaryNegate":True,
+    "inSecondary":1,
+    "inSecondaryType":2#UpVChildren
+}
+
+RIGHT_FINGER_PRESET_1 = {
+    "inPrimary":0,#X
+    "inPrimaryNegate":True,
     "inSecondary":1,
     "inSecondaryType":3#UpVParent
 }
 
 LEG_IK_PRESET_0 = {
-    "inPrimary":1,
+    "inPrimary":1,#Y
     "inPrimaryNegate":True,
     "inSecondaryType":2,#UpVChildren
+    "inSecondaryNegate":True,
 }
 
 LEG_IK_PRESET_1 = {
-    "inPrimary":1,
+    "inPrimary":1,#Y
     "inPrimaryNegate":True,
-    "inSecondaryType":3#UpVParent
+    "inSecondaryType":3,#UpVParent
+    "inSecondaryNegate":True,
 }
 
 FOOT_PRESET = {
-    "inPrimary":2,
+    "inPrimary":2,#Z
     "inPrimaryNegate":False,
     "inSecondary":1,
     "inSecondaryData":[0.0, 1.0, 0.0],
 }
 
-SKELETAL_PREFIX = "Character1_"
-
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "Hips"), inPrimaryChild=SKELETAL_PREFIX + "Spine")
-tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "Spine2"), inPrimaryChild=SKELETAL_PREFIX + "Neck")
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "Spine3"), inPrimaryChild=SKELETAL_PREFIX + "Neck")
+
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "Head"), inPrimaryChild=SKELETAL_PREFIX + "Neck")
+
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftShoulder"), **LEFT_SHOULDER_PRESET_0)
 
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftArm"), **LEFT_ARM_IK_PRESET_0)
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftForeArm"), **LEFT_ARM_IK_PRESET_1)
-tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftHand"), inPrimaryChild=SKELETAL_PREFIX + "LeftHandMiddle1")
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftHand"), **LEFT_HAND_PRESET_0)
 
 fingers = [
         [SKELETAL_PREFIX + "LeftHandThumb1", SKELETAL_PREFIX + "LeftHandThumb2", SKELETAL_PREFIX + "LeftHandThumb3"],
@@ -113,12 +169,14 @@ fingers = [
 for finger in fingers:
     i = 0
     for digit in finger:
-        tkj.writePreset(pc.PyNode(digit), **(FINGER_PRESET_0 if i < 2 else FINGER_PRESET_1))
+        tkj.writePreset(pc.PyNode(digit), **(LEFT_FINGER_PRESET_0 if i < 2 else LEFT_FINGER_PRESET_1))
         i += 1
+
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightShoulder"), **RIGHT_SHOULDER_PRESET_0)
 
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightArm"), **RIGHT_ARM_IK_PRESET_0)
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightForeArm"), **RIGHT_ARM_IK_PRESET_1)
-tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightHand"), inPrimaryChild=SKELETAL_PREFIX + "RightHandMiddle1")
+tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightHand"), **RIGHT_HAND_PRESET_0)
 
 fingers = [
         [SKELETAL_PREFIX + "RightHandThumb1", SKELETAL_PREFIX + "RightHandThumb2", SKELETAL_PREFIX + "RightHandThumb3"],
@@ -131,7 +189,7 @@ fingers = [
 for finger in fingers:
     i = 0
     for digit in finger:
-        tkj.writePreset(pc.PyNode(digit), **(FINGER_PRESET_0 if i < 2 else FINGER_PRESET_1))
+        tkj.writePreset(pc.PyNode(digit), **(RIGHT_FINGER_PRESET_0 if i < 2 else RIGHT_FINGER_PRESET_1))
         i += 1
 
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "LeftUpLeg"), **LEG_IK_PRESET_0)
@@ -143,15 +201,34 @@ tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightLeg"), **LEG_IK_PRESET_1)
 tkj.writePreset(pc.PyNode(SKELETAL_PREFIX + "RightFoot"), **FOOT_PRESET)
 
 tkj.orientJointPreset(pc.PyNode(SKELETAL_PREFIX + "Hips"), DEFAULT_PRESET)
+
 """
 
-
-
-
-
-
-
-
+def bakeOrientJoint(inJoints=None):
+    inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
+    
+    for joint in inJoints:
+        joint.rx.set(joint.rx.get() + joint.jointOrientX.get())
+        joint.jointOrientX.set(0.0)
+        
+        joint.ry.set(joint.ry.get() + joint.jointOrientY.get())
+        joint.jointOrientY.set(0.0)
+        
+        joint.rz.set(joint.rz.get() + joint.jointOrientZ.get())
+        joint.jointOrientZ.set(0.0)
+        
+def resetOrientJoint(inJoints=None):
+    inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
+    
+    for joint in inJoints:
+        joint.jointOrientX.set(joint.jointOrientX.get() + joint.rx.get())
+        joint.rx.set(0.0)
+        
+        joint.jointOrientY.set(joint.jointOrientY.get() + joint.ry.get())
+        joint.ry.set(0.0)
+        
+        joint.jointOrientZ.set(joint.jointOrientZ.get() + joint.rz.get())
+        joint.rz.set(0.0)
 
 """
 Axis:
@@ -164,11 +241,14 @@ inSecondary : 0=x, 1=y, 2=z
 def aim(inTransform,  inPrimary=0, inPrimaryDirection=None, inPrimaryPoint=None, inPrimaryNegate=False, inSecondary=1, inSecondaryDirection=None, inSecondaryPoint=None, inSecondaryNegate=False, inPreserveChildren=False):
     #print "aim", inTransform, "inPrimary=", inPrimary, "inPrimaryDirection=", inPrimaryDirection, "inPrimaryPoint=", inPrimaryPoint, "inPrimaryNegate=", inPrimaryNegate, "inSecondary=", inSecondary, "inSecondaryDirection=", inSecondaryDirection, "inSecondaryPoint=", inSecondaryPoint, "inSecondaryNegate=", inSecondaryNegate, "inPreserveChildren=", inPreserveChildren
 
+    if inPrimary == inSecondary:
+        raise ValueError("inPrimary and inSecondary can't be the same axis '{0}' ({1})!".format(["x", "y", "z"][inPrimary], inTransform))
+
     if inPrimaryDirection is None and inPrimaryPoint is None:
-        raise ValueError("inPrimaryDirection and inPrimaryPoint can't both be null !")
+        raise ValueError("inPrimaryDirection and inPrimaryPoint can't both be null ({0}) !".format(inTransform))
 
     if inSecondaryDirection is None and inSecondaryPoint is None:
-        raise ValueError("inSecondaryDirection and inPrimaryPoint can't both be null !")
+        raise ValueError("inSecondaryDirection and inPrimaryPoint can't both be null ({0}) !".format(inTransform))
 
     origPos = inTransform.getTranslation(space='world')
     
@@ -253,10 +333,11 @@ def getPoleVector(inStartPoint, inMiddlePoint, inEndPoint, inDistance=1.0, inDis
 """
 inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child
 inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent, 5 = towards parent
+
+TODO : same options for Primary and Secondary !
+TODO : tackle last aiming bugs (for instance Spine needs to point [0,0,-1] to point [0,0,1]) !
 """
-def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0.0, 0.0], inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False):
-    #print "inPrimaryType",inPrimaryType
-    #print "inPrimaryData",inPrimaryData
+def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0.0, 0.0], inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False, inIdentity=False):
 
     cns = tkc.storeConstraints([inTransform], inRemove=True)
 
@@ -358,14 +439,11 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
                 upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
                 aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
 
-    pc.makeIdentity(inTransform, apply=True)
-    """
-    try:
-        #makeIdentity will fail sooner or later because it wat to act on children...
+    if inIdentity:
         pc.makeIdentity(inTransform, apply=True)
-    except Exception as e:
-        pc.warning(e)
-    """
+    else:
+        bakeOrientJoint([inTransform])
+
     if len(cns) > 0:
         tkc.loadConstraints(cns, inMaintainOffset=True)
 
@@ -522,32 +600,6 @@ def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPatte
                 obj.attr(attrs[inLockCenter]).setLocked(True)
 
 #createSymmetry()
-
-def bakeOrientJoint(inJoints=None):
-    inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
-    
-    for joint in inJoints:
-        joint.rx.set(joint.rx.get() + joint.jointOrientX.get())
-        joint.jointOrientX.set(0.0)
-        
-        joint.ry.set(joint.ry.get() + joint.jointOrientY.get())
-        joint.jointOrientY.set(0.0)
-        
-        joint.rz.set(joint.rz.get() + joint.jointOrientZ.get())
-        joint.jointOrientZ.set(0.0)
-        
-def resetOrientJoint(inJoints=None):
-    inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
-    
-    for joint in inJoints:
-        joint.jointOrientX.set(joint.jointOrientX.get() + joint.rx.get())
-        joint.rx.set(0.0)
-        
-        joint.jointOrientY.set(joint.jointOrientY.get() + joint.ry.get())
-        joint.ry.set(0.0)
-        
-        joint.jointOrientZ.set(joint.jointOrientZ.get() + joint.rz.get())
-        joint.rz.set(0.0)
 
 def disconnectSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inConsiderHierarchy=True):
     if inObjects is None:
