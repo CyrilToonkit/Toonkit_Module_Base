@@ -147,7 +147,7 @@ class MayaTool(Tool):
         for categ, options in categorizedOptions.iteritems():
 
             if len(categorizedOptions) > 1:
-                categ = DEFAULT_CATEGORY if not categ else categ
+                categ = tkTool.DEFAULT_CATEGORY if not categ else categ
                 if "." in categ:
                     categs = categ.split(".")
                     if categs[-2] != parentCateg:

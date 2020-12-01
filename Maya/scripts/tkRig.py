@@ -5833,7 +5833,8 @@ def smooth(inModel, inSubdiv):
             shapes = geo.getShapes()
             for shape in shapes:
                 shape.displaySmoothMesh.set(2)
-                pc.setAttr(geo.getShape().name() + ".smoothLevel", inSubdiv)
+                shape.smoothLevel.set(0)
+
     pc.undoInfo(closeChunk=True)
 
 def selectSet(inModel, inSet="All", inAdd=False, inExclude=None):

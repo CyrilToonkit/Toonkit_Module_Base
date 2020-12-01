@@ -247,10 +247,16 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
     for storedCon in storedConsInfo:
         cnsType, cnsTarget, cnsName = storedCon
 
-        if cnsType == "parentConstraint":
-            newCns = pc.parentConstraint(inTarget, cnsTarget, name=cnsName.split("|")[-1], maintainOffset=True)
-        else:
-            newCns = pc.scaleConstraint(inTarget, cnsTarget, name=cnsName.split("|")[-1], maintainOffset=True)
+        print "inTarget",inTarget
+        print "cnsTarget",cnsTarget
+
+        try:
+            if cnsType == "parentConstraint":
+                newCns = pc.parentConstraint(inTarget, cnsTarget, name=cnsName.split("|")[-1], maintainOffset=True)
+            else:
+                newCns = pc.scaleConstraint(inTarget, cnsTarget, name=cnsName.split("|")[-1], maintainOffset=True)
+        except:
+            pass
 
     return createdNodes
 
@@ -323,12 +329,15 @@ def replaceConstraint(inConstraint, inTarget=None, inSource=None):
     offsets = [list(inConstraint.target[0].targetOffsetTranslate.get()), list(inConstraint.target[0].targetOffsetRotate.get()), [1.0,1.0,1.0]]
 
     cons = getConstraintConnections(inConstraint)
+    cons = [(linkInput.name(), linkOutput) for linkInput, linkOutput in cons]
+
     sclCons = []
 
     pc.delete(inConstraint)
 
     haveScale = False
     constraints = tkc.getConstraints(inTarget)
+
     for constraint in constraints:
         if constraint.type() == "scaleConstraint" and inSource in tkc.getConstraintTargets(constraint):
             haveScale = True
@@ -343,8 +352,9 @@ def replaceConstraint(inConstraint, inTarget=None, inSource=None):
             if haveScale:
                 #offsets[2] = list(constraint.offset.get())
                 sclCons = getConstraintConnections(constraint)
-                pc.delete(constraint)
+                sclCons = [(linkInput.name(), linkOutput) for linkInput, linkOutput in sclCons]
 
+                pc.delete(constraint)
             break
 
     haveConnections = (len(cons) + len(sclCons)) > 0
@@ -394,7 +404,11 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
     replaced = []
 
     for parentCon in parentCons:
-        parentCon = pc.PyNode(parentCon)
+        try:
+            parentCon = pc.PyNode(parentCon)
+        except:
+            continue
+
         conName = parentCon.name().replace("|", "(")
 
         owners = tkc.getConstraintOwner(parentCon)

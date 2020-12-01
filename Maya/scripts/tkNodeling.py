@@ -57,7 +57,6 @@ print tkn.convertExpression(pc.selected()[0])
 
 #TODO
 
-multMatrix
 composeMatrix
 
 """
@@ -888,15 +887,30 @@ def div(inAttr1, inAttr2, inName=None, **kwargs):
     node.operation.set(2)#Divide
 
     #Todo manage vector or scalar types (considered scalar as it is)
+    haveCompound = False
+
     if attr1Scalar:
         node.input1X.set(inAttr1)
     else:
-        inAttr1 >> node.input1X
+        if inAttr1.isCompound():
+            haveCompound = True
+            inAttr1 >> node.input1
+        else:
+            inAttr1 >> node.input1X
 
     if attr2Scalar:
         node.input2X.set(inAttr2)
+        node.input2Y.set(inAttr2)
+        node.input2Z.set(inAttr2)
     else:
-        inAttr2 >> node.input2X
+        if inAttr2.isCompound():
+            haveCompound = True
+            inAttr2 >> node.input2
+        else:
+            inAttr2 >> node.input2X
+
+    if haveCompound:
+        return node.output
 
     return node.outputX
 
@@ -1010,22 +1024,6 @@ def mod(inAttr1, inAttr2, inName=None, **kwargs):
 
 # Vectors / Matrices
 #################################################################################
-""" DEPRECATE
-@profiled
-def composeMatrix(inTranslation, inRotation, inName=None, **kwargs):
-    inTranslation = getNode(inTranslation)
-    inRotation = getNode(inRotation)
-
-    nodeName = inName or reduceName(COMPMAT_FORMAT.format(inTranslation.node().name()))
-    if pc.objExists(nodeName):
-        return pc.PyNode(nodeName).outputMatrix
-    
-    node = create("composeMatrix", nodeName, **kwargs)
-    inTranslation >> node.inputTranslate
-    inRotation >> node.inputRotate
-    
-    return node.outputMatrix
-"""
 @profiled
 def fourByFourMatrix(   in00=1.0, in01=0.0, in02=0.0, in03=0.0,
                         in10=0.0, in11=1.0, in12=0.0, in13=0.0,
