@@ -615,7 +615,7 @@ def listsBarelyEquals(val1, val2, delta=CONST_DELTA):
         return False
 
     for i in range(val1Length):
-        if not doubleBarelyEquals(val1[i], val2[i]):
+        if not doubleBarelyEquals(val1[i], val2[i], delta=delta):
             return False
 
     return True
@@ -1474,7 +1474,7 @@ def pickSession(inFuncName="printExecuteError", inObjectsMin=0, inObjectsMax=0, 
                                                         
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-def setTRS(inTarget, inTValues = [0.0,0.0,0.0], inRValues = [0.0,0.0,0.0], inSValues = [1.0,1.0,1.0], inTrans=True, inRot=True, inScl=True, inWorldSpace=False):
+def setTRS(inTarget, inTValues = [0.0,0.0,0.0], inRValues = [0.0,0.0,0.0], inSValues = [1.0,1.0,1.0], inTrans=True, inRot=True, inScl=True, inWorldSpace=False, inPreserve=False):
     """
         Simple pymel setTransform wrapping, exposed SI style
         
@@ -1505,7 +1505,7 @@ def setTRS(inTarget, inTValues = [0.0,0.0,0.0], inRValues = [0.0,0.0,0.0], inSVa
     if inScl and inSValues != None:
         inTarget.setScale(inSValues)
     """
-    kwargs = {("worldSpace" if inWorldSpace else "objectSpace"):True}
+    kwargs = {("worldSpace" if inWorldSpace else "objectSpace"):True, "preserve":inPreserve}
 
     if inWorldSpace and inTrans and inTValues != None:
         kwargs["translation"]=inTValues
@@ -4320,6 +4320,29 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
             pc.warning(inObject.name() + " : Invalid parameters, values length doesn't match influences and verts length  ("+ str(valLength) +" given, "+ str(expectedValLength) +" expected, "+ str(infLength) +" influences * "+str(nVerts)+" verts)")
             return
 
+    #Re-package influences and values in case influences are showing more than once
+    infSet = set(inInfluences)
+    if len(inInfluences) != len(infSet):
+        for inf in infSet:
+            count = inInfluences.count(inf)
+            if count > 1:
+                firstOcc = inInfluences.index(inf)
+                occ = firstOcc + 1
+                for i in xrange(count-1):
+                    occ = inInfluences.index(inf, occ)
+
+                    del inInfluences[occ]
+
+                    newValues = inValues[firstOcc*nVerts:nVerts]
+                    dupValues = inValues[occ*nVerts:nVerts]
+                    for i in range(nVerts):
+                        inValues[firstOcc*nVerts + i] += inValues[occ*nVerts + i]
+
+                    del inValues[occ*nVerts:occ*nVerts + nVerts]
+
+        valLength = len(inValues)
+        infLength = len(inInfluences)
+
     #verify if every influence exists
     nullInfs = []
     for i in range(infLength):
@@ -4829,7 +4852,7 @@ def zeroOutDeformers(inSkin, inInfluences=[]):
 
     return inSkin
 
-def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True):
+def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True, inRemapDict=None):
     """
         Modes :
             0 : Replace
@@ -4841,6 +4864,11 @@ def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, in
         if isinstance(inZeroInfs, basestring):
             inZeroInfs = ",".split(inZeroInfs)
         zeroOutDeformers(inSkin, inZeroInfs)
+
+    if not inRemapDict is None:
+        infs = inSkin[1]
+        for i in xrange(len(infs)):
+            infs[i] = inRemapDict.get(infs[i], infs[i])
 
     obj = inSkin[0] if inObject == None else inObject
 
@@ -4877,7 +4905,7 @@ def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, in
         pc.warning("No influences given !")
         return None
 
-def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True):
+def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True, inRemapDict=None):
     """
         Modes :
             0 : Replace
@@ -4909,7 +4937,7 @@ def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0,
 
     if inObjects == None or len(inObjects) == 0:
         for inSkin in inSkins:
-            loadSkin(inSkin, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
+            loadSkin(inSkin, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict)
     else:
         for inObject in inObjects:
             pointCount = pc.polyEvaluate(inObject, vertex=True)
@@ -4917,7 +4945,7 @@ def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0,
 
             for inSkin in inSkins:
                 if not inSkin[0] is None and inObject.stripNamespace() == inSkin[0].split(":")[-1]:
-                    loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
+                    loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict)
                     found = inSkin
                     break
 
@@ -4925,7 +4953,7 @@ def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0,
                 #Second pass, apply to an object with matching pointCount
                 for inSkin in inSkins:
                     if pointCount == getSkinPointCount(inSkin):
-                        loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize)
+                        loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict)
                         found = inSkin
                         break
 
@@ -5625,31 +5653,35 @@ def disconnect(inParam):
 
     return True
 
-def getAllConnections(inAttr, inSource=True, inDestination=True):
+def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=None):
+    inExcludeTypes = inExcludeTypes or []
+
     cons = []
     if inSource:
-        tempCons = inAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+        #print "inSource",inAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+        tempCons = [ c for c in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
         for i in range(len(tempCons)):
             tempCons[i] = (tempCons[i][1], tempCons[i][0])
         cons.extend(tempCons)
 
     if inDestination:
-        cons.extend(inAttr.listConnections(source=False, destination=True, plugs=True, connections=True))
+        #print "inDestination",inAttr.listConnections(source=False, destination=True, plugs=True, connections=True)
+        cons.extend([ c for c in inAttr.listConnections(source=False, destination=True, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes])
 
     if len(cons) == 0 and inAttr.isCompound():
         childAttrs = inAttr.children()
         for childAttr in childAttrs:
 
             if inSource:
-                tempCons = childAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+                #print "inSource",childAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+                tempCons = [ c for c in childAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
                 for i in range(len(tempCons)):
                     tempCons[i] = (tempCons[i][1], tempCons[i][0])
                 cons.extend(tempCons)
 
             if inDestination:
-                cons.extend(childAttr.listConnections(source=False, destination=True, plugs=True, connections=True))
-
-            cons.extend(tempCons)
+                #print "childAttr",inAttr.listConnections(source=False, destination=True, plugs=True, connections=True)
+                cons.extend([ c for c in childAttr.listConnections(source=False, destination=True, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes])
 
     return cons
 
@@ -5671,7 +5703,7 @@ def getNodeConnections(inNode, *args, **kwargs):
     baked = str(cons)
     return cons
 
-def setNodeConnections(inCons, inNode=None, inDestination=False):
+def setNodeConnections(inCons, inNode=None, inDestination=False, inSetBefore=False):
     for linkOutput, linkInput in inCons:
         outputAttr = linkOutput
         inputAttr = linkInput
@@ -5696,9 +5728,12 @@ def setNodeConnections(inCons, inNode=None, inDestination=False):
 
                 inputAttr = inNode.attr(inputName)
 
-        if len(inputAttr.listConnections()) > 0:
+        if len(inputAttr.listConnections(source=True, destination=False)) > 0:
             pc.warning("Can't 'setNodeConnections', '{0}' already connected !".format(inputAttr))
             continue
+
+        if inSetBefore:
+            outputAttr.set(inputAttr.get())
 
         outputAttr >> inputAttr
 

@@ -19,6 +19,8 @@
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
+import os
+
 from Toonkit_Core.tkToolOptions.tkOptions import Options
 from tkMayaTool import MayaTool as Tool
 
@@ -38,6 +40,7 @@ class ImportSkinnings(Tool):
         self.options.addOption("Overwrite", False, "When checked, will import skinning only on unnormalized areas and/or through influences that are not selected", "Overwrite")
         self.options.addOption("Opacity", 1.0, "Blending with current envelope", "Opacity")
         self.options.addOption("Normalize", True, "Normalize envelope", "Normalize")
+        self.options.addOption("MappingPath", "", "Mapping file path", "Mapping")
 
         if not self.options.isSaved():
             self.saveOptions()
@@ -59,13 +62,25 @@ class ImportSkinnings(Tool):
         elif self.options["Overwrite"]:
             mode = 1
 
-        print "mode",mode
-        print "opacity",self.options["Opacity"]
-
         inPath = None
         inPath = pc.fileDialog2(caption="Load your envelopes", fileFilter="Text file (*.txt)(*.txt)", dialogStyle=2, fileMode=1)
 
         if inPath != None and len(inPath) > 0:
             inPath = inPath[0]
 
-            tkc.loadSkins(inPath, sel, inZeroInfs=zeroInfs, inMode=mode, inOpacity=self.options["Opacity"], inNormalize=self.options["Normalize"])
+            mapping = None
+
+            if not self.options["MappingPath"] is None and os.path.isfile(self.options["MappingPath"]):
+                lines = []
+
+                with open(self.options["MappingPath"]) as f:
+                    lines = f.readlines()
+
+                if len(lines) > 0:
+                    mapping = {}
+
+                    for line in lines:
+                        key, value = line.rstrip("\r\n").split(",")[0:2]
+                        mapping[key] = value
+
+            tkc.loadSkins(inPath, sel, inZeroInfs=zeroInfs, inMode=mode, inOpacity=self.options["Opacity"], inNormalize=self.options["Normalize"], inRemapDict=mapping)

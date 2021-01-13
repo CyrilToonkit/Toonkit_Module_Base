@@ -27,6 +27,7 @@ import os
 import maya.api.OpenMaya as api
 import pymel.core as pc
 
+import OscarZmqMayaString as ozms
 import tkMayaCore as tkc
 import tkNodeling as tkn
 
@@ -204,6 +205,46 @@ tkj.orientJointPreset(pc.PyNode(SKELETAL_PREFIX + "Hips"), DEFAULT_PRESET)
 
 """
 
+def checkOrients(inRootName, inRootNs, inRefNs, inRecursively=True, inDelta=tkc.CONST_DELTA):
+    faulty = []
+
+    faults = []
+
+    inRoot = tkc.getNode(inRootNs + inRootName)
+    inRefRoot = tkc.getNode(inRefNs + inRootName)
+    
+    exists = False
+
+    if inRoot is None or inRefRoot is None:
+        if inRoot is None:
+            pc.warning("Target {0} cannot be found !".format(inRootName))
+        if inRefRoot is None:
+            pc.warning("Reference {0} cannot be found !".format(inRootName))
+
+        faults.append('objects not found')
+    else:
+        exists = True
+
+        if not tkc.listsBarelyEquals(inRoot.t.get(), inRefRoot.t.get(), delta=inDelta):
+            faults.append('translations')
+        if not tkc.listsBarelyEquals(inRoot.r.get(), inRefRoot.r.get(), delta=inDelta):
+            faults.append('rotations')
+        if not tkc.listsBarelyEquals(inRoot.s.get(), inRefRoot.s.get(), delta=inDelta):
+            faults.append('scalings')
+
+        if pc.hasAttr(inRoot, "jointOrient", False) and pc.hasAttr(inRefRoot, "jointOrient", False):
+            if not tkc.listsBarelyEquals(inRoot.jointOrient.get(), inRefRoot.jointOrient.get(), delta=inDelta):
+                faults.append('jointOrients')
+
+    if len(faults) > 0:
+        faulty.append("{0} do not match {1} ({2}).".format(inRoot, inRefRoot,",".join(faults)))
+
+    if exists and inRecursively:
+        for child in inRoot.getChildren():
+            faulty.extend(checkOrients(str(child.stripNamespace()), inRootNs, inRefNs, inRecursively=True, inDelta=inDelta))
+
+    return faulty 
+
 def bakeOrientJoint(inJoints=None):
     inJoints = inJoints or [j for j in pc.selected() if j.type() == "joint"]
     
@@ -331,7 +372,7 @@ def getPoleVector(inStartPoint, inMiddlePoint, inEndPoint, inDistance=1.0, inDis
     return inMiddlePoint + (midToStart + midToEnd) * -1 * inDistance * factor
 
 """
-inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child
+inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child, 5 = matched
 inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent, 5 = towards parent
 
 TODO : same options for Primary and Secondary !
@@ -346,7 +387,7 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
     for con in consIter:
         dest, source = con
         #print " -source",source,"dest",dest
-        source.disconnect(dest)
+        dest.disconnect(source)
 
     inTransform = pc.PyNode(inTransform.name())
 
@@ -358,86 +399,107 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
 
     ns = str(inTransform.namespace())
 
-    if not inPrimaryChild is None and inPrimaryChild != "":
-        if pc.objExists(ns + inPrimaryChild.split(":")[-1]):
-            childObj = pc.PyNode(ns + inPrimaryChild.split(":")[-1])
-        else:
-            if pc.objExists(inPrimaryChild):
-                childObj = pc.PyNode(inPrimaryChild)
-            else:
-                pc.warning("Given primary child cannot be found ({0}) !".format(inPrimaryChild))
+    if inPrimaryType == 5:
+        childObj = tkc.getNode(ns + inPrimaryChild.split(":")[-1])
+        if childObj is None:
+            childObj = tkc.getNode(inPrimaryChild)
 
-    elif len(children) > 0:
-        childObj = children[0]
-    
-    #Calculations for inPrimary "Point" (child direction, or inverse parent direction)
-    if not childObj is None:
-        childTrans = childObj.getTranslation(space='world')
-        primaryIsDirection = False
+        if not childObj is None:
+            pc.rotate(inTransform, ozms.getPymelRotation(childObj, space="world"), absolute=True, worldSpace=True, preserveChildPosition=True)
     else:
-        parent = inTransform.getParent()
-        if not parent is None:
-            childTrans = parent.getTranslation(space='world')
-            primaryIsDirection = False
-            inPrimaryNegate = not inPrimaryNegate
 
-    firstPoint = inTransform.getTranslation(space="world")
-    secondPoint = childTrans
-    thirdPoint = None
-    #Calculations for UpVs
-    if inSecondaryType > 1:
-        if inSecondaryType == 5:
-            thirdPoint = inTransform.getParent().getTranslation(space='world')
-        elif len(children) > 0 or inSecondaryType > 3:
-            if inSecondaryType > 2:
-                if inSecondaryType > 3:
-                    parent = inTransform.getParent()
-                    if not parent is None:
-                        parentParent = parent.getParent()
-                        if not parentParent is None:
-                            thirdPoint = firstPoint
-                            secondPoint = parent.getTranslation(space='world')
-                            firstPoint = parentParent.getTranslation(space='world')
+        if not inPrimaryChild is None and inPrimaryChild != "":
+            if not isinstance(inPrimaryChild, (list, tuple)):
+                inPrimaryChild = [inPrimaryChild]
+
+            for childName in inPrimaryChild:
+                if pc.objExists(ns + childName.split(":")[-1]):
+                    childObj = pc.PyNode(ns + childName.split(":")[-1])
                 else:
-                    parent = inTransform.getParent()
-                    if not parent is None:
-                        thirdPoint = secondPoint
-                        secondPoint = firstPoint
-                        firstPoint = parent.getTranslation(space='world')
-            else:
-                childChildren = children[0].getChildren()
-                if len(childChildren) > 0:
-                    thirdPoint = childChildren[0].getTranslation(space="world")
+                    if pc.objExists(childName):
+                        childObj = pc.PyNode(childName)
+                    else:
+                        pc.warning("Given primary child cannot be found ({0}) !".format(childName))
 
-    primaryPoint = childTrans
-    if inPrimaryType != 2:
-        primaryPoint = inPrimaryData
-        primaryIsDirection = inPrimaryType == 0
+        elif len(children) > 0:
+            childObj = children[0]
+        
+        #Calculations for inPrimary "Point" (child direction, or inverse parent direction)
+        if not childObj is None:
+            childTrans = [0,0,0]
+            if not isinstance(childObj, (list, tuple)):
+                childObj = [childObj]
 
-    #print "primaryPoint",primaryPoint
+            for child in childObj:
+                childTrans += child.getTranslation(space='world')
 
-    if primaryIsDirection:
-        if inSecondaryType == 0:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-        elif inSecondaryType == 1:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-        elif not thirdPoint is None:#Upvs
+            childTrans /= len(childObj)
+
+            primaryIsDirection = False
+        else:
+            parent = inTransform.getParent()
+            if not parent is None:
+                childTrans = parent.getTranslation(space='world')
+                primaryIsDirection = False
+                inPrimaryNegate = not inPrimaryNegate
+
+        firstPoint = inTransform.getTranslation(space="world")
+        secondPoint = childTrans
+        thirdPoint = None
+        #Calculations for UpVs
+        if inSecondaryType > 1:
             if inSecondaryType == 5:
-                aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=thirdPoint, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-            else:
-                upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
-                aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-    else:
-        if inSecondaryType == 0:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-        elif inSecondaryType == 1:
-            aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-        elif not thirdPoint is None:#Upvs
-            if inSecondaryType == 5:
-                aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=thirdPoint, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-            else:
-                upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
-                aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+                thirdPoint = inTransform.getParent().getTranslation(space='world')
+            elif len(children) > 0 or inSecondaryType > 3:
+                if inSecondaryType > 2:
+                    if inSecondaryType > 3:
+                        parent = inTransform.getParent()
+                        if not parent is None:
+                            parentParent = parent.getParent()
+                            if not parentParent is None:
+                                thirdPoint = firstPoint
+                                secondPoint = parent.getTranslation(space='world')
+                                firstPoint = parentParent.getTranslation(space='world')
+                    else:
+                        parent = inTransform.getParent()
+                        if not parent is None:
+                            thirdPoint = secondPoint
+                            secondPoint = firstPoint
+                            firstPoint = parent.getTranslation(space='world')
+                else:
+                    childChildren = children[0].getChildren()
+                    if len(childChildren) > 0:
+                        thirdPoint = childChildren[0].getTranslation(space="world")
+
+        primaryPoint = childTrans
+        if inPrimaryType != 2:
+            primaryPoint = inPrimaryData
+            primaryIsDirection = inPrimaryType == 0
+
+        #print "primaryPoint",primaryPoint
+
+        if primaryIsDirection:
+            if inSecondaryType == 0:
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            elif inSecondaryType == 1:
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            elif not thirdPoint is None:#Upvs
+                if inSecondaryType == 5:
+                    aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=thirdPoint, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+                else:
+                    upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
+                    aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+        else:
+            if inSecondaryType == 0:
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            elif inSecondaryType == 1:
+                aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+            elif not thirdPoint is None:#Upvs
+                if inSecondaryType == 5:
+                    aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=thirdPoint, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
+                else:
+                    upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
+                    aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
 
     if inIdentity:
         pc.makeIdentity(inTransform, apply=True)
@@ -472,6 +534,9 @@ def addAttr(inTransform, inName, inValue, inEnumValues=None):
             attType = "Int32Array"
         if subType == "float":
             attType = "doubleArray"
+        if subType == "str":
+            attType = "stringArray"
+
     #print "final attType",attType
 
     if pc.attributeQuery(inName, node=inTransform, exists=True):
@@ -519,18 +584,20 @@ writePreset(pc.selected()[0], **DEFAULT_PRESET)
 print readPreset(pc.selected()[0])
 """
 
-def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChildren=True, inSkipPrefix=None, inSkipIfFound=None):
+def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChildren=True, inSkipPrefix=None, inSkipIfFound=None, inIdentity=False):
     if not inSkipPrefix is None and inTransform.stripNamespace().startswith(inSkipPrefix):
         return
 
     preset = inDefaultPreset.copy()
     preset.update(readPreset(inTransform))
 
+    preset["inIdentity"] = inIdentity
+
     orientJoint(inTransform, **preset)
 
     if inOrientChildren and inSkipIfFound != inTransform.stripNamespace():
         for child in inTransform.getChildren(type="joint"):
-            orientJointPreset(child, inDefaultPreset=inDefaultPreset, inOrientChildren=True, inSkipPrefix=inSkipPrefix, inSkipIfFound=inSkipIfFound)
+            orientJointPreset(child, inDefaultPreset=inDefaultPreset, inOrientChildren=True, inSkipPrefix=inSkipPrefix, inSkipIfFound=inSkipIfFound, inIdentity=inIdentity)
 
 def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPattern=".*Right.*", inRotate=True, inLockCenter=0, inConsiderHierarchy=True, invertX=True, invertY=False, invertZ=False):
     if inObjects is None:
