@@ -263,7 +263,45 @@ def getNode(inObj):
     
     return inObj
 
-def deleteUnusedNodes():
+def replaceAddDouble(inNode):
+    nodeName = inNode.name()
+    
+    inNode.rename(nodeName + "_OLD")
+    
+    newNode = pc.createNode("plusMinusAverage", name=nodeName)
+    
+    input1Plugs = inNode.input1.listConnections(source=True, destination=False, plugs=True)
+    if len(input1Plugs) > 0:
+        for input1Plug in input1Plugs:
+            input1Plug >> newNode.input1D[0]
+            input1Plug.disconnect(inNode.input1)
+    else:
+        newNode.input1D[0].set(inNode.input1.get())
+    
+    input2Plugs = inNode.input2.listConnections(source=True, destination=False, plugs=True)
+    if len(input2Plugs) > 0:
+        for input2Plug in input2Plugs:
+            input2Plug >> newNode.input1D[1]
+            input2Plug.disconnect(inNode.input2)
+    else:
+        newNode.input1D[1].set(inNode.input2.get())
+
+    outputPlugs = inNode.output.listConnections(source=False, destination=True, plugs=True)
+    for outputPlug in outputPlugs:
+        newNode.output1D >> outputPlug
+        
+    pc.delete(inNode)
+
+def replaceRiskyAddDoubles():
+    riskyAddDoubles = [n for n in pc.ls(type="addDoubleLinear") if len(n.output.listConnections(source=False, destination=True)) > 1]
+
+    for riskyAddDouble in riskyAddDoubles:
+        replaceAddDouble(riskyAddDouble)
+
+def deleteUnusedNodes(inSafeAddDoubles=False):
+    if inSafeAddDoubles:
+        replaceRiskyAddDoubles()
+
     numDeleted = pc.mel.eval("MLdeleteUnused()")
     print numDeleted
 
@@ -368,11 +406,16 @@ def formatAttr(inAttr, stripNamespace=False, inSeparator=ATTR_SEPARATOR):
 
     return "{0}{1}{2}".format(nodeName, inSeparator, short)
 
-def get1DOut(inObj):
+def get1DOut(inObj, inAttr=None):
     inObj = getNode(inObj)
 
     if isinstance(inObj, pc.general.Attribute):
         return inObj
+
+    if inObj.type() == "expression" and inAttr != None:
+        cons = [attr for attr in inAttr.listConnections(plugs=True) if attr.node() == inObj]
+        if len(cons) > 0:
+            return cons[0]
 
     return inObj.attr(OUT1DS.get(inObj.type(), "output"))
 
@@ -490,7 +533,7 @@ def conditionOr(inAttr, inCond, **kwargs):
 
 @profiled
 def conditionAnd(inAttr, inCond, **kwargs):
-    print "conditionAnd",inAttr,inCond
+    #print "conditionAnd",inAttr,inCond
 
     oldCond = None
     oldConds = inAttr.listConnections(source=True, destination=False)
@@ -503,7 +546,7 @@ def conditionAnd(inAttr, inCond, **kwargs):
         inAttr.setLocked(False)
 
     if not oldCond is None:
-        oldCondOut = get1DOut(oldCond)
+        oldCondOut = get1DOut(oldCond, inAttr)
         #print "++oldCond",oldCond,"oldCondOut",oldCondOut
 
         if oldCond.name() != inCond.node().name():
