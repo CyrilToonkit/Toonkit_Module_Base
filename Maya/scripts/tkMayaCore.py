@@ -129,6 +129,8 @@ import pymel.core.system as pmsys
 import pymel.core.datatypes as dt
 from pymel import versions
 
+import maya.api.OpenMaya as om
+
 import locationModule
 from Toonkit_Core.tkToolOptions.tkOptions import Options
 import Toonkit_Core.tkProjects.tkContext as ctx
@@ -2596,7 +2598,12 @@ def updateDisplay(node):
             elif nodeType == "nurbsCurve":
                 for shape in shapes:
                     #getPoints transformed by "old" values
-                    cvs = shape.getCVs()
+
+                    sl = om.MGlobal.getSelectionListByName(shape.name())
+                    omNode = sl.getDependNode(0)
+                    mFnSet = om.MFnNurbsCurve(omNode)
+                    cvs = mFnSet.cvPositions()
+
                     for cv in cvs:
                         cv.x = (cv.x / OLDsize - OLDt.x * unitScl) / OLDs[0]
                         cv.y = (cv.y / OLDsize - OLDt.y * unitScl) / OLDs[1]
@@ -2608,8 +2615,9 @@ def updateDisplay(node):
                         cv.y = size * (s[1] * cv.y + t.y * unitScl)
                         cv.z = size * (s[2] * cv.z + t.z * unitScl)
 
-                    shape.setCVs(cvs)
-                    shape.updateCurve()
+                    mFnSet.setCVPositions(cvs)
+                    mFnSet.updateCurve()
+
             elif nodeType == "joint":
                 pc.setAttr(node.name() + ".radius", size * unitScl)
             else:
@@ -2771,7 +2779,6 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
     return closestValues
 
 def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicule=True, inEnsureAttachment=True, inDetectionOffset=[0.0, 0.0, 0.0]):
-    print "constrainToPoint(", inObj, inRef, inOffset, inU, inV, useFollicule, inEnsureAttachment, inDetectionOffset
 
     createdObjects = []
 
@@ -2899,6 +2906,10 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
             inDetectionOffset = [0.0001, 0.0001, 0.0001]
         else:
             inDetectionOffset = [2*v for v in inDetectionOffset]
+
+        if inDetectionOffset[0] > 0.01:
+            pc.warning("Follicle attachement failed, check your UVs and UVsets, or export/reimport as obj...")
+            return createdObjects
         
         createdObjects = constrainToPoint(inObj, inRef, inOffset=inOffset, useFollicule=useFollicule, inDetectionOffset=inDetectionOffset)
 
@@ -3911,15 +3922,26 @@ def getPoints(inObject, normalized=True):
 
     if len(crvShapes) > 0:
         if crvShapes[0].type() == "nurbsCurve":
-            cvs = crvShapes[0].getCVs()
-            for i in range(crvShapes[0].numCVs()):
-                point = cvs[i]
+
+            sl = om.MGlobal.getSelectionListByName(crvShapes[0].name())
+            node = sl.getDependNode(0)
+            mFnSet = om.MFnNurbsCurve(node)
+            cvs = mFnSet.cvPositions()
+
+            for point in cvs:
                 pos.append(((point.x - offset[0])/scale[0], (point.y - offset[1])/scale[1], (point.z - offset[2])/scale[2]))
 
         elif crvShapes[0].type() == "mesh":
-            points = crvShapes[0].getPoints()
+
+            sl = om.MGlobal.getSelectionListByName(crvShapes[0].name())
+            node = sl.getDependNode(0)
+            mFnSet = om.MFnMesh(node)
+
+            points = mFnSet.getPoints()
+
             for point in points:
                 pos.append(((point.x - offset[0])/scale[0], (point.y - offset[1])/scale[1], (point.z - offset[2])/scale[2]))
+
         elif crvShapes[0].type() == "lattice":
             ns = pc.getAttr(crvShapes[0].name() + ".sDivisions")
             nt = pc.getAttr(crvShapes[0].name() + ".tDivisions")
@@ -3932,7 +3954,12 @@ def getPoints(inObject, normalized=True):
                             pos.append(((point.x - offset[0])/scale[0], (point.y - offset[1])/scale[1], (point.z - offset[2])/scale[2]))
 
         elif crvShapes[0].type() == "nurbsSurface":
-            points = crvShapes[0].getCVs()
+
+            sl = om.MGlobal.getSelectionListByName(crvShapes[0].name())
+            node = sl.getDependNode(0)
+            mFnSet = om.MFnNurbsSurface(node)
+            points = mFnSet.cvPositions()
+
             for point in points:
                 pos.append(((point.x - offset[0])/scale[0], (point.y - offset[1])/scale[1], (point.z - offset[2])/scale[2]))
 

@@ -134,6 +134,8 @@ class ToonkitMayaCore(Tool):
 
         self.options = Options(inPath=self.getOptionsPath())
 
+        self.boundPort = -1
+
         if self.options["debug"]:
             self.debug = self.options["debug"]
 
@@ -292,7 +294,12 @@ class ToonkitMayaCore(Tool):
         pc.menuItem(divider=True, parent=tkMainMenu)
         pc.menuItem(label="Toolkit options...", parent=tkMainMenu, command=self.showPrefs)
         pc.menuItem(label="Install default hotkeys", parent=tkMainMenu, command=self.setHotKeys)
-        pc.menuItem(label="Toolkit help (v" + self.version + ")", parent=tkMainMenu, command=showHelp)
+
+        helpText = "Toolkit help (v" + self.version + ")"
+        if self.boundPort != -1:
+            helpText += " ({0})".format(self.boundPort)
+
+        pc.menuItem(label=helpText, parent=tkMainMenu, command=showHelp)
         
 
     def hideMenu(self):
