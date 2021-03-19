@@ -404,8 +404,19 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
         if childObj is None:
             childObj = tkc.getNode(inPrimaryChild)
 
+        matchObj = None
         if not childObj is None:
+            if not tkc.listsBarelyEquals(inPrimaryData, [0.0,0.0,0.0]):
+                matchObj = pc.group(empty=True, name="tmp")
+                childObj.addChild(matchObj)
+                matchObj.t.set([0.0,0.0,0.0])
+                matchObj.r.set(inPrimaryData)
+                childObj = matchObj
+
             pc.rotate(inTransform, ozms.getPymelRotation(childObj, space="world"), absolute=True, worldSpace=True, preserveChildPosition=True)
+
+            if not matchObj is None:
+                pc.delete(matchObj)
     else:
 
         if not inPrimaryChild is None and inPrimaryChild != "":

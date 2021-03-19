@@ -1125,8 +1125,8 @@ def removeUnknownNodes():
     else:
         print "No 'unknown' nodes found"
 
-def deleteUnusedNodes():
-    tkn.deleteUnusedNodes()
+def deleteUnusedNodes(inSafeAddDoubles=False):
+    tkn.deleteUnusedNodes(inSafeAddDoubles=inSafeAddDoubles)
 
 #todo add an option to consider upwards hierarchy (PyNode.getAllParents())
 def isVisibleAfterAll(inObj, inDownStream=True, inUpStream=True):

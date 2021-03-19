@@ -969,6 +969,9 @@ def injectControlLayer(inCLRootName, inRigRootName, inTemplate, inAttrHolder=Non
             pc.warning("Can't find object for template key %s" % rigObj)
             continue
 
+        if len(connectionData) < 2:#No binding required
+            continue
+
         if len(connectionData) >= 5:#Custom relation (using a custom function and list of source markers)
             func = connectionData[4]
             if isinstance(func, str):
