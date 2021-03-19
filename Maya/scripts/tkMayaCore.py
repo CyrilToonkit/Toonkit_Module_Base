@@ -184,6 +184,8 @@ CONST_OBJWILDCARD = "$OBJNAME"
 CONST_ENUMTYPESEP=";"
 CONST_ENUMTYPEVALUESSEP=":"#THIS IS A MAYA CONSTRAINT
 
+CONST_NSSEP=":"#THIS IS A MAYA CONSTANT
+
 CONST_TMPNS = "TMPNS"
 CONST_LONGTMPNS = "TMPNS:"
 CONST_ROOTSUFFIX = "_Root"
@@ -698,6 +700,12 @@ def getUnitScaling():
 
 def hasMethod(inInstance, inMethodName):
     return hasattr(inInstance,inMethodName) and callable(getattr(inInstance,inMethodName))
+
+def getNamespace(inObject):
+    if not CONST_NSSEP in str(inObject):
+        return ""
+    else:
+        return  CONST_NSSEP.join(inObject.split(CONST_NSSEP)[:-1]) + CONST_NSSEP
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                        __  __                                                   _   

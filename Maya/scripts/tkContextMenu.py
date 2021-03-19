@@ -20,6 +20,7 @@
 -------------------------------------------------------------------------------
 """
 import os
+import pymel.core as pc
 import maya.cmds as cmds
 import tkMayaCore as tkc
 from functools import partial
@@ -40,9 +41,25 @@ DEFAULT_CTX = {
 def add_items(parent, inObject):
     keys, menusDict = getContextMenus(inObject)
     for itemName, subItems in keys:
-        cmds.menuItem(p=parent, l=menusDict[itemName]["name"], c="print 'coucou'" )
+        nameSpace = str(tkc.getNode(inObject).namespace())# TO DO : Can be execute in getContextMenus to optimise
+        create_item(itemName, parent, menusDict, subItems)
 
 
+def create_item(itemName, parent, inDict, subItems):
+        code = inDict[itemName]["code"]
+        isSubMenu = len(subItems) > 0
+        subMenu_Parent = cmds.menuItem(p=parent, l=inDict[itemName]["name"], sm = isSubMenu, c=code )
+        if isSubMenu:
+            for subItem in subItems:
+                create_item(subItem[0], subMenu_Parent, inDict, subItem[1])
+            cmds.setParent(parent, m=True)
+        
+
+def get_namespace(inObject):
+    if not tkc.CONST_NSSEP in inObject:
+        return ""
+    else:
+        return  tkc.CONST_NSSEP.join(inObject.split(tkc.CONST_NSSEP)[:-1]) + tkc.CONST_NSSEP
 
 def getValidObjectName(inText):
     # To do to excape none maya name 
@@ -74,7 +91,6 @@ def readContextMenuProp(inProperty, inDefaultValues=DEFAULT_CTX):
     
     if len(decoration) == 0:
         return None
-
     dic = inDefaultValues.copy()
     dic.update(decoration)
     
@@ -105,12 +121,13 @@ def getContextMenus(inObject):
     MenuDict = {}
     
     for prop in properties:
-        ctx = tkc.readDecoration(prop)
+        ctx = readContextMenuProp(prop)
+        ctx["code"] = ctx["code"].replace("$NS", tkc.getNamespace(inObject))
+        print ctx
         if not ctx is None:
             subKeys, subDict = getContextMenus(prop)
-            
             keys.append((ctx["name"], subKeys))
             MenuDict[ctx["name"]] = ctx
-            MenuDict.update(subDict)  
-
+            MenuDict.update(subDict)
+            
     return (keys, MenuDict)
