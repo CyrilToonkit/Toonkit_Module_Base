@@ -36,30 +36,79 @@ DEFAULT_CTX = {
     "inherit":     None,
     "inheritRecur":False,
 }
+GLOBAL_DICT = {}
 
 # Function call at right click
 def add_items(parent, inObject):
+    """Function called at right click to add custom items in sepcified context.
+    Parameters:
+        parent (str) : Parent's name of the UI maya object's of the dag menu.
+        inObject (str) : Object name mouse hovered or selected.
+    Return: Create custom items menu on dag menu.
+    """
+    selection = cmds.ls(sl=True, ap=True)
+    try:
+        selection.remove(inObject)
+    except:pass
+    global GLOBAL_DICT
+    GLOBAL_DICT.clear()
+    for x in selection:
+        GLOBAL_DICT[x] = getContextMenus(x)[1]
+
     keys, menusDict = getContextMenus(inObject)
     for itemName, subItems in keys:
-        nameSpace = str(tkc.getNode(inObject).namespace())# TO DO : Can be execute in getContextMenus to optimise
         create_item(itemName, parent, menusDict, subItems)
 
-
 def create_item(itemName, parent, inDict, subItems):
-        code = inDict[itemName]["code"]
-        isSubMenu = len(subItems) > 0
-        subMenu_Parent = cmds.menuItem(p=parent, l=inDict[itemName]["name"], sm = isSubMenu, c=code )
-        if isSubMenu:
-            for subItem in subItems:
-                create_item(subItem[0], subMenu_Parent, inDict, subItem[1])
-            cmds.setParent(parent, m=True)
-        
+    """Recurcive function to create dag items menu in right context.
+    Parameters:
+        itemName (str) : Parameter name.
+        inDict (dict) : Data of all parameter of contextMenus.
+    Return: Create custom items menu on dag menu corresponding of all parameters.
+    """
+    if inDict[itemName]["inherit"]:
+        objectName, propertyName = inDict[itemName]["inherit"].split(".")
+        try:
+            inheritRecur = inDict[itemName]["inheritRecur"]
+            keys, menusDict =  getContextMenus(objectName)
+            inDict[itemName] = menusDict[itemName]
+            menusDict.update(inDict)
+            inDict = menusDict
+            if inheritRecur:
+                subItems = get_heritage_subItems(keys, propertyName)
+        except:
+            inDict[itemName]["code"] = "print\"No code here\""
+            cmds.warning("The menuItem '{0}' failed to find heritage property '{1}' on '{2}' node".format(inDict[itemName]["name"], propertyName, objectName))
+    isSubMenu = len(subItems) > 0
+    for value in GLOBAL_DICT.values():
+        try:
+            inDict[itemName]["code"] += "\n" + value[itemName]["code"]
+        except: pass
+    condition = 1
+    if inDict[itemName]["condition"]:
+        condition = eval(inDict[itemName]["condition"])
+    if condition == True:
+        subMenu_Parent = cmds.menuItem(p=parent, l=inDict[itemName]["name"], sm = isSubMenu, c=inDict[itemName]["code"] )
 
-def get_namespace(inObject):
-    if not tkc.CONST_NSSEP in inObject:
-        return ""
-    else:
-        return  tkc.CONST_NSSEP.join(inObject.split(tkc.CONST_NSSEP)[:-1]) + tkc.CONST_NSSEP
+    if isSubMenu:
+        for subItem in subItems:
+            create_item(subItem[0], subMenu_Parent, inDict, subItem[1])
+        cmds.setParent(parent, m=True)
+
+def get_heritage_subItems(keys, propertiesName):
+    """Get all subitems of the giver properties (Recurcive function).
+    Parameters:
+        keys (list): herarchique view of parameters.
+        propertiesName (str): Properties name to find children.
+    return:
+        Returne (list) : List of hierarchique items childs of propertiesName
+    """
+    for key in keys:
+        if propertiesName == key[0]:
+            return key[1]
+        else:
+            get_heritage_subItems(key, propertiesName)
+
 
 def getValidObjectName(inText):
     # To do to excape none maya name 
@@ -67,7 +116,10 @@ def getValidObjectName(inText):
 
 
 def writeContextMenu(inObject, **kwargs):
-    # Write properties of context Menus
+    """Write properties of context Menus
+    Parameters: 
+        inObject (str): Object name to attache property
+    Returne (str): returne the name of the created node."""
     ctxProp = inObject
 
     if not CTXMENU_FLAG in inObject.name():
@@ -84,8 +136,7 @@ def readContextMenuProp(inProperty, inDefaultValues=DEFAULT_CTX):
     """# Read Context Menu propertys on property
     Parameters:
         inProperty (str): Property transform node
-    Return:
-        dic (dict): Return all properties of the property node with the default value for non-declared properties"""
+    Return (dict): Return all properties of the property node with the default value for non-declared properties"""
     inObject = tkc.getNode(inProperty)
     decoration = tkc.readDecoration(inObject)
     
@@ -108,6 +159,7 @@ def getContextMenus(inObject):
     """
     inObject = tkc.getNode(inObject)
     ctxProp = inObject
+    ns = tkc.getNamespace(inObject)
     
     if not CTXMENU_FLAG in inObject.name():
         ctxProp = tkc.getProperty(inObject, CTXMENU_FLAG)
@@ -122,8 +174,11 @@ def getContextMenus(inObject):
     
     for prop in properties:
         ctx = readContextMenuProp(prop)
-        ctx["code"] = ctx["code"].replace("$NS", tkc.getNamespace(inObject))
-        print ctx
+        ctx["code"] = ctx["code"].replace("$NS", ns)
+        if ctx["condition"]:
+            ctx["condition"] = ctx["condition"].replace("$NS", ns)
+        if ctx["inherit"]:
+            ctx["inherit"] = ctx["inherit"].replace("$NS", ns)
         if not ctx is None:
             subKeys, subDict = getContextMenus(prop)
             keys.append((ctx["name"], subKeys))
