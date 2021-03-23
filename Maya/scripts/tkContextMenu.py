@@ -35,6 +35,8 @@ DEFAULT_CTX = {
     "condition":   None,
     "inherit":     None,
     "inheritRecur":False,
+    "italicized": None,
+    "bold": None,
 }
 GLOBAL_DICT = {}
 
@@ -88,12 +90,22 @@ def create_item(itemName, parent, inDict, subItems):
     if inDict[itemName]["condition"]:
         condition = eval(inDict[itemName]["condition"])
     if condition == True:
-        subMenu_Parent = cmds.menuItem(p=parent, l=inDict[itemName]["name"], sm = isSubMenu, c=inDict[itemName]["code"] )
+        mayaKwargs = {"p": parent,
+                        "l": inDict[itemName]["name"],
+                        "sm": isSubMenu,
+                        "c": inDict[itemName]["code"]}
 
-    if isSubMenu:
-        for subItem in subItems:
-            create_item(subItem[0], subMenu_Parent, inDict, subItem[1])
-        cmds.setParent(parent, m=True)
+        if inDict[itemName]["italicized"]:
+            mayaKwargs["italicized"] = True
+        if inDict[itemName]["bold"]:
+            mayaKwargs["boldFont"] = True
+
+        subMenu_Parent = cmds.menuItem(**mayaKwargs)
+
+        if isSubMenu:
+            for subItem in subItems:
+                create_item(subItem[0], subMenu_Parent, inDict, subItem[1])
+            cmds.setParent(parent, m=True)
 
 def get_heritage_subItems(keys, propertiesName):
     """Get all subitems of the giver properties (Recurcive function).
