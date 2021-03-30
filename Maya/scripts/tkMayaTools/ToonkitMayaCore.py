@@ -148,6 +148,7 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("hidemenu", False, "Hide Toonkit menu", "Hide menu", False, "Configuration")
         self.options.addOption("hookmayabatch", True, "Intercep a mayabatch call to execute a python script given as argument", "Hook mayabatch", False, "Configuration")
         self.options.addOption("debug", inDebug, "Log more verbose messages", "Debug", False, "Configuration")
+        self.options.addOption("hookDagMenuProc", True, "Override Maya 'dagMenuProc'", "Override Maya 'dagMenuProc'", False, "Configuration")
 
         #Hotkeys
         self.options.addOption("ResetAllTransformsKey", "R", None, "Key", False, "HotKeys.ResetAllTransforms")
@@ -244,6 +245,12 @@ class ToonkitMayaCore(Tool):
             else:
                 self.showMenu()
 
+        elif kwargs["option"].name == "hookDagMenuProc":
+            if kwargs["new"]:
+                print "Si on passe l'override a True"
+            else:
+                print "Si on passe l'override a False"
+
         elif "HotKeys." in kwargs["option"].category:
             self.setHotKeys()
 
@@ -293,6 +300,7 @@ class ToonkitMayaCore(Tool):
         #General/Version
         pc.menuItem(divider=True, parent=tkMainMenu)
         pc.menuItem(label="Toolkit options...", parent=tkMainMenu, command=self.showPrefs)
+        pc.menuItem(label="Load Context Menu", parent=tkMainMenu,ann="Open a RMB menu once before.", command="pc.mel.eval(\"source \\\"" +  os.path.join(oscarmodulepath, "dagMenuProc.mel").replace("\\", "/") + "\\\"\")")
         pc.menuItem(label="Install default hotkeys", parent=tkMainMenu, command=self.setHotKeys)
 
         helpText = "Toolkit help (v" + self.version + ")"

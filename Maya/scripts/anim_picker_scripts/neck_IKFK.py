@@ -1,5 +1,4 @@
 import pymel.core as pc
-
 import tkRig
 
 def do(inNs):
