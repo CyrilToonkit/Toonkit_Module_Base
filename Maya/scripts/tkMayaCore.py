@@ -121,6 +121,7 @@ import xml.dom.minidom as minidom
 from threading import Timer
 from timeit import default_timer
 from functools import partial
+import ast
 
 import maya.cmds as cmds
 import pymel.core as pc
@@ -5903,7 +5904,7 @@ def readDecoration(inObj, inPrefix=DECORATE_PREFIX):
             value = inObj.attr(attr).get()
             #Brute-force deserialize the value
             try:
-                value = eval(value)
+                value = ast.literal_eval(value)
             except:
                 pass
 

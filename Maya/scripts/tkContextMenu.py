@@ -156,7 +156,7 @@ def readContextMenuProp(inProperty, inDefaultValues=DEFAULT_CTX):
         return None
     dic = inDefaultValues.copy()
     dic.update(decoration)
-    
+
     return dic
 
 # Read 
@@ -175,7 +175,7 @@ def getContextMenus(inObject):
     
     if not CTXMENU_FLAG in inObject.name():
         ctxProp = tkc.getProperty(inObject, CTXMENU_FLAG)
-        
+
     if ctxProp is None:
         return ([], {})
 
@@ -196,5 +196,5 @@ def getContextMenus(inObject):
             keys.append((ctx["name"], subKeys))
             MenuDict[ctx["name"]] = ctx
             MenuDict.update(subDict)
-            
+
     return (keys, MenuDict)
