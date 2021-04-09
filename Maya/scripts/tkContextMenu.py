@@ -90,10 +90,16 @@ def create_item(itemName, parent, inDict, subItems):
     if inDict[itemName]["condition"]:
         condition = eval(inDict[itemName]["condition"])
     if condition == True:
-        mayaKwargs = {"p": parent,
+        if inDict[itemName]["code"] == "-":
+            mayaKwargs = {"p": parent,
                         "l": inDict[itemName]["name"],
                         "sm": isSubMenu,
-                        "c": inDict[itemName]["code"]}
+                        "d": True}
+        else:
+            mayaKwargs = {"p": parent,
+                            "l": inDict[itemName]["name"],
+                            "sm": isSubMenu,
+                            "c": inDict[itemName]["code"]}
 
         if inDict[itemName]["italicized"]:
             mayaKwargs["italicized"] = True
@@ -132,6 +138,8 @@ def writeContextMenu(inObject, **kwargs):
     Parameters: 
         inObject (str): Object name to attache property
     Returne (str): returne the name of the created node."""
+    if isinstance(inObject, basestring):
+        inObject = tkc.getNode(inObject)
     ctxProp = inObject
 
     if not CTXMENU_FLAG in inObject.name():
@@ -183,7 +191,6 @@ def getContextMenus(inObject):
     
     keys = []
     MenuDict = {}
-    
     for prop in properties:
         ctx = readContextMenuProp(prop)
         ctx["code"] = ctx["code"].replace("$NS", ns)
