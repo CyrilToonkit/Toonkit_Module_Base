@@ -2611,6 +2611,8 @@ global proc dagMenuProc(string $parent, string $object)
 
 		    // Create the list of selection masks
 		    createSelectMenuItems($parent, $object, $defaultObject);
+
+		    print "import tkContextMenu";
 			string $PyCmd = "import tkContextMenu\nreload(tkContextMenu)\ntkContextMenu.add_items('"+$parent + "','" + $object +  "')";
 			python($PyCmd);
 
