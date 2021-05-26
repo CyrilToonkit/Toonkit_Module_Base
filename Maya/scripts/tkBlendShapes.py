@@ -204,36 +204,44 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
 def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTargetPoints=None):
     refShape = None
 
-    if inRef.type() == "mesh":
+    VALIDTYPES = ["mesh", "nurbsSurface"]
+    refType = None
+    targetType = None
+
+    if inRef.type() in VALIDTYPES:
+        refType = inRef.type()
         refShape = inRef
     else:
         refShapes = inRef.getShapes(noIntermediate=True)
         for shape in refShapes:
-            if shape.type() == "mesh":
+            if shape.type() in VALIDTYPES:
+                refType = shape.type()
                 refShape = shape
                 break
                 
         if refShape is None:
-            pc.warning(inRef.name() + " is not a mesh !!")
+            pc.warning(inRef.name() + " is not a valid (must be of type {0}) !!".format(VALIDTYPES))
             return False
 
     targetShape = None
 
-    if inTarget.type() == "mesh":
+    if inTarget.type() in VALIDTYPES:
+        targetType = inTarget.type()
         targetShape = inTarget
     else:
         targetShapes = inTarget.getShapes(noIntermediate=True)
         for shape in targetShapes:
-            if shape.type() == "mesh":
+            if shape.type() in VALIDTYPES:
+                targetType = shape.type()
                 targetShape = shape
                 break
                 
         if targetShape is None:
-            pc.warning(inTarget.name() + " is not a mesh !!")
+            pc.warning(inTarget.name() + " is not a valid (must be of type {0}) !!".format(VALIDTYPES))
             return False
 
-    refPoints = inRefPoints or refShape.getPoints()
-    targetPoints = inTargetPoints or targetShape.getPoints()
+    refPoints = inRefPoints or refShape.getPoints() if refType == "mesh" else refShape.getCVs()
+    targetPoints = inTargetPoints or targetShape.getPoints() if targetType == "mesh" else targetShape.getCVs()
 
     for i in range(len(refPoints)):
         if i >= len(targetPoints):
@@ -248,7 +256,11 @@ def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTarget
             targetPoints[i][1] = (1 - inMap[i]) * targetPoints[i][1] + inMap[i] * refPoints[i][1]
             targetPoints[i][2] = (1 - inMap[i]) * targetPoints[i][2] + inMap[i] * refPoints[i][2]
 
-    targetShape.setPoints(targetPoints)
+    if targetType == "mesh":
+        targetShape.setPoints(targetPoints)
+    else:
+        targetShape.setCVs(targetPoints)
+        targetShape.updateSurface()
 
     return True
 

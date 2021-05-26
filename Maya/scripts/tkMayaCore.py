@@ -2612,18 +2612,17 @@ def updateDisplay(node):
                     mFnSet = om.MFnNurbsCurve(omNode)
                     cvs = mFnSet.cvPositions()
 
-                    for cv in cvs:
-                        cv.x = (cv.x / OLDsize - OLDt.x * unitScl) / OLDs[0]
-                        cv.y = (cv.y / OLDsize - OLDt.y * unitScl) / OLDs[1]
-                        cv.z = (cv.z / OLDsize - OLDt.z * unitScl) / OLDs[2]
+                    newCvs = om.MPointArray()
 
                     #setPoints transformed by "new" values
                     for cv in cvs:
-                        cv.x = size * (s[0] * cv.x + t.x * unitScl)
-                        cv.y = size * (s[1] * cv.y + t.y * unitScl)
-                        cv.z = size * (s[2] * cv.z + t.z * unitScl)
+                        newCvs.append(om.MPoint(
+                            size * (s[0] * ((cv.x / OLDsize - OLDt.x * unitScl) / OLDs[0]) + t.x * unitScl),
+                            size * (s[1] * ((cv.y / OLDsize - OLDt.y * unitScl) / OLDs[1]) + t.y * unitScl),
+                            size * (s[2] * ((cv.z / OLDsize - OLDt.z * unitScl) / OLDs[2]) + t.z * unitScl)
+                            ))
 
-                    mFnSet.setCVPositions(cvs)
+                    mFnSet.setCVPositions(newCvs)
                     mFnSet.updateCurve()
 
             elif nodeType == "joint":
