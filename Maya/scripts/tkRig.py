@@ -4765,12 +4765,13 @@ def decorateAnimNode(inAnimNode, inIgnoreNs=False):
     attr.set(outputAttr.name() if not inIgnoreNs else outputAttr.stripNamespace())
 
     outputObj = outputAttr.node()
-    outputParent = outputObj.getParent()
-
     mc.addAttr(inAnimNode.name(), ln="tkLocalSpace", dt="matrix")
-    if outputParent != None:
-        attr = inAnimNode.tkLocalSpace
-        attr.set(outputParent.worldMatrix[0].get())
+    if outputObj.type() == "transform":
+        outputParent = outputObj.getParent()
+        
+        if outputParent != None:
+            attr = inAnimNode.tkLocalSpace
+            attr.set(outputParent.worldMatrix[0].get())
 
     return [inAnimNode.tkConnection, inAnimNode.tkLocalSpace]
 
@@ -5126,6 +5127,7 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
     for node in nodes:
         attr = node.tkConnection
         extraAttrs.append(attr)
+        extraAttrs.append(node.tkLocalSpace)
         connection = attr.get()
         nodeName, attrName = connection.split(".")
         if swapNamespace != None:

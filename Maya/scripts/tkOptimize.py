@@ -472,17 +472,22 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
                     print "Cannot replace (owner have scale pivots): ",parentCon,"on",owner
                 continue
 
+            if not tkc.listsBarelyEquals(list(owner.s.get()), [1.0,1.0,1.0]):
+                if inVerbose:
+                    print "Cannot replace (owner {0} have non-uniform scaling): ".format(owner),parentCon,"on",owner
+                continue
+
             targetPivots=False
             targetNonUniformScale=False
             for target in targets:
                 if not tkc.listsBarelyEquals(list(target.rp.get()), [0.0,0.0,0.0]):
                     if inVerbose:
-                        print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner,
+                        print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner
                     targetPivots=True
 
                 if not tkc.listsBarelyEquals(list(target.s.get()), [1.0,1.0,1.0]):
                     if inVerbose:
-                        print "Cannot replace (target {0} have non-uniform scaling): ".format(target),parentCon,"on",owner,
+                        print "Cannot replace (target {0} have non-uniform scaling): ".format(target),parentCon,"on",owner
                     targetNonUniformScale=True
 
             if targetPivots or targetNonUniformScale:
