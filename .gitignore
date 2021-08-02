@@ -2,3 +2,4 @@
 *.json
 Preferences
 ShotgunEngine
+/Maya/scripts/qtpy/tests

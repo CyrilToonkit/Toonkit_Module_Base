@@ -6,9 +6,12 @@ from maya import OpenMayaUI
 
 # Main Qt support
 try:
-    from anim_picker.Qt import QtCore, QtGui, QtOpenGL, QtWidgets
+    from qtpy import QtCore, QtGui, QtOpenGL, QtWidgets
 except:
-    raise Exception, 'Failed to import Qt.py'
+    try:
+        from anim_picker.Qt import QtCore, QtGui, QtOpenGL, QtWidgets
+    except:
+        raise Exception, 'Failed to import Qt.py and qtpy.py'
 
 try:
     import sip

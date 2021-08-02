@@ -1908,7 +1908,10 @@ class PointHandleIndex(QtWidgets.QGraphicsSimpleTextItem):
     __DEFAULT_COLOR__ = QtGui.QColor(130,50,50,255)
     
     def __init__(self, parent=None, scene=None, index=0):
-        QtWidgets.QGraphicsSimpleTextItem.__init__(self, parent, scene)
+        try:
+            QtWidgets.QGraphicsSimpleTextItem.__init__(self, parent, scene)
+        except:
+            QtWidgets.QGraphicsSimpleTextItem.__init__(self, scene, parent)
         
         # Init defaults
         self.set_size()
@@ -1949,7 +1952,10 @@ class GraphicText(QtWidgets.QGraphicsSimpleTextItem):
     __DEFAULT_COLOR__ = QtGui.QColor(30,30,30,255)
     
     def __init__(self, parent=None, scene=None):
-        QtWidgets.QGraphicsSimpleTextItem.__init__(self, parent, scene)
+        try:
+            QtWidgets.QGraphicsSimpleTextItem.__init__(self, parent, scene)
+        except:
+            QtWidgets.QGraphicsSimpleTextItem.__init__(self, scene, parent)
         
         # Counter view scale
         self.scale_transform = QtGui.QTransform().scale(1, -1)
