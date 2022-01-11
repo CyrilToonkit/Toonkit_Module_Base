@@ -805,7 +805,29 @@ def getInstances(inPyNodes=None, inLog=False):
 def getRigName(inName):
     return inName if inName[-len(CONST_ROOTSUFFIX):] != CONST_ROOTSUFFIX else inName[:-len(CONST_ROOTSUFFIX)]
 
-def renameDuplicates(inPyNodes=None, inLog=False):
+def renameRemember(inObj, inName, inRememberOldName=True):
+    inObj = getNode(inObj)
+
+    if inRememberOldName:
+        if not pc.attributeQuery("nameOrig",node=inObj, exists=True):
+            inObj.addAttr("nameOrig", dt="string")
+            name = inObj.name()
+            if "|" in name:
+                name = name.split("|")[-1]
+
+            inObj.nameOrig.set(name)
+
+    inObj.rename(inName)
+
+def restoreNames(inCleanAttrs=True):
+    objs = [a.node() for a in pc.ls("*.nameOrig")]
+
+    for obj in objs:
+        obj.rename(obj.nameOrig.get())
+        if inCleanAttrs:
+            obj.nameOrig.delete()
+
+def renameDuplicates(inPyNodes=None, inLog=False, inRememberOldName=True):
     namesDict = getDuplicates(inPyNodes, inLog)
     renamedNodes = []
     MAXITER = 100
@@ -840,7 +862,7 @@ def renameDuplicates(inPyNodes=None, inLog=False):
                     newName = "{0}__{1}".format(parentName, currentName)
                     if inLog:
                         print " -renaming {0} in {1}".format(dupNode.name(), newName)
-                    dupNode.rename(newName)
+                    renameRemember(dupNode, newName, inRememberOldName=inRememberOldName)
                     if firstPass:
                         currentRenamedNodes.append(dupNode)
         namesDict = getDuplicates(currentRenamedNodes, inLog)
@@ -2907,7 +2929,8 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         pc.parent(inObj, cnsObj)
 
     if inEnsureAttachment and listsBarelyEquals(cnsObj.getTranslation(space="world"), [0.0, 0.0, 0.0]):
-        removeAllCns(inObj)
+        removeAllCns(inObj, inTypes=["follicle"] if useFollicule else ["pointOnPolyConstraint"])
+
         print "Does not attach with values",inDetectionOffset
 
         if inDetectionOffset == [0.0, 0.0, 0.0]:
@@ -3223,10 +3246,14 @@ def selectConstraining(inObj):
     else:
         pc.select(clear=True)
 
-def removeAllCns(inObj):
+def removeAllCns(inObj, inTypes=None):
     cns = getConstraints(inObj)
     for c in cns:
         typ = c.type()
+
+        if not inTypes is None and not typ in inTypes:
+            continue
+
         try:
             pc.delete(c)
         except:
@@ -4680,6 +4707,8 @@ def getPointInfluences(inSkin, inInfluences, inPointIndex):
     return [inSkin[i] for i in range(inPointIndex, NSkin , NVerts)]
 
 def setPointInfluences(inSkin, inInfluences, inPointIndex, inValues):
+    inValues = inValues[:]
+
     NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
 
     NSkin = len(inSkin)
@@ -4767,6 +4796,49 @@ def limitDeformers(inObj, inMax=4, inSharpen=.5, inVerbose=False, inProgress=Tru
     skin = _limitDeformers(skin, influences, inMax=inMax, inSharpen=inSharpen, inVerbose=inVerbose, inProgress=inProgress)
     
     setWeights(inObj, inInfluences=influences, inValues=skin, inMode=0, inOpacity=1.0, inNormalize=True)
+
+def _averagePoints(inSkin, inInfluences, inPointsIndices=None, inStrength=1.0, inVerbose=True, inProgress=True):
+    NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
+
+    NSkin = len(inSkin)
+    pointsN = NSkin / NInfs
+
+    if inPointsIndices is None:
+        inPointsIndices = range(pointsN)
+
+    #Get points weights
+    valuesList = []
+    for pointIndex in inPointsIndices:
+        valuesList.append(tkc.getPointInfluences(inSkin, inInfluences, pointIndex))
+
+    #Average
+    totals = [0] * NInfs
+    for i, pointIndex in enumerate(inPointsIndices):
+        for j, value in enumerate(valuesList[i]):
+            totals[j] += value
+
+    average = [n / NSkin for n in totals]
+
+    for pointIndex in inPointsIndices:
+        if inStrength >= 1.0:
+            tkc.setPointInfluences(inSkin, inInfluences, pointIndex, average)
+        else:
+            values = []
+            for i, value in enumerate(valuesList[pointIndex]):
+                values.append(value * (1 - inStrength) + average[i] * inStrength)
+
+            tkc.setPointInfluences(inSkin, inInfluences, pointIndex, values)
+
+    return inSkin
+
+def averagePoints(inObj, inPointsIndices=None, inStrength=1.0, inVerbose=True, inProgress=True):
+    skin = tkc.getWeights(inObj)
+    skinCls = tkc.getSkinCluster(inObj)
+    influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
+    
+    skin = _averagePoints(skin, influences, inPointsIndices)
+    
+    tkc.setWeights(inObj, inInfluences=influences, inValues=skin, inMode=0, inOpacity=1.0, inNormalize=True)
 
 def getInfluencedPoints(inObj, inInfluences):
     points = []

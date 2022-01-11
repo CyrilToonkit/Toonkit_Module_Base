@@ -4453,6 +4453,7 @@ def connectOscarPoses(inPosesHolder, nodal=True, scaling=True):
     code = ""
 
     for key in paramsDic:
+        #print "key",key
         if not pc.getAttr(key, settable=True):
             pc.warning(key + " not settable, skipping...")
 
@@ -4461,13 +4462,20 @@ def connectOscarPoses(inPosesHolder, nodal=True, scaling=True):
 
         realValues = []
         for valuemultiplierPair in valuemultiplierPairs:
+            #print "valuemultiplierPair",valuemultiplierPair
             subVal = pc.getAttr(valuemultiplierPair[0])
             testVal = subVal
-            if valuemultiplierPair[0].split("__")[-1] in scalings:
+
+            splitPose = valuemultiplierPair[0].split("__")
+
+            if splitPose[-1] in scalings:
                 #print "subVal before", subVal
-                if not "Left_" in key and not "Right_" in key:
+                #Manage center controllers of Left/Right poses
+                if ("TKPose_Left" in splitPose[0] or "TKPose_Right" in splitPose[0]) and not "Left_" in key and not "Right_" in key:
                     subVal = ((subVal * 2.0) - 1.0) / 2.0
                     testVal = testVal * 2.0
+
+                    #subVal = subVal - 1.0
                     #print "subVal after", subVal
                 else:
                     subVal = subVal - 1.0
@@ -5135,7 +5143,9 @@ def importAnim(inPath=None, swapNamespace=None, verbose=False, cleanUnconnected=
                 if ":" in nodeName:
                     nodeName = nodeName.replace(nodeName.split(":")[0], swapNamespace)
                 else:
-                    nodeName = swapNamespace + ":" + nodeName
+                    nonUniqueSplit = nodeName.split("|")
+                    nonUniqueSplit = [swapNamespace + ":" + s for s in nonUniqueSplit]
+                    nodeName = "|".join(nonUniqueSplit)
             else:
                 if ":" in nodeName:
                     nodeName = nodeName.split(":")[-1]             

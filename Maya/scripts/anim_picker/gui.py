@@ -2014,7 +2014,9 @@ class GraphicText(QtWidgets.QGraphicsSimpleTextItem):
         (Since by default the text start on the bottom left corner) 
         '''
         center_pos = self.boundingRect().center()
-        self.setPos(-center_pos * self.scale_transform)
+        #self.setPos(-center_pos * self.scale_transform)
+        scale_xy = QtCore.QPointF(center_pos.x(), center_pos.y() * -1)
+        self.setPos(-scale_xy)
 
     
 class PickerItem(DefaultPolygon):
