@@ -414,7 +414,7 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
         owners = tkc.getConstraintOwner(parentCon)
         if len(owners) == 0:
             pc.warning("Disconected constraint : " + parentCon.name())
-            pc.delete(parentCon)
+            #pc.delete(parentCon)
             continue
 
         owner = tkc.getConstraintOwner(parentCon)[0]

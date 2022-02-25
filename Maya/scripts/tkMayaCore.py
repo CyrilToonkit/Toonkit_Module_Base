@@ -5766,6 +5766,9 @@ def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=
     cons = []
     if inSource:
         #print "inSource",inAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
+        for connnn in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True):
+            print connnn[1].node().type()
+        
         tempCons = [ c for c in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
         for i in range(len(tempCons)):
             tempCons[i] = (tempCons[i][1], tempCons[i][0])
@@ -5798,10 +5801,27 @@ def getNodeConnections(inNode, *args, **kwargs):
         inSource (default True)
         inDestination (default True)
         inDisconnect (default False)
+        inExcludeTypes (default None)
+        inCustomOnly (default False)
     """
+    
+    inSource = kwargs.get("inSource", True)
+    inDestination = kwargs.get("inDestination", True)
+    inDisconnect = kwargs.get("inDisconnect", False)
+    inExcludeTypes = kwargs.get("inExcludeTypes")
+    inCustomOnly = kwargs.get("inCustomOnly", False)
+    
+    if len(args) == 0:#Auto-detect attrs
+        connections = inNode.listConnections(source=inSource, destination=inDestination, plugs=True, connections=True, skipConversionNodes=False)
+        args = []
+        for connection in connections:
+            #print connection[0], type(connection[0])
+            #print connection[0].getAlias(), type(connection[0].getAlias())
+            args.append(connection[0].getAlias() or connection[0].shortName())
+
     cons = []
     for arg in args:
-        cons.extend(getAllConnections(inNode.attr(arg), kwargs.get("inSource", True), kwargs.get("inDestination", True)))
+        cons.extend(getAllConnections(inNode.attr(arg), inSource, inDestination, inExcludeTypes))
 
     if kwargs.get("inDisconnect", False):
         for con in cons:
@@ -5817,32 +5837,45 @@ def setNodeConnections(inCons, inNode=None, inDestination=False, inSetBefore=Fal
 
         if not inNode is None:
             if inDestination:
-
+                
+                print "linkOutput",linkOutput, type(linkOutput)
                 outputName = linkOutput.split(".")[-1]
-
+                
+                """
                 if not pc.attributeQuery(outputName, node=inNode, exists=True):
                     pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), outputName))
                     continue
-
-                outputAttr = inNode.attr(outputName)
+                """
+                try:
+                    outputAttr = inNode.attr(outputName)
+                except:
+                    continue
             else:
-                
+                print "linkInput",linkInput, type(linkInput)
                 inputName = linkInput.split(".")[-1]
-
+                """
                 if not pc.attributeQuery(inputName, node=inNode, exists=True):
                     pc.warning("Can't 'setNodeConnections', '{0}' don't have attribute '{1}' !".format(inNode.name(), inputName))
                     continue
-
-                inputAttr = inNode.attr(inputName)
-
-        if len(inputAttr.listConnections(source=True, destination=False)) > 0:
-            pc.warning("Can't 'setNodeConnections', '{0}' already connected !".format(inputAttr))
+                """
+                try:
+                    inputAttr = inNode.attr(inputName)
+                except:
+                    continue
+        try:
+            if len(inputAttr.listConnections(source=True, destination=False)) > 0:
+                pc.warning("Can't 'setNodeConnections', '{0}' already connected !".format(inputAttr))
+                continue
+        except:
             continue
 
         if inSetBefore:
             outputAttr.set(inputAttr.get())
-
-        outputAttr >> inputAttr
+        
+        try:
+            outputAttr >> inputAttr
+        except:
+            pass
 
 def matchConnections(inNode, inRefNode, *args, **kwargs):
     """
@@ -5851,7 +5884,10 @@ def matchConnections(inNode, inRefNode, *args, **kwargs):
         inDestination (default True)
         inDisconnect (default False)
         inShape (default False)
+        inCustomOnly (default False)
     """
+    inCustomOnly = kwargs.get("inCustomOnly", False)
+    
     setNodeConnections(getNodeConnections(inRefNode, *args, **kwargs), inNode)
 
     if kwargs.get("inShape", False) and inNode.type() == "transform" and inRefNode.type() == "transform":
@@ -7082,6 +7118,10 @@ DEFORMERS_CRITERIA = [
     {
         "name":"twists",
         "pattern":"{Prefix}_Twist{Location:(_Up|_Dwn)*}_{Number:[0-9]*}_Deform",
+    },
+    {
+        "name":"volumes",
+        "pattern":"{Prefix}{VolumeDeformer:(AngleDeformer[0-9]*_Main|Stretch[0-9]*|StretchUp|Mastoid_[0-9]_*)}_Deform",
     },
     {
         "name":"semi",
