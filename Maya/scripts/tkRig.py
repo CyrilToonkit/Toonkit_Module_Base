@@ -38,6 +38,8 @@ import re
 import math
 import operator
 import tempfile
+import six
+basestring = six.text_type
 
 import Toonkit_Core.tkCore as tc
 
@@ -320,7 +322,7 @@ def getOscarNodesParams(inAttrShortName, inPrint=True):
             values[attr] = value
             
             if inPrint:
-                print attrName,":",value
+                print (attrName,":",value)
 
     return values
 
@@ -1058,7 +1060,7 @@ def forceParentSpace(inInputAttr, inSpaceAttr, inSpaceForcedValue):
     newOutput = tkn.condition(inInputAttr, 0, ">", inSpaceForcedValue, inSpaceAttr)
     
     for oldInput in inputs:
-        print newOutput, ">>", oldInput
+        print (newOutput, ">>", oldInput)
         newOutput >> oldInput
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -1088,7 +1090,7 @@ def fuseDictionaries(sourceNs, destinationNs, dictPattern):
 
 def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMapping=None, inDestinationJointsMapping=None, inSourceReConstraints=None, inDestinationReConstraints=None, inMoveNodes=True, inCtrlSet=None, inDebug=True):
     if inDebug:
-        print "Source",inSourceTopNodeOrPath,"Dest",inDestinationTopNodeOrPath,"SourceJointsMap",inSourceJointsMapping,"DestJointsMap",inDestinationJointsMapping,"ReConstraints",inSourceReConstraints
+        print ("Source",inSourceTopNodeOrPath,"Dest",inDestinationTopNodeOrPath,"SourceJointsMap",inSourceJointsMapping,"DestJointsMap",inDestinationJointsMapping,"ReConstraints",inSourceReConstraints)
 
     # ! importFile ?
     sourceTopNode = inSourceTopNodeOrPath
@@ -1121,8 +1123,8 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
     toDelete = []
 
     #Fuse skinClusters
-    print ""
-    print "Fuse skinClusters..."
+    print ("")
+    print ("Fuse skinClusters...")
     #First collect skinClusters and influences 
     skins = pc.ls(type="skinCluster")
 
@@ -1161,14 +1163,14 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
 
     if inDebug:
         debugDict = copy.deepcopy(GeometriesDict)
-        for geoShortName, geoData in debugDict.iteritems():
-            for key, value in geoData.iteritems():
+        for geoShortName, geoData in debugDict.items():
+            for key, value in geoData.items():
                 if key != "fromSource":
                     value["geoNode"] = value["geoNode"].name()
                     value["skinNode"] = value["skinNode"].name()
                     value["influences"] = ",".join([n.name() for n in value["influences"]])
-        print ""
-        print json.dumps(debugDict, sort_keys=True, indent=4)
+        print ("")
+        print (json.dumps(debugDict, sort_keys=True, indent=4))
 
     #Here we'll do the real skinCluster rebuild, and decide at last which geometry to use
     #Find PyNodes for the mapping
@@ -1176,7 +1178,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
     destJointMapping = {}
 
     if not inSourceJointsMapping is None:
-        for key, value in inSourceJointsMapping.iteritems():
+        for key, value in inSourceJointsMapping.items():
             if key == "":
                 key = None
             else:
@@ -1184,7 +1186,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                     key = SourceInfsDict[key]
                 else:
                     if inDebug:
-                        print " - Source key {0} not found !".format(key)
+                        print (" - Source key {0} not found !".format(key))
                     key = None
             if value == "":
                 value = None
@@ -1199,7 +1201,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                                 realValue.append(DestinationInfsDict[valueItem])
                             else:
                                 if inDebug:
-                                    print " - Source value {0} not found !".format(valueItem)
+                                    print (" - Source value {0} not found !".format(valueItem))
                     if len(realValue) > 0:
                         value = realValue
                     else:
@@ -1212,13 +1214,13 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                             value = [DestinationInfsDict[value]]
                         else:
                             if inDebug:
-                                print " - Source value {0} not found !".format(destinationNs+value)
+                                print (" - Source value {0} not found !".format(destinationNs+value))
                             value = None
             if key != None or value != None:
                 sourceJointMapping[key] = value
 
     if not inDestinationJointsMapping is None:
-        for key, value in inDestinationJointsMapping.iteritems():
+        for key, value in inDestinationJointsMapping.items():
             if key == "":
                 key = None
             else:
@@ -1226,7 +1228,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                     key = DestinationInfsDict[key]
                 else:
                     if inDebug:
-                        print " - Destination key {0} not found !".format(key)
+                        print (" - Destination key {0} not found !".format(key))
                     key = None
             if value == "":
                 value = None
@@ -1241,7 +1243,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                                 realValue.append(SourceInfsDict[valueItem])
                             else:
                                 if inDebug:
-                                    print " - Destination value {0} not found !".format(valueItem)
+                                    print (" - Destination value {0} not found !".format(valueItem))
                     if len(realValue) > 0:
                         value = realValue
                     else:
@@ -1254,19 +1256,19 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                             value = [SourceInfsDict[value]]
                         else:
                             if inDebug:
-                                print " - Destination value {0} not found !".format(value)
+                                print (" - Destination value {0} not found !".format(value))
                             value = None
             if key != None or value != None:
                 destJointMapping[key] = value
 
     if inDebug:
-        print "destJointMapping",destJointMapping
-        print  "sourceJointMapping",sourceJointMapping
+        print ("destJointMapping",destJointMapping)
+        print  ("sourceJointMapping",sourceJointMapping)
 
-    for geoShortName, geoData in GeometriesDict.iteritems():
+    for geoShortName, geoData in GeometriesDict.items():
         if not "sourceData" in geoData:
             if inDebug:
-                print "{0} only appears in destination".format(geoShortName)
+                print ("{0} only appears in destination".format(geoShortName))
             if pc.objExists(sourceNs+geoShortName):
                 geoT = pc.PyNode(sourceNs+geoShortName).getParent()
                 if not geoT in toDelete:
@@ -1274,7 +1276,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
         elif not "destinationData" in geoData:
             geoData["fromSource"] = True
             if inDebug:
-                print "{0} only appears in source".format(geoShortName)
+                print ("{0} only appears in source".format(geoShortName))
             if pc.objExists(destinationNs+geoShortName):
                 geoT = pc.PyNode(destinationNs+geoShortName).getParent()
                 if not geoT in toDelete:
@@ -1321,7 +1323,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                             if replacementJoint in geoData["sourceData"]["influences"]:
                                 if replacementJoint in sourceJointMapping and ("*" in sourceJointMapping[replacementJoint] or infNode in sourceJointMapping[replacementJoint]):
                                     if inDebug:
-                                        print "Replacing {0} in destination skipped, as it exists as a source replacement !".format(infNode)
+                                        print ("Replacing {0} in destination skipped, as it exists as a source replacement !".format(infNode))
                                     replaced=True
                                     break
                                 geoData["destinationData"]["influencesReplacements"][infNode]=replacementJoint
@@ -1337,26 +1339,26 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
             geoData["fromSource"] = sourceInfsCount > destInfsCount
 
             if inDebug:
-                print ""
-                print "{0} have most of its data in {1} ({2}/{3})".format(geoShortName,
+                print ("")
+                print ("{0} have most of its data in {1} ({2}/{3})".format(geoShortName,
                         "SOURCE" if geoData["fromSource"] else "DESTINATION",
-                        sourceInfsCount, destInfsCount)
+                        sourceInfsCount, destInfsCount))
 
     #Fuse Geometries
-    print ""
-    print "Fuse Geometries"
-    for geoShortName, geoData in GeometriesDict.iteritems():
-        print " -{0} version used for : {1}".format("Source     " if geoData["fromSource"] else "Destination", geoShortName)
+    print ("")
+    print ("Fuse Geometries")
+    for geoShortName, geoData in GeometriesDict.items():
+        print (" -{0} version used for : {1}".format("Source     " if geoData["fromSource"] else "Destination", geoShortName))
         dataName = "sourceData" if geoData["fromSource"] else "destinationData"
         if "influencesReplacements" in geoData[dataName] and len(geoData[dataName]["influencesReplacements"]) > 0:
-            for k,v in geoData[dataName]["influencesReplacements"].iteritems():
+            for k,v in geoData[dataName]["influencesReplacements"].items():
                 if v == "*":
                     otherDataName = "destinationData" if geoData["fromSource"] else "sourceData"
                     tkc.replaceDeformers([k],None,False,[geoData[dataName]["skinNode"]],[geoData[otherDataName]["skinNode"]])
-                    print " - Fuse Deformers {0} => {1}".format(k.name(), geoData[otherDataName]["skinNode"].name())
+                    print (" - Fuse Deformers {0} => {1}".format(k.name(), geoData[otherDataName]["skinNode"].name()))
                 else:
                     tkc.replaceDeformers([k],v,False,[geoData[dataName]["skinNode"]])
-                    print " - ReplaceDeformers {0} => {1}".format(k.name(), v.name())
+                    print (" - ReplaceDeformers {0} => {1}".format(k.name(), v.name()))
 
         if geoData["fromSource"]:
             meshT = geoData["sourceData"]["geoNode"].getParent()
@@ -1389,7 +1391,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
 
     #reConstraints
     if not inSourceReConstraints is None:
-        for source, target in inSourceReConstraints.iteritems():
+        for source, target in inSourceReConstraints.items():
             if pc.objExists(sourceNs+source) and pc.objExists(destinationNs+target):
                 sourceNode = pc.PyNode(sourceNs+source)
                 targetNode = pc.PyNode(destinationNs+target)
@@ -1416,7 +1418,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
             else:
                 pc.warning("Some objects can't be found for source constraints : {0} => {1}".format(sourceNs+source, destinationNs+target))
     if not inDestinationReConstraints is None:
-        for source, target in inDestinationReConstraints.iteritems():
+        for source, target in inDestinationReConstraints.items():
             if pc.objExists(destinationNs+source) and pc.objExists(sourceNs+target):
                 sourceNode = pc.PyNode(destinationNs+source)
                 targetNode = pc.PyNode(sourceNs+target)
@@ -1452,7 +1454,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
             if pc.objExists(otherNodeName):
                 #Rename and constrain
                 if inDebug:
-                    print "Rename and constrain",node.name()
+                    print ("Rename and constrain",node.name())
                 
                 toRename = []
                 otherNode = pc.PyNode(otherNodeName)
@@ -1461,7 +1463,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
 
                     if tkc.isElement(child):#3D Elements are constrained
                         if inDebug:
-                            print " -child {0} is Element".format(child.name())
+                            print (" -child {0} is Element".format(child.name()))
                         otherObjName = child.name().replace(sourceNs, destinationNs)
                         if pc.objExists(otherObjName):
                             otherObj = pc.PyNode(otherObjName)
@@ -1488,13 +1490,13 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                                     #pc.warning(param + " definition !! " + str(definition))
                                     tkc.addParameter(otherObj, name=param, inType=definition[0], default=definition[1], min=definition[2], max = definition[3], softmin=definition[4], softmax=definition[5])
                                 if inDebug:
-                                    print child.name() + "." + param + " CONNECTED TO " + otherObj.name() + "." + param
+                                    print (child.name() + "." + param + " CONNECTED TO " + otherObj.name() + "." + param)
                                 pc.connectAttr(otherObj.name() + "." + param, child.name() + "." + param)
                     elif tkc.isProperty(child):#Parameters are linked
                         if child.name().endswith(tkc.CONST_ATTRIBUTES):
                             continue
                         if inDebug:
-                            print " -child {0} is Property".format(child.name())
+                            print (" -child {0} is Property".format(child.name()))
                         propertyParent = child.getParent()
                         otherParentName = propertyParent.name().replace(sourceNs, destinationNs)
                         if not pc.objExists(otherParentName):
@@ -1514,7 +1516,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
                                     #pc.warning(param + " definition !! " + str(definition))
                                     tkc.addParameter(otherObj, name=param, inType=definition[0], default=definition[1], min=definition[2], max = definition[3], softmin=definition[4], softmax=definition[5])
                                 if inDebug:
-                                    print child.name() + "." + param + " CONNECTED TO " + otherObj.name() + "." + param
+                                    print (child.name() + "." + param + " CONNECTED TO " + otherObj.name() + "." + param)
                                 pc.connectAttr(otherObj.name() + "." + param, child.name() + "." + param)
 
                     toRename.append(child)
@@ -1526,7 +1528,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
             else:
                 #Simply move
                 #Find/create first common parent
-                print "Simply move",node.name()
+                print ("Simply move",node.name())
                 allParents = node.getAllParents()
                 hierarchy=[]
                 newParent=None
@@ -1616,7 +1618,7 @@ def fuseRigs(inSourceTopNodeOrPath, inDestinationTopNodeOrPath, inSourceJointsMa
 
     if len(toDelete) > 0:
         if inDebug:
-            print "Delete :\r\n", "\r\n".join([obj.name() for obj in toDelete])
+            print ("Delete :\r\n", "\r\n".join([obj.name() for obj in toDelete]))
         pc.delete(toDelete)
 
     #Move/Remove geometries with no skinCluster ?
@@ -1648,7 +1650,7 @@ def bake(inGeoNullName="Geometries", inJointsFilters=None, inToPreserve=None, in
         inParents[""] = DEFAULT_JOINT_PARENT
 
     parentsMapping = {}
-    for key, value in inParents.iteritems():
+    for key, value in inParents.items():
         parentsMapping[key] = ns+value
 
     #Get rid of reference
@@ -1741,10 +1743,10 @@ def bake(inGeoNullName="Geometries", inJointsFilters=None, inToPreserve=None, in
 
     for child in toDelete:
         if not child in toPreserve:
-            print "DELETE " + child.name()
+            print ("DELETE " + child.name())
             #pc.delete(child)
         else:
-            print "Skip deleting " + child.name()
+            print ("Skip deleting " + child.name())
 
     return createdJoints
 
@@ -1756,8 +1758,8 @@ import tkRig
 
 def resolveDictionary(inDict, inVariables):
     rebuilt = {}
-    for key, value in inDict.iteritems():
-        for search, replace in inVariables.iteritems():
+    for key, value in inDict.items():
+        for search, replace in inVariables.items():
             if search in key:
                 key = key.replace(search, replace)
             if search in value:
@@ -1936,7 +1938,7 @@ def lockAttrs(inObj, inLock=True):
         attrs = []
         
         isVar = False
-        for variable, values in VARIABLES.iteritems():
+        for variable, values in VARIABLES.items():
             if variable in attr:
                 isVar = True
                 for value in values:
@@ -1978,7 +1980,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             os.makedirs(inDebugFolder)
         else:
             tkc.emptyDirectory(inDebugFolder)
-        print "DEBUG MODE ACTIVATED ({})".format(inDebugFolder)
+        print ("DEBUG MODE ACTIVATED ({})".format(inDebugFolder))
         tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
         debugCounter = debugCounter + 1
 
@@ -2048,7 +2050,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
 
         removedObjects = list(set(removedObjects))
         if len(removedObjects) > 0:
-            print "Remove tagged objects (with tags {0}) : {1}".format(inDeleteTags, removedObjects)
+            print ("Remove tagged objects (with tags {0}) : {1}".format(inDeleteTags, removedObjects))
             pc.delete(removedObjects)
             if not inDebugFolder is None:
                 tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_TaggedObjects.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
@@ -2065,7 +2067,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
                 lockAttrs(follicleChild, inLock=False)
                 follicleParent.addChild(follicleChild)
         if len(follicles) > 0:
-            print "Remove follicles : {0}".format(follicles)
+            print ("Remove follicles : {0}".format(follicles))
             pc.delete(follicles)
             if not inDebugFolder is None:
                 tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_Follicles.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
@@ -2075,7 +2077,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
     if inRemoveLattices:
         lattices = [s.getParent() for s in pc.ls(type="lattice")]
         if len(lattices) > 0:
-            print "Remove lattices : {0}".format(lattices)
+            print ("Remove lattices : {0}".format(lattices))
             pc.delete(lattices)
             if not inDebugFolder is None:
                 tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_Lattices.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
@@ -2090,7 +2092,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             if len(meshHistory) > 0:
                 removedClusters.append(cluster)
         if len(removedClusters) > 0:
-            print "Remove clusters : {0}".format(removedClusters)
+            print ("Remove clusters : {0}".format(removedClusters))
             pc.delete(removedClusters)
             if not inDebugFolder is None:
                 tkc.capture(os.path.join(inDebugFolder, "{0:04d}_remove_Clusters.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
@@ -2099,7 +2101,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
     #Reconstrain
     #------------------------------------------
     if not inReconstrain is None:
-        for old, new in inReconstrain.iteritems():
+        for old, new in inReconstrain.items():
             if not pc.objExists(old):
                 pc.warning("Forced reparenting : can't find child {0}".format(old))
                 continue
@@ -2113,7 +2115,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             tkc.constrain(oldNode, newNode)
             tkc.constrain(oldNode, newNode, "Scaling")
 
-            print "Forced reparenting : reparent {0} to {1}".format(old, new)
+            print ("Forced reparenting : reparent {0} to {1}".format(old, new))
             if not inDebugFolder is None:
                 tkc.capture(os.path.join(inDebugFolder, "{0:04d}_reconstrain_{1}_TO_{2}.jpg".format(debugCounter, old, new)), start=1, end=1, width=1280, height=720)
                 debugCounter = debugCounter + 1
@@ -2145,10 +2147,10 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
                         transfered = False
                         if len(keptInfs) > len(keptTopInfs):
                             transfered = True
-                            print "We need to TRANSFER skinning from", con
+                            print ("We need to TRANSFER skinning from", con)
                             tkc.gator([mesh], con, inCopyMatrices=True, inDirectCopy=True)
                         else:
-                            print "We can DROP skinning from", con
+                            print ("We can DROP skinning from", con)
 
                         pc.skinCluster(skin, edit=True, unbind=True)
                         if not inDebugFolder is None:
@@ -2161,7 +2163,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
 
     skinningReplacements = {}
     #Find closest deformers for replacement
-    for deformerToReplace, deformerToReplacePos in deformersToReplace.iteritems():
+    for deformerToReplace, deformerToReplacePos in deformersToReplace.items():
 
         if not inReskin is None and deformerToReplace in inReskin and pc.objExists(inReskin[deformerToReplace]):
             if pc.objExists(inReskin[deformerToReplace] + "_low_jnt"):
@@ -2169,7 +2171,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             else:
                 closestJoint = pc.PyNode(inReskin[deformerToReplace])
 
-            print "Reskin : forced replacement {0} => {1}".format(deformerToReplace, closestJoint)
+            print ("Reskin : forced replacement {0} => {1}".format(deformerToReplace, closestJoint))
             if not closestJoint in skinningReplacements:
                 skinningReplacements[closestJoint] = [deformerToReplace]
             else:
@@ -2178,7 +2180,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             closestJoint = None
             closestDist = 1000000
 
-            for deformerRemaining, deformerRemainingPos in deformersRemaining.iteritems():
+            for deformerRemaining, deformerRemainingPos in deformersRemaining.items():
                 if not inDontReskin is None and deformerRemaining in inDontReskin:
                     continue
                 dist = (deformerToReplacePos - deformerRemainingPos).length()
@@ -2187,7 +2189,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
                     closestJoint = deformerRemaining
                     closestDist = dist
 
-            print "Reskin : proximity replacement {0} => {1}".format(deformerToReplace, closestJoint)
+            print ("Reskin : proximity replacement {0} => {1}".format(deformerToReplace, closestJoint))
             if not closestJoint in skinningReplacements:
                 skinningReplacements[closestJoint] = [deformerToReplace]
             else:
@@ -2208,7 +2210,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
     status="Replacing deformers",
     maxValue=len(skinningReplacements))
 
-    for newDef, oldDefs in skinningReplacements.iteritems():
+    for newDef, oldDefs in skinningReplacements.items():
         pc.progressBar(gMainProgressBar, edit=True, step=1)
         tkc.replaceDeformers(tkc.getNodes(oldDefs), tkc.getNode(newDef), inSkins=meshSkins)
 
@@ -2245,9 +2247,9 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
                                 break
 
     #Actually reparent
-    for target, newParent in reparentings.iteritems():
-        print "Automatic reparenting : reparent {0} to {1}".format(target, newParent)
-
+    for target, newParent in reparentings.items():
+        print ("Automatic reparenting : reparent {0} to {1}".format(target, newParent)
+)
         lockAttrs(target, False)
 
         #Create a copy
@@ -2293,14 +2295,14 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
                     tkc.capture(os.path.join(inDebugFolder, "{0:04d}_deleteObj_{1}.jpg".format(debugCounter, toDelete)), start=1, end=1, width=1280, height=720)
                     debugCounter = debugCounter + 1
             else:
-                print "Object {} to delete by name was not found".format(toDelete)
+                print ("Object {} to delete by name was not found".format(toDelete))
 
     tkc.deleteUnusedNodes()
 
     #ReconstrainPost
     #------------------------------------------
     if not inReconstrainPost is None:
-        for old, new in inReconstrainPost.iteritems():
+        for old, new in inReconstrainPost.items():
             oldNodes = pc.ls([old, old+"_TKLOW"])
             if len(oldNodes) == 0:
                 pc.warning("Post reparenting : can't find child {0}".format(old))
@@ -2316,7 +2318,7 @@ def simplifyRig(inNodesToKeep, inAddDeformers=None, inReconstrain=None, inReskin
             tkc.constrain(oldNode, newNode)
             tkc.constrain(oldNode, newNode, "Scaling")
 
-            print "Post reparenting : reparent {0} to {1}".format(old, new)
+            print ("Post reparenting : reparent {0} to {1}".format(old, new))
             if not inDebugFolder is None:
                 tkc.capture(os.path.join(inDebugFolder, "{0:04d}_postReparent_{1}_TO_{2}.jpg".format(debugCounter, old, new)), start=1, end=1, width=1280, height=720)
                 debugCounter = debugCounter + 1
@@ -2392,7 +2394,7 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
                     j+=1
                 moyenne[inf[k]]=sum/numberOfVerticeByFace[i]
                
-            m_max=max(moyenne.iteritems(), key=operator.itemgetter(1))[0]
+            m_max=max(moyenne.items(), key=operator.itemgetter(1))[0]
             if m_max in d2.keys():
                 d2[m_max].append([i, moyenne[m_max]])
             
@@ -2400,7 +2402,7 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
             i+=1
 
         list = []
-        for key, value in  d2.iteritems():
+        for key, value in  d2.items():
             #Duplicate object by influence
             nom1="{0}_{1}".format(key,inObjList[kk])
             duplicata=  pc.duplicate(inObjList[kk], name=nom1)
@@ -2415,7 +2417,7 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
             
             list = []          
             #Delete the unused faces
-            for key2, value2 in d2.iteritems():
+            for key2, value2 in d2.items():
                 if key != key2:
                     #list = []
                     for k in value2:
@@ -2448,7 +2450,7 @@ def cutSkinnedMeshes ( inObjList, inDeleteMesh = False, inFillHole = False, inNa
     newObjList = copyObject.copy()
     if inCombine:
         #Combine objects with same influence (joint)    
-        for key3, value3 in copyObject.iteritems():
+        for key3, value3 in copyObject.items():
             parentJoint = key3.getParent(1)
             if len(value3) > 1: #Check if object > 1
                 del newObjList[key3]
@@ -3451,7 +3453,7 @@ def byPassNode(inObj, ancestor=None, removeNode=True, affect=True):
         pc.warning("Cannot find ancestor !")
         return
     else:
-        print "Ancestor found " + str(ancestor)
+        print ("Ancestor found " + str(ancestor))
 
     pc.undoInfo(openChunk=True)
 
@@ -3505,7 +3507,7 @@ def byPassNode(inObj, ancestor=None, removeNode=True, affect=True):
             else:
                 ancestorDeformer = pc.PyNode(proxyName)
         else:
-            print "Ancestor deformer found " + str(ancestorDeformer)
+            print ("Ancestor deformer found " + str(ancestorDeformer))
 
         if affect:
             tkc.replaceDeformers(deformers, ancestorDeformer)
@@ -3578,7 +3580,7 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
     while maxIter > 0:
         if math.fabs(delta) <= inEpsilon:
             if debug:
-                print "returned {0} with delta {1}".format(math.fabs(inRefValue - oldValues[0]), delta)
+                print ("returned {0} with delta {1}".format(math.fabs(inRefValue - oldValues[0]), delta))
             return
 
         value = attrValue + amount * direction
@@ -3644,11 +3646,11 @@ def reachIteratively(inAttr, inRefAttrs, inRefValues, inIterations=100, inEpsilo
         maxIter -= 1
 
         if debug:
-            print "value : %s, oldValue : %s, oldDelta : %s, curValue : %s, curDelta : %s (amount : %s, stepDelta ! %s)" % (str(value), str(oldValues[0]), str(oldDeltas[0]), str(curValues[0]), str(delta), str(amount), str(stepDelta))
+            print ("value : %s, oldValue : %s, oldDelta : %s, curValue : %s, curDelta : %s (amount : %s, stepDelta ! %s)" % (str(value), str(oldValues[0]), str(oldDeltas[0]), str(curValues[0]), str(delta), str(amount), str(stepDelta)))
 
     pc.setAttr(inAttr, closestValue)
     if debug:
-        print "exited after %i iterations" % (inIterations - maxIter)
+        print ("exited after %i iterations" % (inIterations - maxIter))
 
 """ DEPRECATED
 def reachIterativelyOLD(inAttr, inRefAttr, inRefValue, inIterations=100, inEpsilon=0.0001, debug=True):
@@ -3845,9 +3847,9 @@ def transferShadings(refNS, targetNS, doTransfer=True, UVs=True, Shader=True):
 
     if len(orphanMeshes) + len(targetMeshesT) > 0:
         if len(orphanMeshes) > 0:
-            print "Cannot find TARGET equivalent of source meshes : " + str([o.name() for o in orphanMeshes])
+            print ("Cannot find TARGET equivalent of source meshes : " + str([o.name() for o in orphanMeshes]))
         if len(targetMeshesT) > 0:
-            print "Cannot find SOURCE equivalent of target meshes : " + str([o.name() for o in targetMeshesT])
+            print ("Cannot find SOURCE equivalent of target meshes : " + str([o.name() for o in targetMeshesT]))
         pc.error("Synchro problems found (see log for details) !")
     
 def transferShading(refMesh, targetMesh, UVs=True, Shader=True):
@@ -3954,8 +3956,8 @@ def convertSkinningToCluster(*args):
 
     if len(rawJoints) == 0:
         if inVerbose:
-            print "No influences selected, add them from meshes"
-        for meshT, skins in meshesT.iteritems():
+            print ("No influences selected, add them from meshes")
+        for meshT, skins in meshesT.items():
             skinClusterObj = skins[0]
             infs = pc.skinCluster(skinClusterObj,query=True,inf=True)
             for inf in infs:
@@ -3965,8 +3967,8 @@ def convertSkinningToCluster(*args):
                     joints[inf].append(skinClusterObj)
     elif len(rawMeshesT) == 0:
         if inVerbose:
-            print "No meshes selected, add them from influences"
-        for inf, skins in joints.iteritems():
+            print ("No meshes selected, add them from influences")
+        for inf, skins in joints.items():
             for skin in skins:
                 meshes = skin.getGeometry()
                 for mesh in meshes:
@@ -3977,8 +3979,8 @@ def convertSkinningToCluster(*args):
                         meshesT[meshT].append(skin)
 
     if inVerbose:
-        print len(meshesT), "meshes", meshesT
-        print len(joints), "joints", joints
+        print (len(meshesT), "meshes", meshesT)
+        print (len(joints), "joints", joints)
 
     if len(joints) == 0: #No consistent joints ?
         pc.warning("Your selection does not contains joints used as influence !")
@@ -3994,7 +3996,7 @@ def convertSkinningToCluster(*args):
     #First reverse the mesh:skinClusters dictionary to skinCluster:meshes and create a lookup for pointCount
     skinsFromMeshes = {}
     pointCounts = {}
-    for meshT, skins in meshesT.iteritems():
+    for meshT, skins in meshesT.items():
         if not skins[0] in skinsFromMeshes:
             skinsFromMeshes[skins[0]] = [meshT]
         else:
@@ -4012,7 +4014,7 @@ def convertSkinningToCluster(*args):
     status="Converting skinCluster to clusters",
     maxValue=len(joints))
 
-    for joint, skins in joints.iteritems():
+    for joint, skins in joints.items():
         #jointPosition = pc.xform(skinnedJoint, query=True, worldSpace=True, translation=True)
         meshes = []
         for skin in skins:
@@ -4081,7 +4083,7 @@ def convertClusterToSkinning(*args):
     for selItem in selection:
         if selItem.type() == "transform":
             shape = selItem.getShape()
-            print "shape.type()",shape.type()
+            print ("shape.type()",shape.type())
             if shape != None and shape.type() == "mesh":
                 rawMeshesT.append(selItem)
 
@@ -4110,8 +4112,8 @@ def convertClusterToSkinning(*args):
 
     if len(rawClusters) == 0:
         if inVerbose:
-            print "No clusters selected, add them from meshes"
-        for meshT, meshClusters in meshesT.iteritems():
+            print ("No clusters selected, add them from meshes")
+        for meshT, meshClusters in meshesT.items():
             for cluster in meshClusters:
                 if not cluster in clusters:
                     clusters[cluster] = [meshT.getShape()]
@@ -4119,8 +4121,8 @@ def convertClusterToSkinning(*args):
                     clusters[cluster].append(meshT.getShape())
     elif len(rawMeshesT) == 0:
         if inVerbose:
-            print "No meshes selected, add them from clusters"
-        for cluster, meshes in clusters.iteritems():
+            print ("No meshes selected, add them from clusters")
+        for cluster, meshes in clusters.items():
             for mesh in meshes:
                 meshT = mesh.getParent()
                 if not meshT in meshesT:
@@ -4129,8 +4131,8 @@ def convertClusterToSkinning(*args):
                     meshesT[meshT].append(cluster)
 
     if inVerbose:
-        print len(meshesT), "meshes", meshesT
-        print len(clusters), "clusters", clusters
+        print (len(meshesT), "meshes", meshesT)
+        print (len(clusters), "clusters", clusters)
 
     if len(clusters) == 0: #No consistent joints ?
         pc.warning("Your selection does not contains clusters !")
@@ -4158,9 +4160,9 @@ def convertClusterToSkinning(*args):
     meshesSkins = {}
     pointCounts = {}
 
-    print "clusters",clusters
+    print ("clusters",clusters)
 
-    for cluster, meshes in clusters.iteritems():
+    for cluster, meshes in clusters.items():
         clusterT = pc.listHistory(cluster, type="transform")[-1]
         clusterPosition = clusterT.rotatePivot.get()
 
@@ -4195,12 +4197,12 @@ def convertClusterToSkinning(*args):
     TK_0_Deform = None
 
     need0Deform = False
-    for meshT, jointsDic in meshesSkins.iteritems():
+    for meshT, jointsDic in meshesSkins.items():
         Zweights = [0 for i in range(pointCounts[meshT])]
 
         for i in range(pointCounts[meshT]):
             addedWeights = 0.0
-            for joint, weights in jointsDic.iteritems():
+            for joint, weights in jointsDic.items():
                 addedWeights += weights[i]
             if addedWeights < 1.0:
                 need0Deform = True
@@ -4212,7 +4214,7 @@ def convertClusterToSkinning(*args):
 
             jointsDic[TK_0_Deform] = Zweights
 
-    for meshT, jointsDic in meshesSkins.iteritems():
+    for meshT, jointsDic in meshesSkins.items():
         joints = jointsDic.keys()
 
         skin = pc.animation.skinCluster(meshT,joints, name=meshT.name() + "_skinCluster", toSelectedBones=True)
@@ -4223,7 +4225,7 @@ def convertClusterToSkinning(*args):
             for x in range(lenJoints):
                 weights[x + i*lenJoints] = jointsDic[joints[x]][i]
 
-        print "meshT",meshT,weights
+        print ("meshT",meshT,weights)
         skin.setWeights(skin.getGeometry()[-1], range(lenJoints), weights)
     
     pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
@@ -4245,7 +4247,7 @@ def hammerCenter(inObj, inThreshold=10.0):
            point[2] < inThreshold and point[2] > -inThreshold):
             indices.append(i)
 
-    print "indices",len(indices),indices
+    print ("indices",len(indices),indices)
     if len(indices) > 0:
         pc.select(["{0}.vtx[{1}]".format(inObj.name(), index) for index in indices])
         pc.mel.eval('weightHammerVerts;')
@@ -4280,7 +4282,7 @@ def simplifyTransforms(locators=True, nurbsCurves=False):
                         pc.delete(shape)
                         cnt += 1
 
-    print "Simplify transforms ok " + str(cnt) + " shapes deleted"
+    print ("Simplify transforms ok " + str(cnt) + " shapes deleted")
 
 #Groups as locators
 def addShape(inObj, inShapeType="locator"):
@@ -4388,10 +4390,10 @@ def connectOscarPoses(inPosesHolder, nodal=True, scaling=True):
     #print " *** POSES :"
     for attr, poseName, attributeName, priority, params, ignorePrio  in posesData:
         #poseName is of form :   [NAMESPACE]:TKPose_[Left/Right]_[PoseName]_Params
-        print "Filtering : '" + poseName + "'"
+        print ("Filtering : '" + poseName + "'")
         if palt.exists(ns+attributeName):
             #We can search for attributes to connect (bs targets with name ending with $POSENAME[_Left/_Right])
-            for correctedMesh, correctives in correctivesDic.iteritems():
+            for correctedMesh, correctives in correctivesDic.items():
                 bsTargetName = bsTargetNameFromPose(poseName)
                 #print "poseName",poseName,"bsTargetName",bsTargetName
                 if correctedMesh.split(":")[-1] + "_" + bsTargetName in correctives:
@@ -4404,7 +4406,7 @@ def connectOscarPoses(inPosesHolder, nodal=True, scaling=True):
             object_param = param.split("__")
 
             if not object_param[1] in allowedChannels:
-                print "Stored pose won't work on scaling or non-tranformation attribute for now, dropping (%s) !" % param
+                print ("Stored pose won't work on scaling or non-tranformation attribute for now, dropping (%s) !" % param)
                 continue
             
             #If we use the neutral pose we have to create a neutral_neutral_pose
@@ -4646,14 +4648,14 @@ def saveSimplePose(inObjs=None):
     return poses
 
 def loadSimplePose(inPose, inNamespace=None):
-    for obj, attrs in inPose.iteritems():
+    for obj, attrs in inPose.items():
         objName = obj
         if inNamespace != None:
             objName = inNamespace + objName.split(":")[-1]
         if pc.objExists(objName):
             node = pc.PyNode(objName)
         
-            for attr, value in attrs.iteritems():
+            for attr, value in attrs.items():
                 if pc.attributeQuery(attr, node=node, exists=True):
                     node.attr(attr).set(value)
                 else:
@@ -4677,7 +4679,7 @@ def exportSimplePose(inPath=None):
 
     if len(poses) > 0:
         tkc.saveString(str(poses), inPath)
-        print "pose successfully saved to '{}'".format(inPath)
+        print ("pose successfully saved to '{}'".format(inPath))
 
 def importSimplePose(inPath=None, inNs=None):
     if inPath == None:
@@ -4720,7 +4722,7 @@ def saveSimpleConstraint(inObj=None):
         cns["destination"] = inObj.name()
         cns["source"] = tkc.getConstraintTargets(cons[0])[0].name()
         
-        print "cons[0]",cons[0]
+        print ("cons[0]",cons[0])
         cns["attrs"] = {}
         cns["attrs"]["targetOffsetTranslate.targetOffsetTranslateX"] = cons[0].target[0].targetOffsetTranslate.targetOffsetTranslateX.get()
         cns["attrs"]["targetOffsetTranslate.targetOffsetTranslateY"] = cons[0].target[0].targetOffsetTranslate.targetOffsetTranslateY.get()
@@ -4747,7 +4749,7 @@ def loadSimpleConstraint(inCons, inSourceNamespace=None, inDestinationNamespace=
         destinationNode = pc.PyNode(destination)
         
         cns = tkc.constrain(destinationNode, sourceNode, "Pose", False)
-        for attr, value in inCons["attrs"].iteritems():
+        for attr, value in inCons["attrs"].items():
             attrsSplit = attr.split(".")
             cns.target[0].attr(attrsSplit[0]).attr(attrsSplit[1]).set(value)
     else:
@@ -4840,27 +4842,27 @@ def exportAnim(inObjects=None, inPath=None, inAppend=False, inOverride=True, inI
     for extraAttr in extraAttrs:
         extraAttr.delete()
 
-"""
-Walker test
+# """
+# Walker test
 
-import tkMayaCore as tkc
-reload(tkc)
+# import tkMayaCore as tkc
+# reload(tkc)
 
-import tkRig
-reload(tkRig)
+# import tkRig
+# reload(tkRig)
 
-import tkNodeling
-reload(tkNodeling)
+# import tkNodeling
+# reload(tkNodeling)
 
-poseName = "walk"
-tkRig.importAnim(inPath=r"C:\Users\cyril\Documents\maya\projects\default\scenes\walkerAnim.ma", poseName=poseName)
-pose = pc.PyNode(poseName)
-tkRig.injectPose(pose)
+# poseName = "walk"
+# tkRig.importAnim(inPath=r"C:\Users\cyril\Documents\maya\projects\default\scenes\walkerAnim.ma", poseName=poseName)
+# pose = pc.PyNode(poseName)
+# tkRig.injectPose(pose)
 
-locomotion = tkn.createAccumulatedVelocity(pc.PyNode("driver1"))
+# locomotion = tkn.createAccumulatedVelocity(pc.PyNode("driver1"))
 
-locomotion >> pose.frame
-"""
+# locomotion >> pose.frame
+# """
 
 def getLayer(inNode, inSuffix=None):
     neutral = tkc.getNeutralPose(inNode, inSuffix)
@@ -4994,7 +4996,7 @@ def mulPose(inPose, inMultiplier, inName=None):
         nodeName, attrName = node.tkConnection.get().split(".")
 
         if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
-            print "Mul Scaling ! (remove 1, mul, then add one)", attrName
+            print ("Mul Scaling ! (remove 1, mul, then add one)", attrName)
         else:
             #print "Classic", attrName
             tkn.mul(channel, inMultiplier) >> poseGroup.attr(channel.longName())
@@ -5028,7 +5030,7 @@ def addPose(inPose1, inPose2, inName=None):
         else:
             channelsDic[channelName] = [channel]
 
-    for channel, attrs in channelsDic.iteritems():
+    for channel, attrs in channelsDic.items():
         nodeName, attrName = channel.split(".")
 
         poseGroup.addAttr(attrs[0].longName())
@@ -5037,7 +5039,7 @@ def addPose(inPose1, inPose2, inName=None):
             attrs[0] >> poseGroup.attr(attrs[0].longName())
         else:
             if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
-                print "Add Scaling ! (mul)", attrName
+                print ("Add Scaling ! (mul)", attrName)
             else:
                 #print "Classic", attrName
                 tkn.add(attrs[0], attrs[1]) >> poseGroup.attr(attrs[0].longName())
@@ -5065,7 +5067,7 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
         else:
             connections[nodeName] = {attrName:channel}
 
-    for nodeName, attrs in connections.iteritems():
+    for nodeName, attrs in connections.items():
         if not pc.objExists(nodeName):
             pc.warning("{0} can't be found !".format(nodeName))
             continue
@@ -5077,7 +5079,7 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
             continue
 
         if not inRedirect is None:
-            for key, value in inRedirect.iteritems():
+            for key, value in inRedirect.items():
                 if node.stripNamespace() == key and pc.objExists(value):
                     nodeName = pc.PyNode(value)
                     node = pc.PyNode(nodeName)
@@ -5091,7 +5093,7 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
                 layer = pc.duplicate(layer, parentOnly=True)[0]
                 layer.rename(siblingName)
 
-        for attr, channel in attrs.iteritems():
+        for attr, channel in attrs.items():
             if pc.attributeQuery(attr, node=layer, exists=True):
                 if not pc.attributeQuery(inActivationAttrName, node=node, exists=True):
                     node.addAttr(inActivationAttrName, minValue=0.0, maxValue=1.0, defaultValue=1.0, keyable=True)
@@ -5106,7 +5108,7 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
                     layer.attr(attr).lock()
                 connectedAttrs.append(layer.attr(attr))
             else:
-                print "{0}.{1} can't be found !".format(layer.name(), attr)
+                print ("{0}.{1} can't be found !".format(layer.name(), attr))
 
     return connectedAttrs
 
@@ -6339,7 +6341,7 @@ def mirrorPose(inModel, symmetry=False, inAttrs=True):
         for control in oppositeObjs:
             data = controlsDic[control.name()]
             tkc.setTRS(control, data["Pos"], data["Rot"], data["Scl"])
-            for attrName, value in data["Attrs"].iteritems():
+            for attrName, value in data["Attrs"].items():
                 if pc.attributeQuery(attrName,node=control ,exists=True ):
                     pc.setAttr(control.name()+"."+attrName, value)
                 else:
@@ -6811,14 +6813,14 @@ def switchIkToFk(inFKBone0,inFKBone1,inFKEff,inIKBone0,inIKBone1,inIKEff,inBlend
         return True
 
     #SaveKey
-    '''
-    var cObjsToKey = new ActiveXObject( "XSI.Collection" );
-        cObjsToKey.Add(inFKBone0);
-        cObjsToKey.Add(inFKBone1);
-        cObjsToKey.Add(inBlendParam);
-        cObjsToKey.AddItems(inChilds);      
-    SaveKeyOnLocal(cObjsToKey);
-    '''
+#     '''
+#     var cObjsToKey = new ActiveXObject( "XSI.Collection" );
+#         cObjsToKey.Add(inFKBone0);
+#         cObjsToKey.Add(inFKBone1);
+#         cObjsToKey.Add(inBlendParam);
+#         cObjsToKey.AddItems(inChilds);      
+#     SaveKeyOnLocal(cObjsToKey);
+#     '''
 
 
 """
@@ -6987,11 +6989,11 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
 
     #First calculate all attribute values that need to be set
     for matcher in inMatchData:
-        for matchObj, matchSteps in matcher.iteritems():
+        for matchObj, matchSteps in matcher.items():
             matchObj = inNs + matchObj
 
             #print "matchObj",matchObj
-            for matchRule, matchRef in matchSteps.iteritems():
+            for matchRule, matchRef in matchSteps.items():
                 #print " -matchRule",matchRule
                 #print " -matchRef",matchRef
                 
@@ -7181,10 +7183,12 @@ def toggleSmooth(*args):
         
     if len(meshes) > 0:
         oldVal = pc.displaySmoothness(meshes[0], query=True, polygonObject=True)
-        cmdName = "Smooth" if oldVal == [1L] else "Unsmooth"
-        print pc.warning(cmdName)
+        cmdName = "Unsmooth" 
+        if oldVal.len() > 0 and oldVal[0] == 1:
+            cmdName = "Smooth"
+        print (pc.warning(cmdName))
         for mesh in meshes:
-            if oldVal == [1L]:
-                pc.displaySmoothness(mesh, polygonObject=3L)
+            if cmdName == "Smooth":
+                pc.displaySmoothness(mesh, polygonObject=3)
             else:
-                pc.displaySmoothness(mesh, polygonObject=1L)
+                pc.displaySmoothness(mesh, polygonObject=1)

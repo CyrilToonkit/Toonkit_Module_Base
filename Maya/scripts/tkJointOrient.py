@@ -625,7 +625,7 @@ def createSymmetry(inObjects=None, inPrimaryPattern=".*Left.*", inSecondaryPatte
         inObjects = list(set(inObjects))
 
     for obj in inObjects:
-        print "obj",obj
+        print ("obj",obj)
         if re.match(inPrimaryPattern, obj.name()):
             continue
 

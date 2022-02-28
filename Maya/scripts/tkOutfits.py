@@ -110,7 +110,7 @@ def getActiveIDs(inArrayAttr):
         firstIndex = arrayAttr.find("[")
         lastIndex = arrayAttr.find("]")
         if firstIndex == -1 or lastIndex == -1 or firstIndex >= lastIndex:
-            print "Can't get brackets indices for "+ arrayAttr +"!"
+            print ("Can't get brackets indices for "+ arrayAttr +"!")
             continue
         
         arrayIDs.append(int(arrayAttr[firstIndex+1:lastIndex]))
@@ -241,7 +241,7 @@ def getLayerAdjustments(inLayer):
         attrname = attr.name(includeNode=False, longName=True)
 
         if 'instObjGroups[0]' in attrname:
-            print 'Material related attribute ignored "{0}"'.format(attrname)
+            print ('Material related attribute ignored "{0}"'.format(attrname))
             continue
 
         if not nodeName in nodesDic:
@@ -287,7 +287,7 @@ def getAllLayersAdjustments(inNamePattern=""):
     return layersAdjusts
 
 def getLayerOrphanMeshes(inNamePattern="", excludeInvisible=True):
-    print "getLayerOrphanMeshes("+str(inNamePattern)+", "+str(excludeInvisible)+")"
+    print ("getLayerOrphanMeshes("+str(inNamePattern)+", "+str(excludeInvisible)+")")
     meshes = pc.ls(type="mesh")
     meshesT = [mesh.getParent().fullPath() for mesh in meshes]
 
@@ -328,7 +328,7 @@ def getOutfitsSetup(in_sNs="", in_bClean=False, in_sTag=None, in_sSearch="", in_
         if len(orphans) > 0:
             message = 'Some geometries are visible by default, but are not present in any layer :\r\n' + "\r\n".join([orphan.name() for orphan in orphans])
             rslt = mc.confirmDialog( title='Geometries not present in any layer', message=message, button=['Always exclude (most likely)','Always include', 'Cancel'], defaultButton='Cancel', cancelButton='Cancel', dismissString='Cancel' )
-            print "\r\n" + message + "\r\n"
+            print ("\r\n" + message + "\r\n")
 
             if rslt == "Cancel":
                 return outfits
@@ -406,7 +406,7 @@ def getOutfitsSetup(in_sNs="", in_bClean=False, in_sTag=None, in_sSearch="", in_
                 adjNode = pc.PyNode(adjustment)
                 #If node is not a dag node, it cannot be added to memberships, so consider any override as a membership
                 if adjNode.name() == "chr_zombie1_default_modeling_TK:geo_jawA":
-                    print "/!\\ ", adjNode.name(), " is dag ? " ,isinstance(adjNode, pc.nodetypes.DagNode)
+                    print ("/!\\ ", adjNode.name(), " is dag ? " ,isinstance(adjNode, pc.nodetypes.DagNode))
                 if not isinstance(adjNode, pc.nodetypes.DagNode):
                     if not adjustment in members and not adjNode in objs:
                         objs.append(adjNode)
@@ -437,7 +437,7 @@ def getOutfitsSetup(in_sNs="", in_bClean=False, in_sTag=None, in_sSearch="", in_
                     if not shape in objs:
                         objs.append(shape)
 
-        print outfitSet, objs
+        print (outfitSet, objs)
 
         for obj in objs:
             objDic = {}
@@ -1268,7 +1268,7 @@ def cleanCurrent(in_nAsset, asBatch=False, alternateRoots=None):
         if not asBatch:
             pc.warning("You way have variation postscript to apply by hand !")
 
-        print "{0} objects were deleted:\n{1}".format(len(deletedObjs), "\r\n".join(deletedObjs))
+        print ("{0} objects were deleted:\n{1}".format(len(deletedObjs), "\r\n".join(deletedObjs)))
 
 def replaceVariables(in_sPath, in_sPreset="", in_iDropFirst=0, in_iDropLast=0, in_sDropSeparator="_", in_sForcedPostFix=""):
     postFix = ""
@@ -1321,7 +1321,7 @@ def replaceVariables(in_sPath, in_sPreset="", in_iDropFirst=0, in_iDropLast=0, i
     return replaced + postFix
 
 def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileName, in_iDropFirst=0, in_iDropLast=0, in_sDropSeparator="_", in_bSimulate=True, in_lAlternateRoots=None):
-    print "exportVariations(in_nAsset={0}, in_sSourcePath={1}, in_sExportPath={2}, in_sExportFileName={3}, in_iDropFirst*={4}, in_iDropLast*={5}, in_sDropSeparator*={6}, in_bSimulate=*{7})".format(in_nAsset.name(),
+    print ("exportVariations(in_nAsset={0}, in_sSourcePath={1}, in_sExportPath={2}, in_sExportFileName={3}, in_iDropFirst*={4}, in_iDropLast*={5}, in_sDropSeparator*={6}, in_bSimulate=*{7})".format(in_nAsset.name(),
                                                                             in_sSourcePath,
                                                                             in_sExportPath,
                                                                             in_sExportFileName,
@@ -1329,7 +1329,7 @@ def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileNa
                                                                             in_iDropLast,
                                                                             in_sDropSeparator,
                                                                             in_bSimulate
-                                                                            )
+                                                                            ))
     exports = []
     assetName = in_nAsset.name()
 
@@ -1365,9 +1365,9 @@ def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileNa
                     
                     if os.path.isfile(postScriptPath):
                         mayaexecpythonfile.execpythonfile(postScriptPath)
-                        print "Variation postScript executed : '{0}'",postScriptPath
+                        print ("Variation postScript executed : '{0}'",postScriptPath)
                     else:
-                        print "No variation postScript found ('{0}')",postScriptPath
+                        print ("No variation postScript found ('{0}')",postScriptPath)
 
                     if not os.path.isdir(exportFolder):
                         os.makedirs(exportFolder)
@@ -1375,7 +1375,7 @@ def exportVariations(in_nAsset, in_sSourcePath, in_sExportPath, in_sExportFileNa
                     mc.file(rename=exportPath)
                     mc.file(force=True, save=True, type='mayaAscii')
                     exports.append((preset, exportPath))
-                print "preset '{0}' {1}exported to : {2}".format(preset, ("WILL BE " if in_bSimulate else ""), exportPath) 
+                print ("preset '{0}' {1}exported to : {2}".format(preset, ("WILL BE " if in_bSimulate else ""), exportPath))
     
     return exports
 
@@ -1450,10 +1450,10 @@ def addSelClick(*args):
             shader = ""
 
             if shortName in objectsOverrides:
-                print shortName, "found :", objectsOverrides[shortName]
+                print (shortName, "found :", objectsOverrides[shortName])
                 shader = objectsOverrides[shortName]["defaultShader"]
             else:
-                print shortName, "NOT found"
+                print (shortName, "NOT found")
                 #We will have to add 'defaultShader' fake case
                 shaders = getShaders(selObj)
                 if len(shaders) > 0:
@@ -1468,10 +1468,10 @@ def addSelClick(*args):
                 else:
                     objectsOverrides[shortName][case] = {"shader":shader, "visibility":True}
                     overridesModified = True
-                    print shortName, " added to case '"+ case +"'"
+                    print (shortName, " added to case '"+ case +"'")
 
     if overridesModified:
-        print "Overrides updated !"
+        print ("Overrides updated !")
         setOverrides(TOPNODE, objectsOverrides)
         outfitChanged()
     else:
@@ -1547,11 +1547,11 @@ def remSelClick(*args):
             shortName = selObj.stripNamespace()
 
             if shortName in objectsOverrides:
-                print shortName, "found :", objectsOverrides[shortName]
+                print (shortName, "found :", objectsOverrides[shortName])
                 for case in cases:
                     if case in objectsOverrides[shortName]:
                         del objectsOverrides[shortName][case]
-                        print shortName, " removed from case '"+ case +"'"
+                        print (shortName, " removed from case '"+ case +"'")
                         overridesModified = True
                     else:
                         mc.warning(shortName + " does not belong to '"+ case +"' !")
@@ -1559,7 +1559,7 @@ def remSelClick(*args):
                 mc.warning(shortName + " not present in overrides !")
 
     if overridesModified:
-        print "Overrides updated !"
+        print ("Overrides updated !")
         setOverrides(TOPNODE, objectsOverrides)
         outfitChanged()
     else:
@@ -1579,7 +1579,7 @@ def clean(*args):
         mc.deleteUI(UINAME, control=True)
 
 def addPresetClick(*args):
-    print "addPreset"
+    print ("addPreset")
 
 def showHelp(*args):
     pc.showHelp("https://docs.google.com/document/d/1q_aRS0SVRLwTaLVA8Zm6DHvS6vEcjPFptFu--1kXoe0/pub#h.ktt003ljt55u", absolute=True)
@@ -1663,7 +1663,7 @@ def showUI(inTopNode=None):
 
         if len(outfits) > 1:
             mc.rowLayout(numberOfColumns=2)#, columnWidth3=[110,110,28])
-            cmds.textFieldGrp( label='Name : ', text='preset1' )
+            mc.textFieldGrp( label='Name : ', text='preset1' )
             mc.button(label='Add preset', c=addPresetClick)#, width=110)
             mc.setParent(colLayout)
 

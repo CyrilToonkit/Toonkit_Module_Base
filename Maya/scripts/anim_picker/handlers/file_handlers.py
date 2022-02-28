@@ -5,7 +5,7 @@
 import os
 import re
 
-from qt_handlers import QtGui, get_maya_window
+from anim_picker.handlers.qt_handlers import QtGui, get_maya_window
 
 header_text = '''# Copyright (c) 2012-2013 Guillaume Barlier
 # This file is a data file for the anim_picker tool.

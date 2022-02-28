@@ -155,7 +155,7 @@ def stringtolistfloat(st):
 	return [float(val) for val in spl]
 	
 def listfloattostring(lst):
-	return subsubsplitcharacter.join([`num` for num in lst])
+	return subsubsplitcharacter.join([str(num) for num in lst])
 	'''
 	strNames = ""
 	first = True
@@ -176,7 +176,7 @@ def stringtolistint(st):
 	return [int(val) for val in spl]
 	
 def listinttostring(lst):
-	return subsubsplitcharacter.join([`num` for num in lst])
+	return subsubsplitcharacter.join([str(num) for num in lst])
 	'''
 	strNames = ""
 	for stringObj in lst:

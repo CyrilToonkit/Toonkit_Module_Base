@@ -295,7 +295,7 @@ def refreshOverrides(namespace="", useJointsDrawStyle=True):
 def removeGroups():
 	sel = pc.ls(sl=True, type="objectSet")
 	groups = collect()
-	print groups
+	print (groups)
 	for selObj in sel:
 		if selObj in groups:
 			pc.setAttr(selObj + "." + PARAM_Vis, 2)

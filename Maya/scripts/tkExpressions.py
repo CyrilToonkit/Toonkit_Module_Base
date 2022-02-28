@@ -61,6 +61,8 @@ print Expr().compile(expr)
 """
 import math
 import re
+import six
+basestring = six.string_types
 import logging
 logging.basicConfig()
 import sys
@@ -509,7 +511,7 @@ class Expr(object):
         if not self.termModule is None:
             global_vars[self.termModule.__name__] = self.termModule
 
-        exec code in global_vars, context
+        exec (code, (global_vars, context))
         retval = context['anon'](*(local_vars.values()))
         """except:
             logger.error("An error occurred in Expr.eval:")

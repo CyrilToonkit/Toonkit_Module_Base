@@ -21,6 +21,8 @@
 """
 import re
 import os
+import six
+basestring = six.string_types
 import fnmatch
 
 import maya.cmds as mc
@@ -88,7 +90,7 @@ def cleanUpBlendShapeWeights(inBlendShape):
     arrayAttrs = mc.listAttr("{0}.weight".format(inBlendShape), multi=True)
    
     for target in arrayAttrs:
-        print target
+        print (target)
         if re.search("weight\\[.*\\]", target):
             mc.removeMultiInstance(inBlendShape+"."+target)
 
@@ -108,7 +110,7 @@ def editTarget(inBlendShape, inTarget, corrective=None):
 
     targetMeshes = mc.ls(mc.listConnections("{0}.inputTarget[0].inputTargetGroup[{1}].inputTargetItem[6000].inputGeomTarget".format(inBlendShape, inTarget), shapes=True), type="mesh")
     if targetMeshes != None and len(targetMeshes) > 0:
-        print "Target mesh already connected : {0}".format(targetMeshes[0])
+        print ("Target mesh already connected : {0}".format(targetMeshes[0]))
         return targetMeshes[0]
 
     vectors =  mc.getAttr("{0}.inputTarget[0].inputTargetGroup[{1}].inputTargetItem[6000].inputPointsTarget".format(inBlendShape, inTarget))
@@ -481,7 +483,7 @@ def resetConnections(inNode, inConnections):
     for couple in inConnections:
         try:
             mc.connectAttr(couple[1], couple[0], force=True)
-        except Exception, e:
+        except Exception as e:
             errors += str(e) + "\r\n"
 
     return errors
@@ -771,7 +773,7 @@ def updateBs(inMeshName, suffix="_corrective_TestingBS"):
     tkc.reorderDeformers(rigMesh)
 
 def stopEditCorrective(inMeshName, inPose, inCharName, inKeySet, inTreshold=2.0, inStore=True):
-    print "stopEditCorrective store ?", inStore
+    print ("stopEditCorrective store ?", inStore)
     #drop ns
     inMeshName = inMeshName.split(":")[-1]
 
@@ -813,7 +815,7 @@ def stopEditCorrective(inMeshName, inPose, inCharName, inKeySet, inTreshold=2.0,
     return True
 
 def exportBS(inCharName, projectPath, assetName, modPattern, skippedAttrList=""):
-    print "tkBlendShapes.exportBS(inCharName='"+inCharName+"', projectPath='"+projectPath+"', assetName='"+assetName+"', modPattern='"+modPattern+"', skippedAttrList='"+skippedAttrList+"')"
+    print ("tkBlendShapes.exportBS(inCharName='"+inCharName+"', projectPath='"+projectPath+"', assetName='"+assetName+"', modPattern='"+modPattern+"', skippedAttrList='"+skippedAttrList+"')")
     deltas = getDeltasObjects(inPose="")
 
     if len(deltas) == 0:
@@ -977,11 +979,11 @@ def updateScene(inTreshold=2.0):
             maxValue=steps )
             
         #Rebuild refMeshes
-        print "Rebuild refMeshes"
+        print ("Rebuild refMeshes")
         for mesh in meshes:
             refMesh = MESH_REF_NAME.format(mesh)
             rigMesh = getRigMesh(mesh)
-            print " - Rebuild " + MESH_REF_NAME.format(mesh)
+            print (" - Rebuild " + MESH_REF_NAME.format(mesh))
             pc.progressBar(gMainProgressBar, edit=True, step=1)
             
             if mc.objExists(refMesh):
@@ -991,17 +993,17 @@ def updateScene(inTreshold=2.0):
                 getOrCreateRefMesh(mesh)
 
         #Rebuild correctives
-        print "Rebuild correctives"
+        print ("Rebuild correctives")
         for mesh in meshes:
             refMeshName = MESH_REF_NAME.format(mesh)
             for poseName, meshList in correctives.iteritems():
                 if mesh in meshList:
                     editMeshName = EDIT_MESH_NAME.format(mesh, poseName)
-                    print " - Rebuild " + editMeshName
+                    print (" - Rebuild " + editMeshName)
                     plugMeshes(refMeshName, editMeshName)
                     
                     correcName = DELTA_MESH_NAME.format(mesh, poseName)
-                    print "    - Extract " + correcName
+                    print ("    - Extract " + correcName)
                     pc.progressBar(gMainProgressBar, edit=True, step=2)
                     
                     storeDeltas(mesh, poseName, inTreshold)

@@ -43,7 +43,7 @@ def addTarget(inGeo, inTarget, inPrefix="L", inIndex=0L):
     if not cmds.attributeQuery('%s_upper' % inPrefix, node=rbsNode, exists=True):
         # find first available lower lid index
         miList = zvRadialBlendShape._getEyeIdxList(rbsNode)
-        print miList
+        print (miList)
         idx = 0
         while idx in miList or (idx+1) in miList:
             idx += 2
@@ -69,7 +69,7 @@ def addTarget(inGeo, inTarget, inPrefix="L", inIndex=0L):
     targetName = zvRadialBlendShape._getTargetNameFromIdx(rbsNode, inIndex)
     
     if inIndex == -1:
-        raise Exception, 'Input target %s does not exist, please refresh GUI' % targetName
+        raise Exception("Input target %s does not exist, please refresh GUI" % targetName)
     
     # make the connection if not yet done
     srcAttr = '%s.outMesh' % inTarget

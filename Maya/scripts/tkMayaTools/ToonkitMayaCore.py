@@ -26,7 +26,7 @@ import pymel.core as pc
 import locationModule
 import Toonkit_Core.tkCore as tc
 from Toonkit_Core.tkToolOptions.tkOptions import Options
-from tkMayaTool import MayaTool as Tool
+from tkMayaTools.tkMayaTool import MayaTool as Tool
 
 import tkMayaCore as tkc
 import tkMenus
@@ -127,7 +127,7 @@ HOTKEYS =   {
 
 class ToonkitMayaCore(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        print "Toonkit Maya Core {0} initializing...".format(VERSIONINFO)
+        print ("Toonkit Maya Core {0} initializing...".format(VERSIONINFO))
 
         super(ToonkitMayaCore, self).__init__(inName="ToonkitMayaCore", inDescription="Toonkit's Maya base library",
             inUsage="", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
@@ -247,9 +247,9 @@ class ToonkitMayaCore(Tool):
 
         elif kwargs["option"].name == "hookDagMenuProc":
             if kwargs["new"]:
-                print "Si on passe l'override a True"
+                print ("Si on passe l'override a True")
             else:
-                print "Si on passe l'override a False"
+                print ("Si on passe l'override a False")
 
         elif "HotKeys." in kwargs["option"].category:
             self.setHotKeys()
@@ -324,7 +324,7 @@ class ToonkitMayaCore(Tool):
         #Refer to options and HOTKEYS constant
         categorizedOptions = self.getCategorizedOptions()
 
-        for categ, options in categorizedOptions.iteritems():
+        for categ, options in categorizedOptions.items():
             if categ and categ.startswith("HotKeys."):
                 hotkeyName = categ.split(".")[-1]
                 if hotkeyName in HOTKEYS:

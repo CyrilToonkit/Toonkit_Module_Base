@@ -39,6 +39,8 @@ Syno example:
 $PROJECTPATH\Synoptic\Quadruped_Body.xml;$PROJECTPATH\Synoptic\Facial_Complete.xml
 """
 import os
+import six
+basestring = six.string_types
 import pymel.core as pc
 
 import tkMayaCore as tkc
@@ -97,7 +99,7 @@ def resolveReferences(inPicker, inNs):
                                 if splitValues[0].startswith("#"):
                                     space = splitValues[0][1:]
                                     if DEBUG:
-                                        print "Space switcher detected ({0}, {1}) !".format(space, inNs)
+                                        print ("Space switcher detected ({0}, {1}) !".format(space, inNs))
 
                                     spaceNode, spaceAttr = space.split(".")
                                     if pc.objExists(inNs + spaceNode):
@@ -161,10 +163,10 @@ def load(edit=False, multi=False, path=None, debug=False, forceRebuild=False):
             pickerNode.picker_datas_file.set(path)
 
     if DEBUG:
-        print "Root Path", hook.resolvePath(ROOTVAR, PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH)
-        print "Project Path", hook.resolvePath(PROJECTPATHVAR, PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH)
+        print ("Root Path", hook.resolvePath(ROOTVAR, PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH))
+        print ("Project Path", hook.resolvePath(PROJECTPATHVAR, PRODPATH, DEBUG, ROOTVAR, PROJECTPATHVAR, DEBUGPATH))
 
-    for pickerNs, pickerPaths in pickers.iteritems():
+    for pickerNs, pickerPaths in pickers.items():
         if isinstance(pickerPaths, basestring):
             #Need to create and build a picker from scratch
             mainPicker = None

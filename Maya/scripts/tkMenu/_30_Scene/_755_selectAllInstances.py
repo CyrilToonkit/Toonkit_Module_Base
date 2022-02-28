@@ -10,7 +10,7 @@ instancesDic = tkc.getInstances(inLog=True)
 
 uniqueInstances = []
 
-for instanceName, instances in instancesDic.iteritems():
+for instanceName, instances in instancesDic.items():
 	uniqueInstances.extend(instances)
 
 pc.select(uniqueInstances)

@@ -172,7 +172,7 @@ def selectionChanged():
 		pc.textField("tksiSelectionNamesLE", edit=True, text=selNames)			
 
 		refValues = ["" for i in range(9)]
-		valuesToTest = range(9)
+		valuesToTest = list(range(9))
 		textFieldKeys = ["PosX","PosY","PosZ","RotX","RotY","RotZ","SclX","SclY","SclZ"]
 
 		epsilon = 1 / math.pow(10, DECIMALS)
@@ -269,8 +269,8 @@ def selSelSet():
 
 	if len(sel) > 0:
 		pc.select(sel, replace=True)
-		print "#select "+ " ".join([o.name() for o in sel])
-		print "pc.select("+ ",".join(['"{0}"'.format(o.name()) for o in sel]) +")"
+		print ("#select "+ " ".join([o.name() for o in sel]))
+		print ("pc.select("+ ",".join(['"{0}"'.format(o.name()) for o in sel]) +")")
 
 def addToSelSet():
 	sel=getSelectedItemsObjects()
@@ -301,7 +301,7 @@ def cleanUI():
 
 		tkc.clearHelpLine()
 
-		print "tkMayaSIBar killed, options and events cleaned"
+		print ("tkMayaSIBar killed, options and events cleaned")
 
 def UIVisChanged(args):
 	#Defer the execution in case hidiung is temporary (docking/undocking)
@@ -352,7 +352,7 @@ def setName():
 	for obj in sel:
 		newName = tkc.parseValue(pattern, "string", obj.name(), counter, inAllowComments=True, inExcludeNS=ignoreNamespace)
 		if newName != None:
-			print obj, newName
+			print (obj, newName)
 			tkc.rename(obj, newName, renameAttrs=True)
 		counter = counter + 1
 
@@ -368,7 +368,7 @@ def selectHierarchyClick():
 	pc.select(list(set(allObjs)))
 
 def setSelection():
-	print pc.textScrollList("tksiSelectionNamesLV", query=True, selectItem=True)
+	print (pc.textScrollList("tksiSelectionNamesLV", query=True, selectItem=True))
 
 def setSpace(inGlobal):
 	if inGlobal:
@@ -595,7 +595,7 @@ def repeatTransformClick():
 	global G_TRANSLAST
 
 	if G_TRANSCMD != None:
-		print "repeating " + G_TRANSCMD + " with " + str((G_TRANSMIN, G_TRANSMAX, G_TRANSFIRST, G_TRANSLAST))
+		print ("repeating " + G_TRANSCMD + " with " + str((G_TRANSMIN, G_TRANSMAX, G_TRANSFIRST, G_TRANSLAST)))
 		tkc.pickSession(G_TRANSCMD, G_TRANSMIN, G_TRANSMAX, G_TRANSFIRST, G_TRANSLAST)
 
 def constrainCommand():
@@ -640,7 +640,7 @@ def constrainCommand():
 		if realCnsName == "Surface":
 			cnsArgs = [realCnsName, True, False]
 		if realCnsName == "Follicle":
-			print "realCnsName", realCnsName
+			print ("realCnsName", realCnsName)
 			realCnsName = "Surface"
 			cnsArgs = [realCnsName, True, True]
 
@@ -673,7 +673,7 @@ def repeatConstrainClick():
 		if "Path" in G_CONSCMD:
 			G_CONSARGS[1] = pc.checkBox("cnsCompCB", query=True, value=True)
 		else:
-			print "G_CONSARGS", G_CONSARGS
+			print ("G_CONSARGS", G_CONSARGS)
 			G_CONSARGS[1] = pc.checkBox("cnsCompCB", query=True, value=True)
 		tkc.pickSession(G_CONSCMD.split("(")[0], G_CONSMIN, G_CONSMAX, G_CONSFIRST, G_CONSLAST, "Select constrained then constraining", True, False, *G_CONSARGS)
 

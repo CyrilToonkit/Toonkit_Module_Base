@@ -44,7 +44,7 @@ def resolvePath(inPath, inProdPath, inDebug=False,
     for replacement in replacements:
         if replacement[0] in inPath:
             if inDebug:
-                print "Replace", replacement[0], "by", replacement[1],"(", inPath, "=>",inPath.replace(replacement[0], replacement[1]),")"
+                print ("Replace", replacement[0], "by", replacement[1],"(", inPath, "=>",inPath.replace(replacement[0], replacement[1]),")")
 
             inPath = inPath.replace(replacement[0], replacement[1])
 

@@ -30,6 +30,7 @@ tkSkinner.showUI()
 """
 import os
 from functools import partial
+from past.builtins import xrange
 import math
 import re
 
@@ -103,9 +104,9 @@ def getSoftSelection (opacityMult=1.0):
             for i in xrange(compFn.elementCount()):
                 weight = compFn.weight(i)
                 compOpacities[compFn.element(i)] = weight.influence() * opacityMult
-        except Exception, e:
-            print e.__str__()
-            print 'Soft selection appears invalid, skipping for shape "%s".' % shapeDag.partialPathName()
+        except Exception as e:
+            print (e.__str__())
+            print ('Soft selection appears invalid, skipping for shape "%s".' % shapeDag.partialPathName())
 
         allDags.append(shapeDag)
         allComps.append(shapeComp)
@@ -141,7 +142,7 @@ def getSkinInfo(inObjects=None):
 
     timers = {}
     if UI["debug"]:
-        print "getSkinInfo called !"
+        print ("getSkinInfo called !")
         tkc.startTimer("getSkinInfo")
         tkc.startTimer("collectSelection")
 
@@ -159,7 +160,7 @@ def getSkinInfo(inObjects=None):
                     for index, value in allOpacities[dagIndex].iteritems():
                         rawSelObj = node.vtx[index]
                         SEL["comps"].append(rawSelObj)
-                        OPACITIES[rawSelObj] = value
+                        OPACITIES[str(rawSelObj)] = value
                         if len(SEL["comps"]) >= UI["maxPoints"]:
                             maxReached = True
                             break
@@ -171,13 +172,14 @@ def getSkinInfo(inObjects=None):
                 tkc.stopTimer("expandCompIndices")
                 for comp in components:
                     SEL["comps"].append(comp)
-                    OPACITIES[comp] = 1.0
+                    OPACITIES[str(comp)] = 1.0
                     if len(SEL["comps"]) >= UI["maxPoints"]:
                         break
 
             #Filter inputs
             for rawSelObj in inObjects:
                 if isinstance(rawSelObj, pc.nodetypes.Joint):
+                    
                     SEL["infs"].append(rawSelObj)
 
     if maxReached:
@@ -185,15 +187,15 @@ def getSkinInfo(inObjects=None):
 
     if UI["debug"]:
         elapsed = tkc.stopTimer("expandCompIndices", inReset=True)
-        print "expandCompIndices took {0:.5f} s".format(elapsed)
+        print ("expandCompIndices took {0:.5f} s".format(elapsed))
 
         elapsed = tkc.stopTimer("collectSelection", inReset=True)
-        print "collectSelection took {0:.5f} s".format(elapsed)
+        print ("collectSelection took {0:.5f} s".format(elapsed))
 
     if len(SEL["comps"]) == 0:
         if UI["debug"]:
             elapsed = tkc.stopTimer("getSkinInfo")
-            print "getSkinInfo took {0:.5f} s (no points selected)".format(elapsed)
+            print ("getSkinInfo took {0:.5f} s (no points selected)".format(elapsed))
             for timer, elapsed in timers.iteritems():
                 tkc.stopTimer(timer, inReset=True)
 
@@ -205,7 +207,8 @@ def getSkinInfo(inObjects=None):
     if lenComps > MIN_SEL_PROGRESS:
         progressStart(len(SEL["comps"]), "Caching verts infos")
     for selComp in SEL["comps"]:
-        if not selComp in VERTINFOS or not "bind" in VERTINFOS[selComp] or not VERTINFOS[selComp]["geo"] in INFOS or "obsolete" in INFOS[VERTINFOS[selComp]["geo"]] or not VERTINFOS[selComp]["geo"].exists() or not VERTINFOS[selComp]["skin"].exists():
+
+        if not str(selComp) in VERTINFOS or not "bind" in VERTINFOS[str(selComp)] or not VERTINFOS[str(selComp)]["geo"] in INFOS or "obsolete" in INFOS[VERTINFOS[str(selComp)]["geo"]] or not VERTINFOS[str(selComp)]["geo"].exists() or not VERTINFOS[str(selComp)]["skin"].exists():
             node = selComp.node()
             if not node in INFOS or "obsolete" in INFOS[node] or not INFOS[node]["geo"].exists() or not INFOS[node]["skin"].exists():
                 if UI["debug"]:
@@ -235,8 +238,8 @@ def getSkinInfo(inObjects=None):
                     timerName = "getNodeInfo : " + node.name()
                     timers[timerName] = tkc.stopTimer(timerName, False)
 
-            VERTINFOS[selComp] = INFOS[node].copy()
-            VERTINFOS[selComp]["infsBind"] = {}
+            VERTINFOS[str(selComp)] = INFOS[node].copy()
+            VERTINFOS[str(selComp)]["infsBind"] = {}
 
         #Update weights
         if UI["debug"]:
@@ -245,7 +248,7 @@ def getSkinInfo(inObjects=None):
                 timers[timerName]=0.0
             tkc.startTimer(timerName)
 
-        VERTINFOS[selComp]["weights"] = pc.skinPercent(VERTINFOS[selComp]["skin"], selComp, query=True, value=True)
+        VERTINFOS[str(selComp)]["weights"] = pc.skinPercent(VERTINFOS[str(selComp)]["skin"], selComp, query=True, value=True)
 
         if UI["debug"]:
             timerName = "getWeigths"
@@ -257,23 +260,23 @@ def getSkinInfo(inObjects=None):
     #Get distances
     selComp = SEL["comps"][0]
     if UI["debug"]:
-        print "getDistances called !"
+        print ("getDistances called !")
         timerName = "getDistances"
         if not timerName in timers:
             timers[timerName]=0.0
         tkc.startTimer(timerName)
 
-    pointPos=VERTINFOS[selComp]["georig"].vtx[selComp.indices()[0]].getPosition(space="world")
+    pointPos=VERTINFOS[str(selComp)]["georig"].vtx[selComp.indices()[0]].getPosition(space="world")
 
     if UI["debug"]:
-        print "pointPos", selComp, ":", pointPos
+        print ("pointPos", selComp, ":", pointPos)
 
-    for i in range(len(VERTINFOS[selComp]["infs"])):
-        inf = VERTINFOS[selComp]["infs"][i]
-        if not inf in VERTINFOS[selComp]["infsBind"]:
-            VERTINFOS[selComp]["infsBind"][inf] = computeDist(pointPos, VERTINFOS[selComp]["bind"][i])
+    for i in range(len(VERTINFOS[str(selComp)]["infs"])):
+        inf = VERTINFOS[str(selComp)]["infs"][i]
+        if not inf in VERTINFOS[str(selComp)]["infsBind"]:
+            VERTINFOS[str(selComp)]["infsBind"][inf] = computeDist(pointPos, VERTINFOS[str(selComp)]["bind"][i])
 
-    VERTINFOS[selComp]["distances"] = [VERTINFOS[selComp]["infsBind"][inf] for inf in VERTINFOS[selComp]["infs"]]
+    VERTINFOS[str(selComp)]["distances"] = [VERTINFOS[str(selComp)]["infsBind"][inf] for inf in VERTINFOS[str(selComp)]["infs"]]
 
     if UI["debug"]:
         timerName = "getDistances"
@@ -282,10 +285,10 @@ def getSkinInfo(inObjects=None):
     if UI["debug"]:
         elapsed = tkc.stopTimer("getSkinInfo")
         lenComps = len(SEL["comps"])
-        print "getSkinInfo took {0:.3f} s for {1} points ({2:.2f} ms / point)".format(elapsed, lenComps, (elapsed * 1000.0)/lenComps)
+        print ("getSkinInfo took {0:.3f} s for {1} points ({2:.2f} ms / point)".format(elapsed, lenComps, (elapsed * 1000.0)/lenComps))
         
         for timer, elapsed in timers.iteritems():
-            print "  - {0} took {1:.3f} s".format(timer, elapsed)
+            print ("  - {0} took {1:.3f} s".format(timer, elapsed))
             tkc.stopTimer(timer, inReset=True)
 
     progressEnd()
@@ -297,7 +300,7 @@ def initSkinPaths():
         pc.warning("No vert selected !")
         return False
 
-    info = VERTINFOS[SEL["comps"][0]]
+    info = VERTINFOS[str(SEL["comps"][0])]
 
     if len(info["selWeights"]) == 0:
         return
@@ -341,26 +344,26 @@ def initSkinPaths():
 
 def setWeigthsClick(divisions, weight, *args):
     if UI["debug"]:
-        print "setWeigthsClick",divisions,weight
-        print "mode",UI["mode"]
+        print ("setWeigthsClick",divisions,weight)
+        print ("mode",UI["mode"])
 
         tkc.startTimer("setWeigths", inReset=True)
 
     for vert in SEL["comps"]:
         #weights = STOREDWEIGHTS[vert] if STOREDWEIGHTS != None else VERTINFOS[vert]["weights"]
-        weights = VERTINFOS[vert]["weights"]
+        weights = VERTINFOS[str(vert)]["weights"]
 
         if UI["mode"] == 0:
-            pc.skinPercent(VERTINFOS[vert]["skin"], vert, transformValue=[(selInf, weight * OPACITIES[vert]) for selInf in UI["selInfs"] if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
+            pc.skinPercent(VERTINFOS[str(vert)]["skin"], vert, transformValue=[(selInf, weight * OPACITIES[str(vert)]) for selInf in UI["selInfs"] if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
         elif UI["mode"] == 1:
-            pc.skinPercent(VERTINFOS[vert]["skin"], vert, transformValue=[(selInf, weights[VERTINFOS[vert]["infs"].index(selInf)] + weight * OPACITIES[vert]) for selInf in UI["selInfs"]  if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
+            pc.skinPercent(VERTINFOS[str(vert)]["skin"], vert, transformValue=[(selInf, weights[VERTINFOS[str(vert)]["infs"].index(selInf)] + weight * OPACITIES[str(vert)]) for selInf in UI["selInfs"]  if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
         elif UI["mode"] == 2:
-            pc.skinPercent(VERTINFOS[vert]["skin"], vert, transformValue=[(selInf, weights[VERTINFOS[vert]["infs"].index(selInf)] + weight * weights[VERTINFOS[vert]["infs"].index(selInf)] * OPACITIES[vert]) for selInf in UI["selInfs"] if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
+            pc.skinPercent(VERTINFOS[str(vert)]["skin"], vert, transformValue=[(selInf, weights[VERTINFOS[str(vert)]["infs"].index(selInf)] + weight * weights[VERTINFOS[str(vert)]["infs"].index(selInf)] * OPACITIES[str(vert)]) for selInf in UI["selInfs"] if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
         else:#UI["mode"] == 3
-            pc.skinPercent(VERTINFOS[vert]["skin"], vert, transformValue=[(selInf, weights[VERTINFOS[vert]["infs"].index(selInf)] * weight * OPACITIES[vert]) for selInf in UI["selInfs"]  if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
+            pc.skinPercent(VERTINFOS[str(vert)]["skin"], vert, transformValue=[(selInf, weights[VERTINFOS[str(vert)]["infs"].index(selInf)] * weight * OPACITIES[str(vert)]) for selInf in UI["selInfs"]  if not UI["useLocks"] or not selInf.lockInfluenceWeights.get()], normalize=False)
 
     if UI["normalize"]:
-        pc.skinPercent(VERTINFOS[SEL["comps"][0]]["skin"], normalize=True)
+        pc.skinPercent(VERTINFOS[str(SEL["comps"][0])]["skin"], normalize=True)
 
     if UI["debug"]:
         tkc.stopTimer("setWeigths", inLog=True)
@@ -371,7 +374,7 @@ def setWeigthsClick(divisions, weight, *args):
 
 def selectionChanged():
     if UI["debug"]:
-        print "selChanged !"
+        print ("selChanged !")
 
     if not mc.window('tkSkinnerUI', q=True, exists=True):
         cleanUI()
@@ -380,7 +383,7 @@ def selectionChanged():
 
 def undoChanged():
     if UI["debug"]:
-        print "undoChanged !"
+        print ("undoChanged !")
 
     if not mc.window('tkSkinnerUI', q=True, exists=True):
         cleanUI()
@@ -389,14 +392,14 @@ def undoChanged():
 
 def infDoubleClick(*args):
     if UI["debug"]:
-        print "infDoubleClick !",pc.textScrollList("tkSkinInfsLB", query=True, selectIndexedItem=True)
+        print ("infDoubleClick !",pc.textScrollList("tkSkinInfsLB", query=True, selectIndexedItem=True))
 
     pc.select(UI["selInfs"], add=pc.getModifiers() == 1)
 
 def smooth(*args):
     paint = tkWeightsFilters.weightsFiltersClass()
     for comp in SEL["comps"]:
-        paint.setWeight(comp.indices()[0],OPACITIES[comp]*.25)
+        paint.setWeight(comp.indices()[0],OPACITIES[str(comp)]*.25)
 
 def smoothPaint(*args):
     tkWeightsFilters.smooth()
@@ -404,7 +407,7 @@ def smoothPaint(*args):
 def sharpen(*args):
     paint = tkWeightsFilters.weightsFiltersClass("sharpen")
     for comp in SEL["comps"]:
-        paint.setWeight(comp.indices()[0],OPACITIES[comp]*.25)
+        paint.setWeight(comp.indices()[0],OPACITIES[str(comp)]*.25)
 
 def sharpenPaint(*args):
     tkWeightsFilters.sharpen()
@@ -412,7 +415,7 @@ def sharpenPaint(*args):
 def harden(*args):
     paint = tkWeightsFilters.weightsFiltersClass("harden")
     for comp in SEL["comps"]:
-        paint.setWeight(comp.indices()[0],OPACITIES[comp]*.25)
+        paint.setWeight(comp.indices()[0],OPACITIES[str(comp)]*.25)
 
 def hardenPaint(*args):
     tkWeightsFilters.harden()
@@ -430,7 +433,7 @@ def infSelChanged(*args):
     global UI
 
     if UI["debug"]:
-        print "infsSelChanged !",pc.textScrollList("tkSkinInfsLB", query=True, selectIndexedItem=True)
+        print ("infsSelChanged !",pc.textScrollList("tkSkinInfsLB", query=True, selectIndexedItem=True))
 
     #Check if selection have really changed
     oldSel = [] if True in args else [inf.name() for inf in UI["selInfs"]] 
@@ -440,7 +443,7 @@ def infSelChanged(*args):
     if oldSel != newSel:
         if len(UI["selInfs"]) > 0 and len(SEL["comps"]) > 0:
             hilited = UI["selInfs"][:]
-            geo = VERTINFOS[SEL["comps"][0]]["geo"].getParent()
+            geo = VERTINFOS[str(SEL["comps"][0])]["geo"].getParent()
             hilited.append(geo)
             pc.hilite(hilited, replace=True)
 
@@ -451,11 +454,11 @@ def infSelChanged(*args):
             finally:
                 pc.mel.eval("doMenuComponentSelection(\""+geo+"\", \"vertex\");")
 
-            if SEL["infs"] > 0:
+            if len(SEL["infs"]) > 0:
                 pc.select(SEL["infs"], add=True)
 
             if UI["mode"] == 0:
-                pc.floatSliderGrp("tkSkinSlider", edit=True,v=VERTINFOS[SEL["comps"][0]]["weights"][VERTINFOS[SEL["comps"][0]]["infs"].index(UI["selInfs"][0])])
+                pc.floatSliderGrp("tkSkinSlider", edit=True,v=VERTINFOS[str(SEL["comps"][0])]["weights"][VERTINFOS[str(SEL["comps"][0])]["infs"].index(UI["selInfs"][0])])
             elif UI["mode"] == 1:
                 pc.floatSliderGrp("tkSkinSlider", edit=True,v=0.0)
             elif UI["mode"] == 2:
@@ -483,7 +486,7 @@ def locksCBChanged(*args):
     UI["useLocks"] = pc.checkBox("tkSkinLocksCB", query=True, value=True)
     if not UI["useLocks"]:
         if len(SEL["comps"]) > 0:
-            unlockJoints(VERTINFOS[SEL["comps"]]["infs"])
+            unlockJoints(VERTINFOS[str(SEL["comps"])]["infs"])
 
 def showZeroCBChanged(*args):
     global UI
@@ -557,7 +560,7 @@ def endSliderDrag(*args):
     val = pc.floatSliderGrp("tkSkinSlider", q=True, v=True )
 
     if UI["debug"]:
-        print "endSliderDrag",val
+        print ("endSliderDrag",val)
 
     try:
         setWeigthsClick(0, val)
@@ -583,7 +586,7 @@ def sliderDrag(*args):
     val = pc.floatSliderGrp("tkSkinSlider", q=True, v=True )
 
     if UI["debug"]:
-        print "SliderDrag",val
+        print ("SliderDrag",val)
 
     if not SLIDER_DRAGGING:
         if not UI["chunkOpen"]:
@@ -593,7 +596,7 @@ def sliderDrag(*args):
         #Store weights
         STOREDWEIGHTS = {}
         for vert in SEL["comps"]:
-            STOREDWEIGHTS[vert] = VERTINFOS[vert]["weights"][:]
+            STOREDWEIGHTS[vert] = VERTINFOS[str(vert)]["weights"][:]
 
         SLIDER_DRAGGING = True
 
@@ -686,7 +689,7 @@ def resfreshUIInfs(*args):
     if len(SEL["comps"]) == 0:
         return
 
-    info = VERTINFOS[SEL["comps"][0]]
+    info = VERTINFOS[str(SEL["comps"][0])]
 
     nInfs = len(info["infs"])
     UI["infs"] = []
@@ -769,7 +772,7 @@ def cleanUI(*args):
     global UI
 
     if UI["debug"]:
-        print "cleaning UI"
+        print ("cleaning UI")
 
     if (mc.window('tkSkinnerUI', q=True, exists=True)):
         mc.deleteUI('tkSkinnerUI')
@@ -780,7 +783,7 @@ def cleanUI(*args):
         pc.mel.evalDeferred("scriptJob -kill " + str(jobID))
         del UI["selJob"]
         if UI["debug"]:
-            print "tkSkinner selJob killed (job {0})".format(jobID)
+            print ("tkSkinner selJob killed (job {0})".format(jobID))
 
     jobID = None
     if "undoJob" in UI:
@@ -788,7 +791,7 @@ def cleanUI(*args):
         pc.mel.evalDeferred("scriptJob -kill " + str(jobID))
         del UI["undoJob"]
         if UI["debug"]:
-            print "tkSkinner undoJob killed (job {0})".format(jobID)
+            print ("tkSkinner undoJob killed (job {0})".format(jobID))
 
     if "closeJob" in UI:
         #pc.mel.evalDeferred("scriptJob -kill " + str(UI["closeJob"]))
@@ -850,12 +853,12 @@ def showUI(*args):
     if not "selJob" in UI:
         UI["selJob"] = pc.scriptJob(event=["SelectionChanged", selectionChanged])
         if UI["debug"]:
-            print "tkSkinner 'SelectionChanged' initialized (job {0})".format(UI["selJob"])
+            print ("tkSkinner 'SelectionChanged' initialized (job {0})".format(UI["selJob"]))
 
     if not "undoJob" in UI:
         UI["undoJob"] = pc.scriptJob(event=["Undo", undoChanged])
         if UI["debug"]:
-            print "tkSkinner 'Undo' initialized (job {0})".format(UI["undoJob"])
+            print ("tkSkinner 'Undo' initialized (job {0})".format(UI["undoJob"]))
 
     connectControls()
 

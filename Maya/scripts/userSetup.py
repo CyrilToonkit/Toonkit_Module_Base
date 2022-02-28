@@ -64,8 +64,8 @@ if "mayabatch" in app:
         fileName, fileExtension = os.path.splitext(args[0])
         if CORETOOL.options["hookmayabatch"] and ".py" in fileExtension and os.path.isfile(args[0]):
             result = None
-            print "Toonkit mayabatcher : environment loaded from Maya batch, execute script from arguments (%s)" % str(args)
+            print ("Toonkit mayabatcher : environment loaded from Maya batch, execute script from arguments (%s)" % str(args))
             result = tkc.executeFile(args[0], strlng=1, functionName="do", args=[] if len(args) == 0 else args[1:])
-            print "Toonkit mayabatcher : result {0}".format(result)
+            print ("Toonkit mayabatcher : result {0}".format(result))
 else:
     cmds.evalDeferred(CORETOOL.reload)

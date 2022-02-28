@@ -18,5 +18,5 @@ else:
     if path == None:
         pc.warning("No valid output path given !")
     else:
-    	cns = tkc.getExternalConstraints(sel, inSource=True, inDestination=False, returnObjects=False, inReturnAll=False, inProgress=False)
+        cns = tkc.getExternalConstraints(sel, inSource=True, inDestination=False, returnObjects=False, inReturnAll=False, inProgress=False)
         tkc.storeConstraintsList(cns, inRemove=False, inPath=path)

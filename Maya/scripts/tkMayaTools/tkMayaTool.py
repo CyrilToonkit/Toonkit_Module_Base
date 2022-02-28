@@ -21,6 +21,8 @@
 """
 import os
 from functools import partial
+import six
+basestring = six.string_types
 
 import Toonkit_Core.tkToolOptions.tkTool as tkTool
 from Toonkit_Core.tkToolOptions.tkOptions import Options
@@ -144,7 +146,7 @@ class MayaTool(Tool):
         categorizedOptions = self.getCategorizedOptions()
 
         parentCateg = None
-        for categ, options in categorizedOptions.iteritems():
+        for categ, options in categorizedOptions.items():
 
             if len(categorizedOptions) > 1:
                 categ = tkTool.DEFAULT_CATEGORY if not categ else categ

@@ -141,11 +141,11 @@ def diagnose(inProps=["Objects",
     values = tkdev.Tester("SomeRig", "SomePath").getValues(*inProps)
 
     for i in range(len(inProps)):
-        print "{0} : {1}".format(inProps[i],values[i])
+        print ("{0} : {1}".format(inProps[i],values[i]))
 
 def evaluate(inFrames=100):
     fps = 100.0 / tkc.benchIt(tkdev.evaluate, inFrames)[0]
-    print "{0} fps, {1} ms".format(fps, 1000.0/fps)
+    print ("{0} fps, {1} ms".format(fps, 1000.0/fps))
 
     return fps
 
@@ -247,8 +247,8 @@ def matrixConstrain(inTarget, inSource, inScale=True, inOffsetT=None, inOffsetR=
     for storedCon in storedConsInfo:
         cnsType, cnsTarget, cnsName = storedCon
 
-        print "inTarget",inTarget
-        print "cnsTarget",cnsTarget
+        print ("inTarget",inTarget)
+        print ("cnsTarget",cnsTarget)
 
         try:
             if cnsType == "parentConstraint":
@@ -391,15 +391,15 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
             os.makedirs(inDebugFolder)
         else:
             tkc.emptyDirectory(inDebugFolder)
-        print "DEBUG MODE ACTIVATED ({})".format(inDebugFolder)
+        print ("DEBUG MODE ACTIVATED ({})".format(inDebugFolder))
         tkc.capture(os.path.join(inDebugFolder, "{0:04d}_ORIGINAL.jpg".format(debugCounter)), start=1, end=1, width=1280, height=720)
         debugCounter = debugCounter + 1
 
     parentCons = [c.name() for c in pc.ls(type=["parentConstraint","pointConstraint"])]
     
     if inVerbose:
-        print "Constraints", len(parentCons)
-        print parentCons
+        print ("Constraints", len(parentCons))
+        print (parentCons)
     
     replaced = []
 
@@ -422,7 +422,7 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
 
         if len(targets) == 0:
             if inVerbose:
-                print "Cannot replace (NO TARGETS): ",parentCon,"on",owner
+                print ("Cannot replace (NO TARGETS): ",parentCon,"on",owner)
             continue
 
         skip = False
@@ -430,7 +430,7 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
         for target in targets:
             #print "target",target,inExclude
             if target in inExclude:
-                print "Constraint '{0}'' is on an excluded object ({1}), skip...".format(parentCon, target)
+                print ("Constraint '{0}'' is on an excluded object ({1}), skip...".format(parentCon, target))
                 skip = True
                 break
 
@@ -469,12 +469,12 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
 
             if not tkc.listsBarelyEquals(list(owner.rp.get()), [0.0,0.0,0.0]):
                 if inVerbose:
-                    print "Cannot replace (owner have scale pivots): ",parentCon,"on",owner
+                    print ("Cannot replace (owner have scale pivots): ",parentCon,"on",owner)
                 continue
 
             if not tkc.listsBarelyEquals(list(owner.s.get()), [1.0,1.0,1.0]):
                 if inVerbose:
-                    print "Cannot replace (owner {0} have non-uniform scaling): ".format(owner),parentCon,"on",owner
+                    print ("Cannot replace (owner {0} have non-uniform scaling): ".format(owner),parentCon,"on",owner)
                 continue
 
             targetPivots=False
@@ -482,12 +482,12 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
             for target in targets:
                 if not tkc.listsBarelyEquals(list(target.rp.get()), [0.0,0.0,0.0]):
                     if inVerbose:
-                        print "Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner
+                        print ("Cannot replace (target {0} have scale pivots): ".format(target),parentCon,"on",owner)
                     targetPivots=True
 
                 if not tkc.listsBarelyEquals(list(target.s.get()), [1.0,1.0,1.0]):
                     if inVerbose:
-                        print "Cannot replace (target {0} have non-uniform scaling): ".format(target),parentCon,"on",owner
+                        print ("Cannot replace (target {0} have non-uniform scaling): ".format(target),parentCon,"on",owner)
                     targetNonUniformScale=True
 
             if targetPivots or targetNonUniformScale:
@@ -499,7 +499,7 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
             for storedCon in storedCons:
                 if len([c for c in storedCon.listConnections() if not isinstance(c, pc.nodetypes.Transform)]) > 0:
                     incompatible = True
-                    print "Cannot replace (constraints on owner with connections): ",owner,storedCon
+                    print ("Cannot replace (constraints on owner with connections): ",owner,storedCon)
                     break
 
             if incompatible:
@@ -513,7 +513,7 @@ def replaceConstraints(inExclude=None, inDebugFolder=None, inVerbose=False):
             debugCounter = debugCounter + 1
 
     if inVerbose:
-        print "replaced",len(replaced),replaced
+        print ("replaced",len(replaced),replaced)
 
     return replaced
 
@@ -530,7 +530,7 @@ def convertExpressions(inVerbose=False):
 
     exprs = pc.ls(type="expression")
     if inVerbose:
-        print "exprs", len(exprs)
+        print ("exprs", len(exprs))
     for expr in exprs:
         #print "Expr",expr
         #print "-cons",len(expr.listConnections()),expr.listConnections()
@@ -548,10 +548,10 @@ def convertExpressions(inVerbose=False):
             replaced.append(expr.name())
             tkn.convertExpression(expr)
         elif inVerbose:
-            print "Cannot replace (invalid item): ",expr,exprString
+            print ("Cannot replace (invalid item): ",expr,exprString)
 
     if inVerbose:
-        print "convertExpressions replaced",len(replaced),replaced
+        print ("convertExpressions replaced",len(replaced),replaced)
 
     return replaced
 
@@ -585,7 +585,7 @@ def isUselessTransform(inTransform,  inVerbose=False):
     #Connections
     if len([c for c in inTransform.listConnections(source=False, destination=True) if not c in constraints]) > 0:
         if inVerbose:
-            print inTransform,[c for c in inTransform.listConnections(source=False, destination=True) if not c in constraints]
+            print (inTransform,[c for c in inTransform.listConnections(source=False, destination=True) if not c in constraints])
         return False
 
     return True
@@ -638,13 +638,13 @@ def deleteUselessTransforms(inExceptPattern=None, inVerbose=False):
 
         if nUts == 0:
             if inVerbose:
-                print "deleteUselessTransforms",len(uts),uts
+                print ("deleteUselessTransforms",len(uts),uts)
             return deleted
 
         curIter += 1
 
     if inVerbose:
-        print "deleteUselessTransforms",len(deleted),deleted
+        print ("deleteUselessTransforms",len(deleted),deleted)
 
     pc.warning("delete useless trasforms : Max iterations reached ({0})".format(MAXITER))
     return deleted
@@ -654,7 +654,7 @@ def deletePTTransforms(inExceptPattern=None):
     
     ts = pc.ls(exactType=["transform"])
     
-    print len(ts)
+    print (len(ts))
     
     for t in ts:
         #Pattern
@@ -671,17 +671,17 @@ def deletePTTransforms(inExceptPattern=None):
         
         if len(cons) > 0 and len(otherCons) > 0:
             if len(list(set(t.listConnections()))) != len(list(set(cons + otherCons))):
-                print "PTTransforms : Other connections :",t,list(set(t.listConnections())),list(set(cons + otherCons))
+                print ("PTTransforms : Other connections :",t,list(set(t.listConnections())),list(set(cons + otherCons)))
                 continue
 
             if len(getConstraintConnections(inCns)) > 0:
-                print "PTTransforms : Input connections :",getConstraintConnections(inCns)
+                print ("PTTransforms : Input connections :",getConstraintConnections(inCns))
                 continue
 
             outputCons = False
             for otherCon in otherCons:
                 if len(getConstraintConnections(otherCon)) > 0:
-                    print "PTTransforms : Output connections :",getConstraintConnections(otherCon)
+                    print ("PTTransforms : Output connections :",getConstraintConnections(otherCon))
                     outputCons=True
                     break
 
@@ -690,7 +690,7 @@ def deletePTTransforms(inExceptPattern=None):
 
             uselessTransforms.append(t.name())
 
-    print "deletePTTransforms",len(uselessTransforms),uselessTransforms
+    print ("deletePTTransforms",len(uselessTransforms),uselessTransforms)
     return uselessTransforms
 
 def deletePTAttributes(inExceptPattern=None, inExceptParamsPattern=None, inDropStaticValues=True, inVerbose=False):
@@ -779,7 +779,7 @@ def deletePTAttributes(inExceptPattern=None, inExceptParamsPattern=None, inDropS
                         pass
 
     if inVerbose:
-        print "deletePTAttributes",len(uselessAttributes),uselessAttributes
+        print ("deletePTAttributes",len(uselessAttributes),uselessAttributes)
 
     return uselessAttributes
 
@@ -841,8 +841,8 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     else:
         nodesRootToKeep, nodesRootToRemove, allGivenNodes = tkRig.OscarSplitNodes(inRootsRemove)
 
-    print "nodesRootToRemove",len(nodesRootToRemove),nodesRootToRemove
-    print "nodesRootToKeep",len(nodesRootToKeep),nodesRootToKeep
+    print ("nodesRootToRemove",len(nodesRootToRemove),nodesRootToRemove)
+    print ("nodesRootToKeep",len(nodesRootToKeep),nodesRootToKeep)
 
     if len(allGivenNodes) > 0:
         pc.warning("{0} nodesNotFound ({1})".format(len(allGivenNodes),allGivenNodes))
@@ -862,7 +862,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     cns, cnsAll = tkc.getExternalConstraints(nodesRootToRemove, inSource=True, inDestination=True, inReturnAll=True, inProgress=True)
 
     externalOwners = []
-    print " Constraints :",len(cns),cns
+    print (" Constraints :",len(cns),cns)
 
     for cn in cnsAll:
         #DEACTTIVATE CONSTRAINT
@@ -906,15 +906,15 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
     if not inReplaceDeformers is None:
         for replaceDeformer in inReplaceDeformers:
-            print " deformersRemaining","replaceDeformer",replaceDeformer, replaceDeformer,"deformersRemaining",len(deformersRemaining),deformersRemaining
+            print (" deformersRemaining","replaceDeformer",replaceDeformer, replaceDeformer,"deformersRemaining",len(deformersRemaining),deformersRemaining)
             replaceDeformerList = pc.ls(["*:"+replaceDeformer, replaceDeformer])
 
             if len(replaceDeformerList) > 0 and replaceDeformerList[0].name() in deformersRemaining:
                 replacingDeformers.append(pc.PyNode(replaceDeformerList[0]))
 
-    print " deformersRemaining",len(deformersRemaining),deformersRemaining
+    print (" deformersRemaining",len(deformersRemaining),deformersRemaining)
 
-    print " replacingDeformers",len(replacingDeformers),replacingDeformers
+    print (" replacingDeformers",len(replacingDeformers),replacingDeformers)
 
     #Find and add "siblings" geo (geo deformed by an existing one)
     siblingsGeos = []
@@ -923,7 +923,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
         for histo in histos:
             if not histo in siblingsGeos and not histo in geos:
                 siblingsGeos.append(histo)
-                print " siblingsGeo OK :",geo,"=>",histo
+                print (" siblingsGeo OK :",geo,"=>",histo)
 
     geos.extend(siblingsGeos)
 
@@ -954,7 +954,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
     proxies = []
 
     for geo in geos:
-        print "-",geo,geo.type()
+        print ("-",geo,geo.type())
 
         if not isinstance(geo, pc.nodetypes.DagNode):
             deactivate(geo, cond, condVis, inDeactivated=deactivated)
@@ -979,7 +979,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
             #------------------------------------
             blendShapes = geo.listHistory(type="blendShape")
             for blendShape in blendShapes:
-                print "blendShape",blendShape
+                print ("blendShape",blendShape)
 
                 if pc.objExists(blendShape):
                     cons = pc.listConnections(blendShape, source=True, destination=False, type="mesh")
@@ -990,8 +990,8 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                             #Determine if most of the influences are kept or dropped
                             keptInfs = [inf for inf in BSinfs if inf.name() in deformersRemaining]
 
-                            print "keptInfs", len(keptInfs),keptInfs
-                            print "remainingTopInfs", len(remainingTopInfs),remainingTopInfs                          
+                            print ("keptInfs", len(keptInfs),keptInfs)
+                            print ("remainingTopInfs", len(remainingTopInfs),remainingTopInfs)                       
 
                             if len(keptInfs) > len(remainingTopInfs):
                                 underGeo = con
@@ -1005,11 +1005,11 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
             elif geo in forcedOrphans:
                 isOrphanGeo  = True
 
-            print " isOrphanGeo",isOrphanGeo
-            print " underGeo",underGeo
-            print " inIgnoreTags",len(inIgnoreTags),inIgnoreTags
-            print " len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([transform], inIgnoreTags))
-            print " visible",tkc.isVisibleAfterAll(geo)
+            print (" isOrphanGeo",isOrphanGeo)
+            print (" underGeo",underGeo)
+            print (" inIgnoreTags",len(inIgnoreTags),inIgnoreTags)
+            print (" len(tkt.getTags([geo], inIgnoreTags))",len(tkt.getTags([transform], inIgnoreTags)))
+            print (" visible",tkc.isVisibleAfterAll(geo))
             isSafe = False
 
             if inIgnoreTags is None or len(inIgnoreTags) == 0 or len(tkt.getTags([transform], inIgnoreTags)) == 0:
@@ -1049,7 +1049,7 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
 
                             newSkin = None
                             if not underGeo is None:
-                                print " Proxy",proxy,"created with gator under",underGeo,"approach" 
+                                print (" Proxy",proxy,"created with gator under",underGeo,"approach" )
                                 tkc.gator([proxy], underGeo)
                                 newSkin = tkc.getSkinCluster(proxy)
                                 dupeInfs = newSkin.influenceObjects()
@@ -1061,17 +1061,17 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
                                         infsToRemove.append(inf)
 
                                 if len(infsToRemove) > 0:
-                                    print "infsToRemove", len(infsToRemove),infsToRemove
+                                    print ("infsToRemove", len(infsToRemove),infsToRemove)
                                 pc.skinCluster(newSkin,e=True,ri=infsToRemove)
                             elif infsLeft == 0:
                                 if len(replacingDeformers) > 0:
-                                    print " Proxy",proxy,"created with replacingDeformers approach",proxy,replacingDeformers
+                                    print (" Proxy",proxy,"created with replacingDeformers approach",proxy,replacingDeformers)
                                     newSkin = pc.skinCluster(proxy,replacingDeformers, name=proxy.name() + "_skinCluster", toSelectedBones=True)
                                 elif len(deformersRemaining) > 0:
-                                    print " Proxy",proxy,"created with deformersRemaining approach" ,proxy,deformersRemaining
+                                    print (" Proxy",proxy,"created with deformersRemaining approach" ,proxy,deformersRemaining)
                                     newSkin = pc.skinCluster(proxy,deformersRemaining, name=proxy.name() + "_skinCluster", toSelectedBones=True)
                             else:
-                                print " Proxy",proxy,"created with gator",geo,"approach" 
+                                print (" Proxy",proxy,"created with gator",geo,"approach" )
                                 tkc.gator([proxy], geo)
                                 newSkin = tkc.getSkinCluster(proxy)
                                 pc.skinCluster(newSkin,e=True,ri=infsToRemove)
@@ -1092,9 +1092,9 @@ def setDeactivator(inAttr, inRootsKeep=None, inRootsRemove=None, inDeactivateVal
             #DEACTTIVATE GEOMETRY
             deactivate(underGeo, cond, condVis, inKeepVisible=not inHide or not tkc.isVisibleAfterAll(underGeo), inKeepActive=inKeepActive, inDeactivated=deactivated)
 
-    print "geos",len(geos),geos
-    print "proxies",len(proxies),proxies
-    print "deactivated",len(deactivated),deactivated
+    print ("geos",len(geos),geos)
+    print ("proxies",len(proxies),proxies)
+    print ("deactivated",len(deactivated),deactivated)
 
 def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SHAPE_CONVERSIONS", inDisconnectConflicting=False, inRecut=True, inRecutTreshold=2.0, inUseTopLevel=False):
     if inShapeAliases is None:
@@ -1308,7 +1308,7 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
             object = child.name()[:-len(inName)-1]
             objectNodeName = object if inCustomMeshSuffix is None else object + inCustomMeshSuffix
 
-            print "applyShapeConversions searching for :",object,objectNodeName
+            print ("applyShapeConversions searching for :",object,objectNodeName)
 
             if not pc.objExists(objectNodeName):
                 pc.warning("Can't find object '{0}'".format(objectNodeName))
@@ -1335,7 +1335,7 @@ def applyShapeConversions(inDelete=True, inName="TK_SHAPE_CONVERSIONS", inCustom
 
                         deltaMesh = None
                         try:
-                            print "extractDeltas",objectNode,bsObj
+                            print ("extractDeltas",objectNode,bsObj)
                             deltaMesh = pc.extractDeltas(s=objectNode, c=bsObj)
                         except:
                             pass
@@ -1634,7 +1634,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
         for newDef, oldDefs in skinningReplacements.iteritems():
             pc.progressBar(gMainProgressBar, edit=True, step=1)
-            print "replaceDeformers",oldDefs,newDef,meshSkins
+            print ("replaceDeformers",oldDefs,newDef,meshSkins)
             tkc.replaceDeformers(oldDefs, tkc.getNode(newDef), inSkins=meshSkins)
 
         pc.progressBar(gMainProgressBar, edit=True, endProgress=True)

@@ -64,6 +64,8 @@ composeMatrix
 import os
 import sys
 import re
+import six
+basestring = six.string_types
 import logging
 logging.basicConfig()
 
@@ -196,13 +198,13 @@ def profiled(func):
                 CALLS[kwargs["func"]] += 1
 
         if VERBOSE:
-            print "VERBOSE :: calling ",func.__name__,args,kwargs
+            print ("VERBOSE :: calling ",func.__name__,args,kwargs)
 
         rslt = func(*args, **kwargs)
 
         if VERBOSE:
-            print "VERBOSE :: returns ",rslt
-            print ""
+            print( "VERBOSE :: returns ",rslt)
+            print ("")
 
         return rslt
 
@@ -234,19 +236,19 @@ def stopProfiling(inLog=False, inClearNodes=True):
         nodes.extend(createdNodes)
 
     if inLog:
-        print "-"*20
+        print ("-"*20)
 
-        print "{0} nodes created total".format(len(nodes))
-        print ""
+        print ("{0} nodes created total".format(len(nodes)))
+        print ("")
         for function, number in CALLS.iteritems():
-            print "{0:03d} calls to '{1}' ({2} nodes)".format(number, function, len(CREATED_NODES.get(function, [])))
-        print ""
+            print ("{0:03d} calls to '{1}' ({2} nodes)".format(number, function, len(CREATED_NODES.get(function, []))))
+        print ("")
         for function, createdNodes in CREATED_NODES.iteritems():
-            print "{0} ({1} nodes) :".format(function, len(createdNodes))
+            print ("{0} ({1} nodes) :".format(function, len(createdNodes)))
             for createdNode in createdNodes:
-                print " -{0}".format(createdNode)
+                print (" -{0}".format(createdNode))
 
-        print "-"*20
+        print ("-"*20)
 
     if inClearNodes:
         CREATED_NODES = {}
@@ -303,7 +305,7 @@ def deleteUnusedNodes(inSafeAddDoubles=False):
         replaceRiskyAddDoubles()
 
     numDeleted = pc.mel.eval("MLdeleteUnused()")
-    print numDeleted
+    print (numDeleted)
 
 def reduceName(inName):
     if inName[0] in tke.Expr.WORDS:
@@ -344,7 +346,7 @@ def hashNodes(inHolder="Global_SRT", inTypes=UTILITY_TYPES):
             hashedName = ascii_lowercase[int(hashedName[0])] + hashedName[1:]
 
         if hashedName in nodesKeys:
-            print pc.warning("Duplicate hash " + hashedName) 
+            print (pc.warning("Duplicate hash " + hashedName) )
 
         node = node.rename(hashedName)
         nodesDic.append(node.name() + " " + name)
@@ -360,7 +362,7 @@ def unhashNodes(inHolder="Global_SRT", inTypes=UTILITY_TYPES):
     if not pc.attributeQuery("nodesHash", node=holder, exists=True):
         return
 
-    print holder.nodesHash.get()
+    print (holder.nodesHash.get())
 
 def create(inType, inName, inHI=False, **kwargs):
     node = pc.createNode(inType, name=inName)
@@ -1922,7 +1924,7 @@ def convertExpression(inExpr, inDeleteUnused=False, inVerbose=False):
     cons = inExpr.output[0].listConnections(plugs=True)
     if len(cons) != 1:
         if inVerbose:
-            print "Can't convert, no output ! ({0}, '{1}'')".format(inExpr,exprString)
+            print ("Can't convert, no output ! ({0}, '{1}'')".format(inExpr,exprString))
         return []
 
     lock = cons[0].isLocked()

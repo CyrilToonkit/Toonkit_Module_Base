@@ -5,6 +5,6 @@ namesDic = tkc.getDuplicates(pc.selected(), inLog=True)
 
 dupObjs = []
 for name in namesDic:
-    dupObjs.extend(namesDic[name], inLog=True)
+    dupObjs.extend(namesDic[name])
 
 pc.select(dupObjs)

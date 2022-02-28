@@ -115,24 +115,24 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
         code += "    fo.close()\r\n"
 
     if lastStatus and not inForce:
-        print ""
-        print " --- SKIPPED '{0}' on {1}, already executed successfully".format(inBatchName, filename)
+        print ("")
+        print (" --- SKIPPED '{0}' on {1}, already executed successfully".format(inBatchName, filename))
         return None
 
-    print ""
-    print " --- START {3} '{0}' on {1} ({2}) ---".format(inBatchName, filename, inPath, "Batch" if not inSimulate else "Simulation")
+    print ("")
+    print (" --- START {3} '{0}' on {1} ({2}) ---".format(inBatchName, filename, inPath, "Batch" if not inSimulate else "Simulation"))
     if lastStatus == None:
-        print " - Never executed before"
+        print (" - Never executed before")
     else:
-        print " - Already executed, with result :", lastStatus
-    print ""
+        print (" - Already executed, with result :", lastStatus)
+    print ("")
 
     result = tkc.executeCode(code, strlng=1, functionName="batcherDoBatch", args=[rawFilename, inPath])
 
     if not inSimulate and result:
         os.rename(logFilePath, logFilePath.replace(".ko", ".ok"))
 
-    print " --- END {3} '{0}' on {1} ({2})---".format(inBatchName, filename, "SUCCESS" if result else "FAILURE", "Batch" if not inSimulate else "Simulation")
+    print (" --- END {3} '{0}' on {1} ({2})---".format(inBatchName, filename, "SUCCESS" if result else "FAILURE", "Batch" if not inSimulate else "Simulation"))
 
     return result
 
@@ -269,8 +269,8 @@ def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePat
                 #print "p.returncode",p.returncode
                 #print "stdout",stdout
                 #print "stderr",stderr
-            except Exception, e:
-                print "Error : Can't execute batch : {0} ({1})".format(batchName, e) 
+            except Exception as e:
+                print ("Error : Can't execute batch : {0} ({1})".format(batchName, e) )
             finally:
                 os.remove(tmpFileName)
 
@@ -288,13 +288,13 @@ def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePat
         mc.progressBar(inProgressBar, edit=True, endProgress=True)
         mc.control(inProgressBar, edit=True, visible=False)
 
-    print "{0} failed, {1} succeeded, {2} skipped".format(len(failures), len(successes), len(skips))
+    print ("{0} failed, {1} succeeded, {2} skipped".format(len(failures), len(successes), len(skips)))
     if len(failures) > 0:
-        print "failed : " + ",".join(failures)
+        print ("failed : " + ",".join(failures))
     if len(successes) > 0:
-        print "succeeded : " + ",".join(successes)
+        print ("succeeded : " + ",".join(successes))
     if len(skips) > 0:
-        print "skipped : " + ",".join(skips)
+        print ("skipped : " + ",".join(skips))
 
 def batcherSaveClick(*args):
     oldPath = mc.textField("batcherFilePathLE", query=True, text=True)

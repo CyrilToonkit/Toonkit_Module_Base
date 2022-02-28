@@ -107,7 +107,7 @@ def objectInfo(*inArgs):
 
     if len(sel) > 0:
         obj = sel[0]
-        print "name : %s, type : %s, nodeType : %s, dagPath %s" % (obj.name(), obj.type(), obj.nodeType(), getAttr(obj, "fullPath"))
+        print ("name : %s, type : %s, nodeType : %s, dagPath %s" % (obj.name(), obj.type(), obj.nodeType(), getAttr(obj, "fullPath")))
 
 def storeAttrs(inAdd=False):
     global STOREDATTRIBUTES
@@ -154,23 +154,23 @@ def compareAttrs(inUpdate=True):
 
 def log():
     if len(STOREDATTRIBUTES) > 0:
-        print "Attributes dictionary at %s" % time.strftime('%X %x %Z')
-        print "-------------------------------------------"
+        print ("Attributes dictionary at %s" % time.strftime('%X %x %Z'))
+        print ("-------------------------------------------")
         for key in STOREDATTRIBUTES.keys():
-            print key.ljust(50) + " : %s" % str(STOREDATTRIBUTES[key])
+            print (key.ljust(50) + " : %s" % str(STOREDATTRIBUTES[key]))
     else:
-        print "Attributes dictionary is empty at %s" % time.strftime('%X %x %Z')
-    print ""
+        print ("Attributes dictionary is empty at %s" % time.strftime('%X %x %Z'))
+    print ("")
 
 def logChanges(inChanges):
     if len(inChanges) > 0:
-        print "Changes at %s" % time.strftime('%X %x %Z')
-        print "-------------------------------------------"
+        print ("Changes at %s" % time.strftime('%X %x %Z'))
+        print ("-------------------------------------------")
         for attr_oldVal_newVal in inChanges:
-            print "- " + attr_oldVal_newVal[0].ljust(40) + "%s => %s" % (attr_oldVal_newVal[1], attr_oldVal_newVal[2])
+            print ("- " + attr_oldVal_newVal[0].ljust(40) + "%s => %s" % (attr_oldVal_newVal[1], attr_oldVal_newVal[2]))
     else:
-        print "No changes at %s" % time.strftime('%X %x %Z')
-    print ""
+        print ("No changes at %s" % time.strftime('%X %x %Z'))
+    print ("")
 
 def monitorAttrChangesUI(*inArgs):
     """
@@ -398,12 +398,12 @@ def countObjectsOld():
         "curves":len(pc.ls(type="nurbsCurve"))
     }
 
-    print "Objects {0}".format(rslt["Objects"])
-    print " - transforms {0}".format(rslt["transforms"])
-    print " - groups {0}".format(rslt["groups"])
-    print " - locators {0}".format(rslt["locators"])
-    print " - joints {0}".format(rslt["joints"])
-    print " - curves {0}".format(rslt["curves"])
+    print ("Objects {0}".format(rslt["Objects"]))
+    print (" - transforms {0}".format(rslt["transforms"]))
+    print (" - groups {0}".format(rslt["groups"]))
+    print (" - locators {0}".format(rslt["locators"]))
+    print (" - joints {0}".format(rslt["joints"]))
+    print (" - curves {0}".format(rslt["curves"]))
 
     return rslt
 
@@ -431,8 +431,8 @@ def traceHierarchy():
         "Average depth":float(depths) / count,
         "Biggest depth":biggestDepth
     }
-    print "Average depth {0}".format(rslt["Average depth"])
-    print "Biggest depth {0}".format(rslt["Biggest depth"])
+    print ("Average depth {0}".format(rslt["Average depth"]))
+    print ("Biggest depth {0}".format(rslt["Biggest depth"]))
 
     return rslt
 
@@ -494,14 +494,14 @@ def countConstraints():
         "motionPaths":motionPaths
     }
 
-    print "constraints {0}".format(rslt["constraints"])
-    print " - parentConstraints {0}".format(rslt["parentConstraints"])
-    print " - orientConstraints {0}".format(rslt["orientConstraints"])
-    print " - aimConstraints {0}".format(rslt["aimConstraints"])
-    print " - scaleConstraints {0}".format(rslt["scaleConstraints"])
-    print " - pointConstraints {0}".format(rslt["pointConstraints"])
-    print " - poleVectorConstraints {0}".format(rslt["poleVectorConstraints"])
-    print " - motionPaths {0}".format(rslt["motionPaths"])
+    print ("constraints {0}".format(rslt["constraints"]))
+    print (" - parentConstraints {0}".format(rslt["parentConstraints"]))
+    print (" - orientConstraints {0}".format(rslt["orientConstraints"]))
+    print (" - aimConstraints {0}".format(rslt["aimConstraints"]))
+    print (" - scaleConstraints {0}".format(rslt["scaleConstraints"]))
+    print (" - pointConstraints {0}".format(rslt["pointConstraints"]))
+    print (" - poleVectorConstraints {0}".format(rslt["poleVectorConstraints"]))
+    print (" - motionPaths {0}".format(rslt["motionPaths"]))
 
     return rslt
 
@@ -512,9 +512,9 @@ def countUtilities():
 
     rslt = {"utility nodes":len(utils)}
 
-    print "utility nodes {0}".format(rslt["utils"])
+    print ("utility nodes {0}".format(rslt["utils"]))
     for util in utilities:
-        print " - " + util + " " + str(len(pc.ls(type=util)))
+        print (" - " + util + " " + str(len(pc.ls(type=util))))
 
     return rslt
 
@@ -590,14 +590,14 @@ def evaluateNode(inName, inPath):
     try:
         pc.setAttr(inName + ":Hidden.visibility", 1)
         tkSIGroups.refreshOverrides()
-    except Exception,e:
-        print e
+    except Exception as e:
+        print (e)
 
     for root in roots:
         try:
             setAnim(root, nFrames=100)
-        except Exception,e:
-            print e
+        except Exception as e:
+            print (e)
 
     return 100.0 / tkc.benchIt(evaluate, 100)[0]
 
@@ -605,8 +605,8 @@ def testNode(inName, inPath):
     if inName == "UnRoll":
         inName = "Unroll"
     pmsys.newFile(force=True)
-    print " *** " + inName + " ***"
-    print "size " + str(os.path.getsize(inPath) / 1000.0) + " Ko"
+    print (" *** " + inName + " ***")
+    print ("size " + str(os.path.getsize(inPath) / 1000.0) + " Ko")
     tkc.benchIt(importFile, inPath)
     
     modelName = inName + ":" + inName
@@ -615,8 +615,8 @@ def testNode(inName, inPath):
     countObjects()
     
     exprs = cntExprCharacters()
-    print "expressions " + str(exprs[0])
-    print "expressions chars " + str(exprs[1])
+    print ("expressions " + str(exprs[0]))
+    print ("expressions chars " + str(exprs[1]))
     
     countConstraints()
     
@@ -631,5 +631,5 @@ def testNode(inName, inPath):
     
     setAnim(rootName, nFrames=1000)
     
-    print 100.0 / tkc.benchIt(evaluate, 10)[0]
+    print (100.0 / tkc.benchIt(evaluate, 10)[0])
 #testNode(nodes[nodeIndex][1],nodes[nodeIndex][0])

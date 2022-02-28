@@ -31,7 +31,10 @@
 """
 
 import os
-from itertools import izip
+try:
+    from itertools import izip as zip
+except:
+    pass
 
 import pymel.core as pc
 import maya.cmds as mc
@@ -101,7 +104,7 @@ def getShaders(inObj, inFirstOnly=True):
     for shape in shapes:
         shadingGroups = iter(mc.listConnections(shape, type="shadingEngine", connections=True) or [])
         if shadingGroups != None:
-            for inputPlug, sGroup in izip(shadingGroups, shadingGroups):
+            for inputPlug, sGroup in zip(shadingGroups, shadingGroups):
                 isPlugManaged = False
 
                 if "initialParticleSE" in sGroup:
@@ -195,7 +198,7 @@ def gatorShaders(inObj, inRef):
         else:
             shaders_faces[shader] = [i]
 
-    for shader, faces in shaders_faces.iteritems():
+    for shader, faces in shaders_faces.items():
         assignShader(shader, inObj.name(), inFaces=tkc.serializeComponents(faces))
 
 def roundColor(inColor):
@@ -267,7 +270,7 @@ def addColor(rgb, sel):
 def setColors():
 
     steps = 0
-    for shd_color, meshes in PREVIZ_COLORS.iteritems():
+    for shd_color, meshes in PREVIZ_COLORS.items():
         steps += len(meshes)
 
     gMainProgressBar = None
@@ -286,7 +289,7 @@ def setColors():
     maxValue=steps)
 
     notFound = []
-    for shd_color, meshes in PREVIZ_COLORS.iteritems():
+    for shd_color, meshes in PREVIZ_COLORS.items():
         #print shd_color, meshes
         for mesh in meshes:
             mc.progressBar(gMainProgressBar, edit=True, step=1)
@@ -322,7 +325,7 @@ def colorCommand(inColor):
     global PREVIZ_COLORS
     selection = [n.name() for n in pc.selected()]
 
-    print "selection",selection
+    print ("selection",selection)
 
     if len(selection) == 0:
         mc.warning("Please select some objects to color")
@@ -343,7 +346,7 @@ def getFromScene(inManagedOnly=False):
     managed = []
 
     if inManagedOnly:
-        for shd_color, meshes in PREVIZ_COLORS.iteritems():
+        for shd_color, meshes in PREVIZ_COLORS.items():
             for mesh in meshes:
                 managed.append(mesh.split(".")[0])
         managed = list(set(managed))
@@ -614,7 +617,7 @@ def initUI(*args):
     managedMeshes = []
     mc.textScrollList("tkPalManagedLB", edit=True, removeAll=True)
 
-    for shd_color, meshes in PREVIZ_COLORS.iteritems():
+    for shd_color, meshes in PREVIZ_COLORS.items():
         if shd_color[0] == -1:
             continue
 

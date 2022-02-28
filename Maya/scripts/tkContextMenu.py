@@ -20,6 +20,8 @@
 -------------------------------------------------------------------------------
 """
 import os
+import six
+basestring = six.string_types
 import pymel.core as pc
 import maya.cmds as cmds
 import tkMayaCore as tkc

@@ -101,7 +101,7 @@ def removeRequires(*exceptArgs):
 
 			exception = False
 			for exceptArg in exceptArgs:
-				print MALINES[i], exceptArg
+				print (MALINES[i], exceptArg)
 				if MALINES[i].startswith(exceptArg):
 					exception = True
 					break
@@ -265,7 +265,7 @@ def setValuesFromOtherScene(inObjects, inPath, revertNotFound=True, addShapes=Tr
 								if not changed:
 									pc.warning("Cannot set attribute value %s => %s (%s)" % (attrName, str(attrOtherValues[1]), attrOtherValues[2]))
 				if not found:
-					print "Can't find attributes for node %s" % nodes[i].name()
+					print ("Can't find attributes for node %s" % nodes[i].name())
 
 			#Reset values to default if not overriten by other scene
 			if revertNotFound:

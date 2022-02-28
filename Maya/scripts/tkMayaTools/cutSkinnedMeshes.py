@@ -20,7 +20,7 @@
 -------------------------------------------------------------------------------
 """
 from Toonkit_Core.tkToolOptions.tkOptions import Options
-from tkMayaTool import MayaTool as Tool
+from tkMayaTools.tkMayaTool import MayaTool as Tool
 
 import pymel.core as pc
 import tkMayaCore as tkc

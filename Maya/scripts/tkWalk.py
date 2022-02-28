@@ -122,7 +122,7 @@ def bake(inStart, inEnd, inNamespace=None, inUnbake=True):
         pc.bakeResults(toBake, simulation=True, sampleBy=1, t=(inStart,inEnd), disableImplicitControl=False, preserveOutsideKeys=True, sparseAnimCurveBake=False, removeBakedAttributeFromLayer=False, bakeOnOverrideLayer=False, minimizeRotation=False, controlPoints=False, shape=False)
         pc.delete(cns)
         tkc.stopTimer(timerMessage, inLog=True)
-    except Exception, e:
+    except Exception as e:
         pc.warning("Unmanaged exception in baking ({0})".format(e))
     finally:
         pc.mel.eval("paneLayout -e -manage true $gMainPane") 

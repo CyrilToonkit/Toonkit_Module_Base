@@ -22,6 +22,8 @@
 from functools import partial
 import os
 import re
+import six
+basestring = six.string_types
 
 import pymel.core as pc
 
@@ -95,7 +97,7 @@ def menuFormat(in_rawName, inLocal=False, inServer=False, inMakeNice=True):
     if '.' in formattedName:
         formattedName, ext = os.path.splitext(formattedName)
 
-    for searchStr, replaceStr in MENUFORMAT_REPLACE.iteritems():
+    for searchStr, replaceStr in MENUFORMAT_REPLACE.items():
         formattedName = formattedName.replace(searchStr, replaceStr)
 
     digits = 0
@@ -241,7 +243,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True, inSearc
 
         
         elements = elementsDic.keys()
-        elements.sort(key=lambda x:x.lower())
+        elements = sorted(elements, key=lambda x:x.lower())
         
 
         for element in elements:

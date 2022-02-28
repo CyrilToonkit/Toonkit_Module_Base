@@ -6,8 +6,8 @@ import sys
 import os
 from maya import cmds
 import anim_picker
-from handlers import maya_handlers
-from handlers import file_handlers
+from anim_picker.handlers import maya_handlers
+from anim_picker.handlers import file_handlers
 
 class DataNode():
     # Pipeline
@@ -233,7 +233,7 @@ class DataNode():
                      k=False,
                      l=False)
         cmds.setAttr('%s.%s'%(self.name, self.__VERSION_ATTR__),
-                     unicode(version),
+                     (version),
                      l=True,
                      type='string')
     

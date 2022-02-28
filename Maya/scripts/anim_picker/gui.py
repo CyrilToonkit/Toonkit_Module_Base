@@ -5,6 +5,8 @@
 # PyQt4 user interface for anim_picker
 
 import os
+from past.builtins import long
+from builtins import str
 
 import re
 from math import sin, cos, pi
@@ -14,15 +16,15 @@ from maya import OpenMaya
 from maya import OpenMayaUI
 
 import anim_picker
-import node
-from handlers import maya_handlers
-from handlers import python_handlers
+import anim_picker.node as node
+from anim_picker.handlers import maya_handlers
+from anim_picker.handlers import python_handlers
 
-from handlers import qt_handlers
-from handlers.qt_handlers import QtCore, QtWidgets, QtOpenGL, QtWidgets, QtGui
+from anim_picker.handlers import qt_handlers
+from anim_picker.handlers.qt_handlers import QtCore, QtWidgets, QtOpenGL, QtWidgets, QtGui
 
-from handlers import __EDIT_MODE__
-from handlers import __SELECTION__
+from anim_picker.handlers import __EDIT_MODE__
+from anim_picker.handlers import __SELECTION__
 
 __USE_OPENGL__ = False # seems to conflicts with maya viewports...
 
@@ -249,7 +251,7 @@ class CtrlListWidgetItem(QtWidgets.QListWidgetItem):
     def node(self):
         '''Return a usable string for maya instead of a QString
         '''
-        return unicode(self.text())
+        return str(self.text())
     
     def node_exists(self):
         '''Will check that the node from "text" exists
@@ -399,7 +401,7 @@ class ContextMenuTabWidget(QtWidgets.QTabWidget):
         '''
         data = list()
         for i in range(self.count()):
-            name = unicode(self.tabText(i))
+            name = str(self.tabText(i))
             tab_data = self.widget(i).get_data()
             data.append({'name':name, 'data':tab_data})
         return data
@@ -456,7 +458,7 @@ class BackgroundWidget(QtWidgets.QLabel):
             path = None
             self.background = None
         else:
-            self.background = unicode(path)
+            self.background = str(path)
         
         # Use stylesheet rather than pixmap for proper resizing support
         self._set_stylesheet_background()
@@ -506,11 +508,11 @@ class SnapshotWidget(BackgroundWidget):
     def set_background(self, path=None):
         '''Set character snapshot picture
         '''
-        if not (path and os.path.exists(unicode(path))):
+        if not (path and os.path.exists(str(path))):
             path = self._get_default_snapshot()
             self.background = None
         else:
-            self.background = unicode(path)
+            self.background = str(path)
             
         # Load image
         image = QtGui.QImage(path)
@@ -862,7 +864,7 @@ class CustomScriptEditDialog(QtWidgets.QDialog):
     def run_event(self):
         '''Run event button
         '''
-        cmd_str = unicode(self.cmd_widget.toPlainText())
+        cmd_str = str(self.cmd_widget.toPlainText())
         
         if self.picker_item:
             python_handlers.safe_code_exec(cmd_str,
@@ -873,7 +875,7 @@ class CustomScriptEditDialog(QtWidgets.QDialog):
     def get_values(self):
         '''Return dialog window result values 
         '''
-        cmd_str = unicode(self.cmd_widget.toPlainText())
+        cmd_str = str(self.cmd_widget.toPlainText())
         
         return cmd_str, self.apply
     
@@ -943,8 +945,8 @@ class CustomMenuEditDialog(CustomScriptEditDialog):
     def get_values(self):
         '''Return dialog window result values 
         '''
-        name_str = unicode(self.name_widget.text())
-        cmd_str = unicode(self.cmd_widget.toPlainText())
+        name_str = str(self.name_widget.text())
+        cmd_str = str(self.cmd_widget.toPlainText())
         
         return name_str, cmd_str, self.apply
     
@@ -1020,8 +1022,8 @@ class SearchAndReplaceDialog(QtWidgets.QDialog):
     def get_values(self):
         '''Return field values and button choice
         '''
-        search_str = unicode(self.search_widget.text())
-        replace_str = unicode(self.replace_widget.text())
+        search_str = str(self.search_widget.text())
+        replace_str = str(self.replace_widget.text())
         if self.apply:
             SearchAndReplaceDialog.__SEARCH_STR__ = search_str 
             SearchAndReplaceDialog.__REPLACE_STR__ = replace_str 
@@ -1390,11 +1392,11 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         '''
         if not path:
             return
-        path = unicode(path)
+        path = str(path)
         
         # Check that path exists
         if not (path and os.path.exists(path)):
-            print '# background image not found: "%s"'%path
+            print ('# background image not found: "%s"'%path)
             return
         
         self.background_image_path = path
@@ -1943,7 +1945,7 @@ class PointHandleIndex(QtWidgets.QGraphicsSimpleTextItem):
     def setText(self, text):
         '''Override default setText method to force unicode on int index input
         '''
-        return QtWidgets.QGraphicsSimpleTextItem.setText(self, unicode(text))
+        return QtWidgets.QGraphicsSimpleTextItem.setText(self, str(text))
         
         
 class GraphicText(QtWidgets.QGraphicsSimpleTextItem):
@@ -1976,7 +1978,7 @@ class GraphicText(QtWidgets.QGraphicsSimpleTextItem):
     def get_text(self):
         '''Return element text
         '''
-        return unicode(self.text())
+        return str(self.text())
         
     def set_size(self, value=10.0):
         '''Set pointSizeF for text
@@ -3510,7 +3512,7 @@ class ItemOptionsWindow(QtWidgets.QMainWindow):
         if self.event_disabled:
             return
         
-        text = unicode(text)
+        text = str(text)
         self.picker_item.set_text(text)
     
     def edit_text_size_event(self, value=1):
@@ -3610,10 +3612,10 @@ class ItemOptionsWindow(QtWidgets.QMainWindow):
         
         # Open input window
         name, ok = QtWidgets.QInputDialog.getText(self,
-                                              unicode("Ctrl name"),
-                                              unicode('New name'),
+                                              str("Ctrl name"),
+                                              str('New name'),
                                               mode=QtWidgets.QLineEdit.Normal,
-                                              text=unicode(item.text()))
+                                              text=str(item.text()))
         if not (ok and name):
             return
         
@@ -3882,7 +3884,7 @@ class SaveOverlayWidget(OverlayWidget):
         '''
         file_path = self.file_path_le.text()
         if file_path:
-            return unicode(file_path)
+            return str(file_path)
         return None
         
     def save_event(self):
@@ -4305,7 +4307,7 @@ class MainDockWindow(QtWidgets.QDockWidget):
             return
         
         # Create new data node
-        data_node = node.DataNode(name=unicode(name))
+        data_node = node.DataNode(name=str(name))
         data_node.create()
         self.refresh()
         self.make_node_active(data_node)

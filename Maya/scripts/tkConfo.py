@@ -22,6 +22,8 @@
 
 import sys
 import re
+import six
+basestring = six.string_types
 import tempfile
 import subprocess
 
@@ -84,14 +86,14 @@ def compareStamps(stamp1, stamp2, name1="Left", name2="Right", inFile=None, bidi
 
     differentChannels = {}
 
-    stamp2Keys = stamp2.keys()
+    stamp2Keys = list(stamp2.keys())
 
-    for control, channels in stamp1.iteritems():
+    for control, channels in stamp1.items():
         if not control in stamp2Keys:
             missingControls2.append(control)
         else:
             stamp2Keys.remove(control)
-            stamp2Channels = stamp2[control].keys()
+            stamp2Channels = list(stamp2[control].keys())
             for channel in channels:
                 if not channel in stamp2Channels:
                     if not control in missingChannels2:
@@ -119,15 +121,15 @@ def compareStamps(stamp1, stamp2, name1="Left", name2="Right", inFile=None, bidi
 
     for missingControl in missingControls2:
         csv += "{0},,,,Left only control,,,,\r\n".format(missingControl)
-    for missingControl, missingChannels in missingChannels2.iteritems():
+    for missingControl, missingChannels in missingChannels2.items():
         for missingChannel in missingChannels:
             csv += "{0},{1},,,Left only channel,,,,\r\n".format(missingControl, missingChannel)
     for missingControl in missingControls1:
         csv += ",,,,Right only control,{0},,,\r\n".format(missingControl)
-    for missingControl, missingChannels in missingChannels1.iteritems():
+    for missingControl, missingChannels in missingChannels1.items():
         for missingChannel in missingChannels:
             csv += ",,,,Right only channel,{0},{1},,\r\n".format(missingControl, missingChannel)
-    for missingControl, differentChannel in differentChannels.iteritems():
+    for missingControl, differentChannel in differentChannels.items():
         for missingChannel in differentChannel:
             csv += "{0},{1},{2},{3},Different channels,{4},{5},{6},{7}\r\n".format(
                 missingControl, missingChannel, stamp1[missingControl][missingChannel]["default"], stamp1[missingControl][missingChannel]["value"],
@@ -147,7 +149,7 @@ def compareStamps(stamp1, stamp2, name1="Left", name2="Right", inFile=None, bidi
         f.write(csv)
         f.close()
 
-        print "File saved : " + f.name
+        print ("File saved : " + f.name)
 
         try:
             retcode = subprocess.call("open " + f.name, shell=True)
@@ -155,14 +157,14 @@ def compareStamps(stamp1, stamp2, name1="Left", name2="Right", inFile=None, bidi
                 print >>sys.stderr, "Child was terminated by signal", -retcode
             else:
                 print >>sys.stderr, "Child returned", retcode
-        except OSError, e:
+        except OSError as e:
             print >>sys.stderr, "Execution failed:", e
 
-    print   "missingControls1",missingControls1
-    print   "missingChannels1",missingChannels1
-    print   "differentChannels",differentChannels
-    print   "missingControls2",missingControls2
-    print   "missingChannels2",missingChannels2
+    print   ("missingControls1",missingControls1)
+    print   ("missingChannels1",missingChannels1)
+    print   ("differentChannels",differentChannels)
+    print   ("missingControls2",missingControls2)
+    print   ("missingChannels2",missingChannels2)
 
     return csv
 
@@ -239,9 +241,9 @@ def checkConfo(inTopNode1,inTopNode2=None, inExportFile=True, inPath=None):
             f.write(csv)
             f.close()
 
-            print "File saved : " + f.name
+            print ("File saved : " + f.name)
         else:
-            print csv
+            print (csv)
     elif inPath != None:
         pc.confirmDialog(title='Conformity', message="Your assets perfectly match !", button=['OK'], defaultButton='OK')
 

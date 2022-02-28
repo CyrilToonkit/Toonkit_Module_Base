@@ -122,6 +122,8 @@ from threading import Timer
 from timeit import default_timer
 from functools import partial
 import ast
+import six
+basestring = six.string_types
 
 import maya.cmds as cmds
 import pymel.core as pc
@@ -131,6 +133,7 @@ import pymel.core.datatypes as dt
 from pymel import versions
 
 import maya.api.OpenMaya as om
+import TkApi.maya_api as tkApi
 
 import locationModule
 from Toonkit_Core.tkToolOptions.tkOptions import Options
@@ -152,6 +155,8 @@ __author__ = "Cyril GIBAUD - Toonkit"
   \____\___/|_| |_|___/\__\__,_|_| |_|\__|___/
                                              
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+LINESEP = "\n"
 
 WORLDSPACE = "world"
 OBJECTSPACE = "object"
@@ -332,7 +337,7 @@ def getType(inPyNode):
     
     try:
         return inPyNode.type()
-    except Exception, e:
+    except Exception as e:
         pass
     
     return None
@@ -412,7 +417,7 @@ def log(inText="", inSeverity=0, inHelpLine=False, inHelpLineOnly=False, inBlock
         else:
             pc.warning(fullText)
     else:
-        print fullText
+        print (fullText)
 
     controlExists = pc.control(CTRL_SIHELPLINE, exists=True)
 
@@ -437,7 +442,7 @@ def benchIt(infunc, *inArgs):
     rslt = infunc(*inArgs)
     end = time.time()
     duration = end - start
-    print "> %s took %f seconds" % (infunc.__name__, duration)
+    print ("> %s took %f seconds" % (infunc.__name__, duration))
     
     return (duration, rslt)
 
@@ -470,7 +475,7 @@ def stopTimer(inName, inLog=False, inReset=False):
         elapsed = TIMERS[inName]["elapsed"]
 
     if inLog:
-        print "{0} took {1:.4f} s".format(inName, elapsed)
+        print ("{0} took {1:.4f} s".format(inName, elapsed))
 
     if inReset:
         TIMERS[inName] = {"elapsed":0.0,"runs":False}
@@ -764,10 +769,10 @@ def getDuplicates(inPyNodes=None, inLog=False):
             dupes.append(dag)
 
     if inLog:
-        print "{0} duplicates among {1} objects".format(len(dupes), len(inPyNodes))
-        print "----------------------------------"
+        print ("{0} duplicates among {1} objects".format(len(dupes), len(inPyNodes)))
+        print ("----------------------------------")
         for uniqueName in names:
-            print "{0} *{1}({2})".format(uniqueName, len(names[uniqueName]),[n.name() for n in names[uniqueName]])
+            print ("{0} *{1}({2})".format(uniqueName, len(names[uniqueName]),[n.name() for n in names[uniqueName]]))
             
     return names
 
@@ -795,10 +800,10 @@ def getInstances(inPyNodes=None, inLog=False):
             instanciations.extend(parents)
 
     if inLog:
-        print "{0} instances on {1} transforms".format(len(instances), len(instanciations))
-        print "----------------------------------"
-        for shapeName, curInstances in instances.iteritems():
-            print "{0} *{1}({2})".format(shapeName, len(curInstances),[n.name() for n in curInstances])
+        print ("{0} instances on {1} transforms".format(len(instances), len(instanciations)))
+        print ("----------------------------------")
+        for shapeName, curInstances in instances.items():
+            print ("{0} *{1}({2})".format(shapeName, len(curInstances),[n.name() for n in curInstances]))
 
     return instances
 
@@ -861,7 +866,7 @@ def renameDuplicates(inPyNodes=None, inLog=False, inRememberOldName=True):
                     
                     newName = "{0}__{1}".format(parentName, currentName)
                     if inLog:
-                        print " -renaming {0} in {1}".format(dupNode.name(), newName)
+                        print (" -renaming {0} in {1}".format(dupNode.name(), newName))
                     renameRemember(dupNode, newName, inRememberOldName=inRememberOldName)
                     if firstPass:
                         currentRenamedNodes.append(dupNode)
@@ -872,7 +877,7 @@ def renameDuplicates(inPyNodes=None, inLog=False, inRememberOldName=True):
             firstPass = False
 
     if inLog:
-        print "{0} nodes were renamed ({1})".format(len(renamedNodes), [n.name() for n in renamedNodes])
+        print ("{0} nodes were renamed ({1})".format(len(renamedNodes), [n.name() for n in renamedNodes]))
 
     return renamedNodes
 
@@ -944,7 +949,7 @@ def importFile(path, newName="", ensureNamespaces=False, convertUnits=True, labe
 
     try:
         pmsys.importFile(path, namespace=CONST_TMPNS)
-    except Exception, e:
+    except Exception as e:
         pc.warning(e)
     #create sub-namespace if needed
     if not pc.namespace(exists=uniqueName):
@@ -1122,7 +1127,7 @@ def loadCollection(inName=OPT_SEL, clean=True, presetHolderName=OPT_SELSETS, swa
                 actualObjects.append(obj)
             else:
                 pc.warning(objectLongNames + " cannot be found?")
-    except Exception, e:
+    except Exception as e:
         pc.error("Cannot get objects." + str(e))
 
     if clean:
@@ -1142,13 +1147,13 @@ def removeUnknownNodes():
     unknowns = pc.ls(type="unknown")
 
     if(len(unknowns) > 0):
-        print "Removing 'unknown' nodes : " + ",".join([n.name() for n in unknowns])
+        print ("Removing 'unknown' nodes : " + ",".join([n.name() for n in unknowns]))
         for unknown in unknowns:
             if pc.objExists(unknown):
                 pc.lockNode(unknown, lock=False)
                 pc.delete(unknown)
     else:
-        print "No 'unknown' nodes found"
+        print ("No 'unknown' nodes found")
 
 def deleteUnusedNodes(inSafeAddDoubles=False):
     tkn.deleteUnusedNodes(inSafeAddDoubles=inSafeAddDoubles)
@@ -1293,7 +1298,7 @@ def executeFromCollection(inFunc=printExecuteError, inColl=[], inObjectsMin=0, i
                 strArg = str(arg)
             formatArgs.append(strArg)
 
-        print "tkc.{0}({1})".format(inFunc.__name__, ",".join(formatArgs))
+        print ("tkc.{0}({1})".format(inFunc.__name__, ",".join(formatArgs)))
 
         if rslt != None:
             results.append(rslt)
@@ -1433,7 +1438,7 @@ def getPickedObjects(clean=True):
                 actualObjects.append(obj)
             else:
                 pc.warning(objectLongNames + " cannot be found?")
-    except Exception, e:
+    except Exception as e:
         pickLogic = ""
         pc.error("Cannot get picked objects." + str(e))
 
@@ -1782,7 +1787,7 @@ def addBuffer(inTarget, inSuffix=CONST_BUFFERSUFFIX):
 
     pc.parent(inTarget, myBuffer)
 
-    for channel, info in attrs.iteritems():
+    for channel, info in attrs.items():
         attr = inTarget.attr(channel)
         attr.setLocked(info[0])
 
@@ -1856,7 +1861,7 @@ def setNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
 
         matchTRS(oldNeutral, inTarget)
 
-        for channel, info in attrs.iteritems():
+        for channel, info in attrs.items():
             attr = oldNeutral.attr(channel)
             attr.setLocked(info[0])
 
@@ -2931,7 +2936,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
     if inEnsureAttachment and listsBarelyEquals(cnsObj.getTranslation(space="world"), [0.0, 0.0, 0.0]):
         removeAllCns(inObj, inTypes=["follicle"] if useFollicule else ["pointOnPolyConstraint"])
 
-        print "Does not attach with values",inDetectionOffset
+        print ("Does not attach with values",inDetectionOffset)
 
         if inDetectionOffset == [0.0, 0.0, 0.0]:
             inDetectionOffset = [0.0001, 0.0001, 0.0001]
@@ -3045,7 +3050,7 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
         if inSource:
             cons = child.listConnections(source=True, destination=False, plugs=True, connections=True)
             for con in cons:
-                print child,"inSource",con
+                print (child,"inSource",con)
                 if con[1].node().type() in CONSTRAINT_TYPES:
                     continue
 
@@ -3060,9 +3065,9 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
                 if con[1].node().type() == "transform":
                     extInputs.append(con)
                 else:
-                    print "1 inManaged",inManaged
+                    print ("1 inManaged",inManaged)
                     ins, outs = getExternalLinks(con[1].node(), inChildren=False, inSource=True, inDestination=False, inManaged=inManaged, inAllChildren=(inAllChildren or allChildren))
-                    print "2 inManaged",inManaged
+                    print ("2 inManaged",inManaged)
                     for curin in ins:
                         extInputs.append(curin)
                     for out in outs:
@@ -3071,7 +3076,7 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
         if inDestination:
             cons = child.listConnections(source=False, destination=True, plugs=True, connections=True)
             for con in cons:
-                print child,"inDestination con",con
+                print (child,"inDestination con",con)
                 if con[1].node().type() in CONSTRAINT_TYPES:
                     continue
 
@@ -3089,7 +3094,7 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
                     extOutputs.append(con)
                 else:
                     ins, outs = getExternalLinks(con[1].node(), inChildren=False, inSource=False, inDestination=True, inManaged=inManaged, inAllChildren=(inAllChildren or allChildren))
-                    print "inDestination ins", ins, "outs", outs
+                    print ("inDestination ins", ins, "outs", outs)
 
     return (extInputs, extOutputs)
 
@@ -4012,11 +4017,11 @@ def curve(points, name="", parent=None, degree=3, closed=False, verbose=False):
         knots = range(len(points) + degree - 1)
         curve = pc.curve( point=points, degree=degree, knot=knots, periodic= True)
         if verbose:
-            print "pc.curve( point={0}, degree={1}, knot={2}, periodic= True)".format(points, degree, knots)
+            print ("pc.curve( point={0}, degree={1}, knot={2}, periodic= True)".format(points, degree, knots))
     else:
         curve = pc.curve( point=points, degree=degree)
         if verbose:
-            print "pc.curve( point={0}, degree={1})".format(points, degree)
+            print ("pc.curve( point={0}, degree={1})".format(points, degree))
 
     pc.rename(curve, name)
 
@@ -4542,7 +4547,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
     for hiddenShape in hiddenShapes:
         hiddenShape.set(0)
 
-    for obj, cons in connections.iteritems():
+    for obj, cons in connections.items():
         setNodeConnections(cons, obj)
 
     for lockedShape in lockedShapes:
@@ -4702,9 +4707,9 @@ def getPointInfluences(inSkin, inInfluences, inPointIndex):
     NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
 
     NSkin = len(inSkin)
-    NVerts = NSkin / NInfs
+    NVerts = int(NSkin / NInfs)
     
-    return [inSkin[i] for i in range(inPointIndex, NSkin , NVerts)]
+    return [inSkin[i] for i in range(inPointIndex, NSkin, NVerts)]
 
 def setPointInfluences(inSkin, inInfluences, inPointIndex, inValues):
     inValues = inValues[:]
@@ -4712,9 +4717,9 @@ def setPointInfluences(inSkin, inInfluences, inPointIndex, inValues):
     NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
 
     NSkin = len(inSkin)
-    NVerts = NSkin / NInfs
+    NVerts = int(NSkin / NInfs)
     
-    for i in range(inPointIndex, NSkin , NVerts):
+    for i in range(inPointIndex, NSkin, NVerts):
         inSkin[i] = inValues.pop(0)
         
     return inSkin
@@ -4734,7 +4739,7 @@ def _limitDeformers(inSkin, inInfluences, inMax=4, inSharpen=.5, inVerbose=True,
                 status="Limit deformers...",
                 maxValue=pointsN)
 
-    for i in range(pointsN):
+    for i in range(int(pointsN)):
         values = getPointInfluences(inSkin, inInfluences, i)
         
         inf_vals = []
@@ -4759,7 +4764,7 @@ def _limitDeformers(inSkin, inInfluences, inMax=4, inSharpen=.5, inVerbose=True,
 
         if remainingWeight >= 0.0001:
             if inVerbose:
-                print "{0} deformers on vertex {1} ({2} to remove)".format(counter, i, counter - inMax)
+                print ("{0} deformers on vertex {1} ({2} to remove)".format(counter, i, counter - inMax))
 
             currentTotal = 100.0 - remainingWeight
             mul = 100.0 / currentTotal
@@ -4886,7 +4891,7 @@ def serializeSkin(skin):
 
 def deserializeSkin(serializedSkin):
     skin = None
-
+    print(serializedSkin.split(";"))
     try:
         objName, jointNames, weightsString, ns = serializedSkin.split(";")
         obj = getNode(objName)
@@ -4934,7 +4939,7 @@ def storeSkins(inObjects, inPath=None):
             f = open(inPath, 'w')
             
             for skin in skins:
-                f.write(serializeSkin(skin)+os.linesep)
+                f.write(serializeSkin(skin)+LINESEP)
         except Exception as e:
             pc.warning("Cannot save skin file to " + inPath + " : " + str(e))
         finally:
@@ -5286,7 +5291,7 @@ def replaceDeformers(oldDefs, newDef=None, doDelete=False, inSkins=None, inRefsS
                     newDefsValues[inf] = newWeights
                 
             #set new deformerS weights
-            for newDef, newWeights in newDefsValues.iteritems():
+            for newDef, newWeights in newDefsValues.items():
                 if not newDef.name() in influences:
                     skin.addInfluence(newDef, weight=0.0)
                     influences = skin.getInfluence()
@@ -5573,7 +5578,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
     iterations = 0
 
     if managedHistory != sortedHistory:
-        print "Need to reorder {0} deformers".format(objName)
+        print ("Need to reorder {0} deformers".format(objName))
         while managedHistory != sortedHistory:
             iterations += 1
             if maxIterations <= iterations:
@@ -5593,7 +5598,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                         managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
                         break
     else:
-        print "No need to reorder {0} deformers".format(objName)
+        print ("No need to reorder {0} deformers".format(objName))
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                                _                   __     _   _        _ _           _          __  
@@ -5767,7 +5772,7 @@ def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=
     if inSource:
         #print "inSource",inAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
         for connnn in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True):
-            print connnn[1].node().type()
+            print (connnn[1].node().type())
         
         tempCons = [ c for c in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
         for i in range(len(tempCons)):
@@ -5838,7 +5843,7 @@ def setNodeConnections(inCons, inNode=None, inDestination=False, inSetBefore=Fal
         if not inNode is None:
             if inDestination:
                 
-                print "linkOutput",linkOutput, type(linkOutput)
+                print ("linkOutput",linkOutput, type(linkOutput))
                 outputName = linkOutput.split(".")[-1]
                 
                 """
@@ -5851,7 +5856,7 @@ def setNodeConnections(inCons, inNode=None, inDestination=False, inSetBefore=Fal
                 except:
                     continue
             else:
-                print "linkInput",linkInput, type(linkInput)
+                print ("linkInput",linkInput, type(linkInput))
                 inputName = linkInput.split(".")[-1]
                 """
                 if not pc.attributeQuery(inputName, node=inNode, exists=True):
@@ -6019,7 +6024,7 @@ DECORATE_PREFIX = "TkDecorate_"
 def decorate(inObj, inAttrs, inPrefix=DECORATE_PREFIX):
     """Add attributes on an dagobject (with an added prefix), based on a dictionary key/values"""
 
-    for attrName, attrValue in inAttrs.iteritems():
+    for attrName, attrValue in inAttrs.items():
         attrName = inPrefix + attrName
 
         if not pc.hasAttr(inObj, attrName):
@@ -6302,7 +6307,7 @@ def getParamsDictionary(inNode, strName, bidirectionnal=False):
 #Does not work in parallel ? Try something else than nodeState=2 ?
 def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="switch",inTranslation=True, inRotation=True, inDebug=False):
     if inDebug:
-        print "createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")"
+        print ("createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")")
 
     inConstrained.t.disconnect()
     inConstrained.r.disconnect()
@@ -6351,7 +6356,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                 oldConds = inConstrained.t.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
 
                 if inDebug:
-                    print "oldConds",inConstrained.t,oldConds
+                    print ("oldConds",inConstrained.t,oldConds)
 
                 for possibleOldCond in oldConds:
                     if possibleOldCond.type() == "condition":
@@ -6360,7 +6365,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     else:
                         possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
                         if inDebug:
-                            print "possibleOldConds",possibleOldCond.input,possibleOldConds
+                            print ("possibleOldConds",possibleOldCond.input,possibleOldConds)
                         if len(possibleOldConds) > 0:
                             oldCond = possibleOldConds[0]
                             break
@@ -6369,7 +6374,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     tkn.condition(switchAttr, i, "==", constrainedNode.t, t) >> inConstrained.t
                 else:
                     if inDebug:
-                        print "Old cond for",inConstrained.t,oldCond 
+                        print ("Old cond for",inConstrained.t,oldCond )
                     tkn.condition(switchAttr, i, "==", constrainedNode.t, oldCond.outColor) >> inConstrained.t
 
             #Rotation
@@ -6377,7 +6382,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                 oldCond = None
                 oldConds = inConstrained.r.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
                 if inDebug:
-                    print "oldConds",inConstrained.r,oldConds
+                    print ("oldConds",inConstrained.r,oldConds)
                 for possibleOldCond in oldConds:
                     if possibleOldCond.type() == "condition":
                         oldCond = possibleOldCond
@@ -6385,7 +6390,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     else:
                         possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
                         if inDebug:
-                            print "possibleOldConds",possibleOldCond.input,possibleOldConds
+                            print ("possibleOldConds",possibleOldCond.input,possibleOldConds)
                         if len(possibleOldConds) > 0:
                             oldCond = possibleOldConds[0]
                             break
@@ -6394,7 +6399,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     tkn.condition(switchAttr, i, "==", constrainedNode.r, r) >> inConstrained.r
                 else:
                     if inDebug:
-                        print "Old cond for",inConstrained.r,oldCond 
+                        print ("Old cond for",inConstrained.r,oldCond) 
                     tkn.condition(switchAttr, i, "==", constrainedNode.r, oldCond.outColor) >> inConstrained.r
 
         tkn.conditionAnd(cns.nodeState, tkn.condition(switchAttr, i, "!=", 2, 0))
@@ -6507,7 +6512,7 @@ def detectFormatting(inVariable, inStrValue, inCurrentValue):
             inVariable = inVariable + "(" + formatter + ")"
             formatString = "'%"+formatter+"'%(float("+ formattedValue +"))"
             formattedValue = eval(formatString)
-        except Exception, e:
+        except Exception as e:
             formattedValue = str(inCurrentValue)
             pc.warning("Cannot evaluate formatting : " + formatString + "(" + str(e) +")")
     return (inVariable, str(formattedValue))
@@ -6576,13 +6581,13 @@ def parseValue(strValue, strType="string", strCurrentValue="", inCounter=0, inMa
                 try:
                     rslt = eval(currentValue + " " + operator + " " + rslt)
                 except:
-                    print "Cannot evaluate    |" + currentValue + " " + operator + " " + str(rslt) + "|"
+                    print ("Cannot evaluate    |" + currentValue + " " + operator + " " + str(rslt) + "|")
                     return None
             else:
                 try:
                     rslt = eval(rslt)
                 except:
-                    print "Cannot evaluate    |" + str(rslt) + "|"
+                    print ("Cannot evaluate    |" + str(rslt) + "|")
                     return None
     else:
         strippedPart = ""
@@ -6617,7 +6622,7 @@ def parseValue(strValue, strType="string", strCurrentValue="", inCounter=0, inMa
         elif strType == "bool":
             rslt = True if eval(rslt) else False
     except:
-        print "Cannot convert  " + str(rslt) + " to " + strType
+        print ("Cannot convert  " + str(rslt) + " to " + strType)
         return None
         
     return rslt
@@ -6849,10 +6854,10 @@ def applySpreadDeforms(inCurves, inRefCurve, inRefParent, inRadius=0.0):
         
         if factor > 0:
             if spreadDeformer == None:
-                print curv.name() + " will be deformed (dist: " + str(dist) + " => factor: " + str(factor) + ")"
+                print (curv.name() + " will be deformed (dist: " + str(dist) + " => factor: " + str(factor) + ")")
                 spreadDeformer = applySpreadDeform(curv, inRefCurve, inRefParent, inEnv=factor)
             else:
-                print curv.name() + " aleady deformed, update factor (dist: " + str(dist) + " => factor: " + str(factor) + ")"
+                print (curv.name() + " aleady deformed, update factor (dist: " + str(dist) + " => factor: " + str(factor) + ")")
                 pc.setAttr(spreadDeformer.name() + ".envelope", factor)
 
             if len(otherSpreadDeformers) > 0:
@@ -6934,7 +6939,7 @@ def executeCode2(strcode, strlng=1, functionName="", args=[]):
             return rslt
         return evalAsFunction(strcode, None, globs)
     else:
-        print "Cannot evaluate language ! Only python is available in this version !"
+        print ("Cannot evaluate language ! Only python is available in this version !")
 
     return None
 
@@ -6949,12 +6954,12 @@ def evalAsFunction(code, local_vars = None, global_vars = None):
         code = re.sub(r"(?m)^", "    ", code)
         code = code.replace("\r\n", "\n")
         code = "def anon(" + ','.join(local_vars.keys()) + "):\n" + code
-        exec code in global_vars, context
+        exec (code, global_vars, context)
         retval = context['anon'](*(local_vars.values()))
     except:
-        print "an error occurred in eval_as_function:"
-        print str(sys.exc_info()) + "\n\n"
-        print "in this code:\n\n" + code + "\n\n"
+        print ("an error occurred in eval_as_function:")
+        print (str(sys.exc_info()) + "\n\n")
+        print ("in this code:\n\n" + code + "\n\n")
     return retval
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -7092,14 +7097,14 @@ def showSynopTiK():
                             search, replace = setting.getElementsByTagName("value")[0].firstChild.nodeValue.split(":")
 
             if search != None and replace != None:
-                print "search", search, "replace", replace
+                print ("search", search, "replace", replace)
                 synPaths = synPaths.replace(search, replace)
 
         customVars = {'$PROJECTPATH':projectDirectory}
         synPaths = expandVariables(synPaths, customVars)
 
         if haveVariables(synPaths, customVars):
-            print "Synoptic pages path contains unknown environment variables or have incorrect formatting ({0}) !!".format(synPaths)
+            print ("Synoptic pages path contains unknown environment variables or have incorrect formatting ({0}) !!".format(synPaths))
 
         cmdLine.append(synPaths)
         #print str(cmdLine)
@@ -7206,7 +7211,7 @@ def filterObjects(inObjects, inCriteria, inDefaultName="unfiltered", inCreateSet
     
     if inCreateSets:
         mayaSets = []
-        for name, content in collections.iteritems():
+        for name, content in collections.items():
             pc.select(content)
             mayaSets.append(pc.sets(name=name))
         
@@ -7529,7 +7534,7 @@ def checkGeometry(obj):
         for problem in problems:
             pc.warning(problem)
     else:
-        print "No problems found on " + obj.name()
+        print ("No problems found on " + obj.name())
         
     return problems == 0
 
@@ -7564,7 +7569,7 @@ def checkHistory(inObjects=None, inAllowedNodes=None, inCheckTypes=None):
     if len(defectObjects) > 0:
         pc.select(defectObjects)
     else:
-        print "No problematic history found on given objects ({0})".format(",".join([n.name() for n in objs]))
+        print ("No problematic history found on given objects ({0})".format(",".join([n.name() for n in objs])))
 
     return defectObjects
 
@@ -7695,7 +7700,7 @@ def closeAllWindows(*args):
     uis = pc.lsUI(wnd=True)
     for ui in uis:
         if pc.window(ui, query=True, exists=True) and ui.name() != mainWindow:
-            print "closing", ui.name()
+            print ("closing", ui.name())
             pc.deleteUI(ui)
 
 def emptyDirectory(inPath):

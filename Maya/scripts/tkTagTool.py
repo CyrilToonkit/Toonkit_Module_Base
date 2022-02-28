@@ -61,7 +61,7 @@ def printTags(inObjects=None, inTags=None):
     if inTags == None:
         inTags = getTags(inObjects)
 
-    print "\n".join(["{0} : '{1}'".format(k, ",".join(v)) for k,v in inTags.iteritems()])
+    print ("\n".join(["{0} : '{1}'".format(k, ",".join(v)) for k,v in inTags.items()]))
 
 def setTags(inObject, inTagsStr):
     if not pc.attributeQuery("notes", node=inObject, exists=True):
@@ -77,9 +77,11 @@ def addTags(inObjects=None, inTags=None):
             
     for inObject in inObjects:
         modified=False
-        tags = getTags(inObject).keys()
+        tags = list(getTags(inObject).keys())
         for inTag in inTags:
             if not inTag in tags:
+                print(tags)
+                print(getTags(inObject))
                 tags.append(inTag)
                 modified=True
         
@@ -95,7 +97,7 @@ def removeTags(inObjects=None, inTags=None):
             
     for inObject in inObjects:
         modified=False
-        tags = getTags(inObject).keys()
+        tags = list(getTags(inObject).keys())
         for tag in tags:
             if tag in inTags:
                 tags.remove(tag)
@@ -128,7 +130,7 @@ def loadTags(inPath, inApply=False):
 
 def applyTags(inTags):
     defects=0
-    for tagValue, tagObjs in inTags.iteritems():
+    for tagValue, tagObjs in inTags.items():
         for tagObj in tagObjs:
             baseName = tagObj.split(":")[-1]
             candidates = [tagObj, "*:"+baseName]
@@ -203,7 +205,7 @@ def showUI(*args):
     
     pc.setParent(upLevel=True)
     frame = pc.frameLayout(label="Edit tags", collapsable=True)
-    for tag, objects in tags.iteritems():
+    for tag, objects in tags.items():
         pc.rowLayout(numberOfColumns=2, parent=frame)
         pc.button( label='Select "{0}"'.format(tag), command="pc.select([{0}])".format(",".join(["'{0}'".format(obj) for obj in objects])))
         pc.button( label='Remove "{0}" tag on selection'.format(tag), command=partial(removeTagClick, tag))
