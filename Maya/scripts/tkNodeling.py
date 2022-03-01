@@ -232,7 +232,7 @@ def stopProfiling(inLog=False, inClearNodes=True):
         global CREATED_NODES
 
     nodes = []
-    for function, createdNodes in CREATED_NODES.iteritems():
+    for function, createdNodes in CREATED_NODES.items():
         nodes.extend(createdNodes)
 
     if inLog:
@@ -240,10 +240,10 @@ def stopProfiling(inLog=False, inClearNodes=True):
 
         print ("{0} nodes created total".format(len(nodes)))
         print ("")
-        for function, number in CALLS.iteritems():
+        for function, number in CALLS.items():
             print ("{0:03d} calls to '{1}' ({2} nodes)".format(number, function, len(CREATED_NODES.get(function, []))))
         print ("")
-        for function, createdNodes in CREATED_NODES.iteritems():
+        for function, createdNodes in CREATED_NODES.items():
             print ("{0} ({1} nodes) :".format(function, len(createdNodes)))
             for createdNode in createdNodes:
                 print (" -{0}".format(createdNode))
@@ -322,7 +322,7 @@ def reduceName(inName):
     if not len(name) > MAX_NAME_LEN:
         return inName
 
-    name = "{0}___{1}".format(name[:MAX_NAME_LEN/2], name[-MAX_NAME_LEN/2:])
+    name = "{0}___{1}".format(name[:int(MAX_NAME_LEN/2)], name[-int(MAX_NAME_LEN/2):])
 
     return "{0}{1}".format(ns, name)
 
@@ -1079,7 +1079,7 @@ def fourByFourMatrix(   in00=1.0, in01=0.0, in02=0.0, in03=0.0,
 
     fbf = create("fourByFourMatrix", inName or "fourByFourMatrix")
 
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
         if key == "inName" or not key.startswith("in"):
             continue
 
@@ -1409,7 +1409,7 @@ def keep(inAttr, inName=None, **kwargs):
 
     node = create("tkKeep", nodeName, **kwargs)
 
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
         if pc.attributeQuery(key, node=node, exists=True):
             if isinstance(value, pc.general.Attribute):
                 value >> node.attr(key)

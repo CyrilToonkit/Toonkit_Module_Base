@@ -12,6 +12,6 @@ else:
     pc.error("Extract deltas : WRONG INPUTS !\nPlease select skinned mesh first, then undeformed ('freezed') corrective mesh.")
 
 if result != None:
-    print "Corrective blendshape created : " + result
+    print ("Corrective blendshape created : " + result)
 else:
     pc.error("Extract deltas : UNKNOWN ERROR !\nSomething unexpected went wrong...")

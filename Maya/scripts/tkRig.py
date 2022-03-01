@@ -7184,7 +7184,7 @@ def toggleSmooth(*args):
     if len(meshes) > 0:
         oldVal = pc.displaySmoothness(meshes[0], query=True, polygonObject=True)
         cmdName = "Unsmooth" 
-        if oldVal.len() > 0 and oldVal[0] == 1:
+        if len(oldVal) > 0 and oldVal[0] == 1:
             cmdName = "Smooth"
         print (pc.warning(cmdName))
         for mesh in meshes:

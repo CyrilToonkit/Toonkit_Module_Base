@@ -25,7 +25,7 @@ def copyBSClick(*args):
     copyBS(True, )
 
 def copyBSOption(*args):
-    print "NOT IMPLEMENTED"
+    print ("NOT IMPLEMENTED")
     return
 
     global UINAME

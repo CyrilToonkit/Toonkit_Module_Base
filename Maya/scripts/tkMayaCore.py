@@ -3332,9 +3332,9 @@ def pathConstrain(inObject, inSource, tangent=True, parametric=False, addPercent
     motionPathNode = getNode(motionPathNode)
 
     #Disconnect all
-    cons = pc.listConnections(motionPathNode)
+    cons = set(pc.listConnections(motionPathNode))
     for con in cons:
-        if con.name() != inObject.name() and con.name() != inSource.name() and pc.objExists(con):
+        if con.exists() and con.name() != inObject.name() and con.name() != inSource.name():
             pc.delete(con)
 
     if addPercent:

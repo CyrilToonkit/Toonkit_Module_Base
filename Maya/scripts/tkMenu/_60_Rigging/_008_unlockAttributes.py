@@ -11,7 +11,7 @@ def lockAttrs(inObj, inLock=True):
         attrs = []
         
         isVar = False
-        for variable, values in VARIABLES.iteritems():
+        for variable, values in VARIABLES.items():
             if variable in attr:
                 isVar = True
                 for value in values:

@@ -33,6 +33,7 @@ __date__ = '2015/05/03'
 
 
 import sys, webbrowser
+from past.builtins import xrange
 from maya import cmds
 
 # change the following suffixes as you like
@@ -575,7 +576,7 @@ def mirrorWeightsCmd(rbsNode, upperIdx):
 			break
 
 	if srcIdx < 0:
-		raise Exception, 'Cannot find the index of target %s' % srcPrfx
+		raise Exception('Cannot find the index of target %s' % srcPrfx)
 
 	# membership set
 	objSetNode = _getMembershipSet(rbsNode)
@@ -684,7 +685,7 @@ def autoMembershipCmd():
 	rbsNode = geo and _getRbs(geo)
 	
 	if not rbsNode:
-		raise Exception, 'No %s found' % _rbsNodeName
+		raise Exception('No %s found' % _rbsNodeName)
 	
 	# orig shape coords
 	origShape = [s for s in cmds.listRelatives(geo, s=True, pa=True) if cmds.getAttr('%s.intermediateObject' % s)][0]
@@ -756,15 +757,15 @@ def setLidFromSelectionCmd(rbsNode, idx, opposite=False):
 	lidGeo = _getSelectedShape('mesh')
 	
 	if not lidGeo:
-		raise Exception, 'Please select a polygon mesh'
+		raise Exception('Please select a polygon mesh')
 	
 	if _getRbs(lidGeo):
-		raise Exception, 'The main geometry cannot be used as a shape'
+		raise Exception('The main geometry cannot be used as a shape')
 	
 	targetName = _getTargetNameFromIdx(rbsNode, idx)
 	
 	if idx == -1:
-		raise Exception, 'Input target %s does not exist, please refresh GUI' % targetName
+		raise Exception('Input target %s does not exist, please refresh GUI' % targetName)
 	
 	# make the connection if not yet done
 	srcAttr = '%s.outMesh' % lidGeo
@@ -805,7 +806,7 @@ def setLidFromSelectionCmd(rbsNode, idx, opposite=False):
 def setOffsetControlCmd(rbsNode, idx, side):
 	sel = cmds.ls(sl=True, transforms=True)
 	if not sel:
-		raise Exception, 'Please select the desired control'
+		raise Exception('Please select the desired control')
 
 	ctrl = sel[0]
 
@@ -836,11 +837,11 @@ def setMainControlCmd(rbsNode, idx):
 	# get selection
 	sel = cmds.ls(sl=True, transforms=True)
 	if not sel:
-		raise Exception, 'Please select the desired control'
+		raise Exception('Please select the desired control')
 
 	idxList = _getEyeIdxList(rbsNode)
 	if not idx in idxList:
-		raise Exception, 'Eye index %d does not exist' % idx
+		raise Exception('Eye index %d does not exist' % idx)
 
 	ctrl = sel[0]
 

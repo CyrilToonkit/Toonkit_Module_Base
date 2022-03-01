@@ -53,7 +53,7 @@ DELTA_MESH_NAME = "tkBs_{0}_pose_{1}_corrective"
 def getBSTargetFromIndex(inBlendShape, inIndex):
     aliases = mc.aliasAttr(inBlendShape, query=True)
 
-    for i in range(len(aliases)/2):
+    for i in range(int(len(aliases)/2)):
         alias = [aliases[2*i], aliases[2*i+1]]
         if alias[1] == "weight[{0}]".format(inIndex):
             return alias[0]
@@ -64,7 +64,7 @@ def getBSIndexFromTarget(inBlendShape, inTarget):
     reg = re.compile("weight\\[([0-9]+)\\]")
     aliases = mc.aliasAttr(inBlendShape, query=True)
 
-    for i in range(len(aliases)/2):
+    for i in range(int(len(aliases)/2)):
         alias = [aliases[2*i], aliases[2*i+1]]
         if alias[0] == inTarget:
             #print alias[1], inTarget
@@ -95,6 +95,7 @@ def cleanUpBlendShapeWeights(inBlendShape):
             mc.removeMultiInstance(inBlendShape+"."+target)
 
 def editTarget(inBlendShape, inTarget, corrective=None):
+    print(inTarget)
     if isinstance(inTarget, basestring):
         inTarget = getBSIndexFromTarget(inBlendShape, inTarget)
         if inTarget == None:

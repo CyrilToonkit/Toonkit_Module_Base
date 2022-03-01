@@ -511,7 +511,7 @@ class Expr(object):
         if not self.termModule is None:
             global_vars[self.termModule.__name__] = self.termModule
 
-        exec (code, (global_vars, context))
+        exec (code, global_vars, context)
         retval = context['anon'](*(local_vars.values()))
         """except:
             logger.error("An error occurred in Expr.eval:")
