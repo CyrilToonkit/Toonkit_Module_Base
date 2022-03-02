@@ -6764,10 +6764,14 @@ def applySpreadDeform(inCurve, inRefCurve, inRefParent, inEnv=1.0):
 
     #Get Orig shape before skinCluster
     skin = skins[0]
-    grp = pc.listConnections(skin, type="groupParts", destination=False)
-    tweak = pc.listConnections(grp[0], type="tweak", destination=False)
-    grp2 = pc.listConnections(tweak[0], type="groupParts", destination=False)
-    orig = pc.listConnections(grp2[0], type="nurbsCurve", plugs=True, destination=False)
+
+	# Python37 compatibility:
+    orig = pc.listConnections(skin, type="nurbsCurve", plugs=True, destination=False)
+    if orig == []:
+        grp = pc.listConnections(skin, type="groupParts", destination=False)
+        tweak = pc.listConnections(grp[0], type="tweak", destination=False)
+        grp2 = pc.listConnections(tweak[0], type="groupParts", destination=False)
+        orig = pc.listConnections(grp2[0], type="nurbsCurve", plugs=True, destination=False)
     refCurveOrigShape = orig[0].node()
         
     #Do apply

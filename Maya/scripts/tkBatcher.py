@@ -68,24 +68,24 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
 
     code = "import maya.cmds\r\n"
     code += "def batcherDoBatch(fileName, filePath, saveFilePath=r\""+inSavePath+"\", saveFile="+str(inSaveFile)+", success=True, pathVariables="+str(inVariables)+"):\r\n"
-    code += "    print 'Batch "+inBatchName+" begins'\r\n"
+    code += "    print ('Batch "+inBatchName+" begins')\r\n"
     code += "    try:\r\n"
     code += "        maya.cmds.file(filePath, open=True"+loadRefsSentence+", force=True, prompt=False)\r\n"
     code += "\r\n".join(["        " + line.rstrip("\r") for line in inCode.split("\n")]) + "\r\n"
-    code += "    except Exception, e:\r\n"
-    code += "        print 'Exception  : '+str(e)\r\n"
+    code += "    except Exception as e:\r\n"
+    code += "        print ('Exception  : '+str(e))\r\n"
     code += "        success = False\r\n"
     code += "    if success and saveFile:\r\n"
     if inSimulate:
-        code += "        print 'Simulation : file would have been saved to', saveFilePath\r\n"
+        code += "        print ('Simulation : file would have been saved to', saveFilePath)\r\n"
     else:
-        code += "        print 'saving', saveFilePath\r\n"
+        code += "        print ('saving', saveFilePath)\r\n"
         code += "        maya.cmds.file(rename=saveFilePath)\r\n"
         code += "        maya.cmds.file(save=True, force=True)\r\n"
     code += "    if success:\r\n"
-    code += "        print 'Success'\r\n"
+    code += "        print ('Success')\r\n"
     code += "    else:\r\n"
-    code += "        print 'Failure'\r\n"
+    code += "        print ('Failure')\r\n"
     code += "    return success\r\n"
 
     if not inSimulate:
@@ -99,9 +99,9 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
             matchObj = re.match(".*print (.+).*", codeLine)
             if matchObj != None:
                 """
-                print "code\r\n",codeLine
-                print "search",matchObj.group(0).lstrip()
-                print "replace","printBatch(" + matchObj.group(1) + ")\r"
+                print ("code\r\n",codeLine)
+                print ("search",matchObj.group(0).lstrip())
+                print ("replace","printBatch(" + matchObj.group(1) + ")\r")
                 """
                 codeLines[i] = codeLine.replace(matchObj.group(0).lstrip(), "printBatch(" + matchObj.group(1) + ")")
 
