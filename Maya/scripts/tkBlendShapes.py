@@ -95,7 +95,6 @@ def cleanUpBlendShapeWeights(inBlendShape):
             mc.removeMultiInstance(inBlendShape+"."+target)
 
 def editTarget(inBlendShape, inTarget, corrective=None):
-    print(inTarget)
     if isinstance(inTarget, basestring):
         inTarget = getBSIndexFromTarget(inBlendShape, inTarget)
         if inTarget == None:

@@ -79,7 +79,7 @@ def removeTargetsClick(*args):
         pc.warning("No blendShape node given !")
         return
 
-    target = pc.optionMenu("editTargetsTargets",query=True, value=True)
+    target = pc.optionMenu("editTargetsTargets",query=True, value=True).split(" ")[0]
     source = tkBlendShapes.getSource(UITAG)
 
     shape = tkBlendShapes.editTarget(UITAG, target)
