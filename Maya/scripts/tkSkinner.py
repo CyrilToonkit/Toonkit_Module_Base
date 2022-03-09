@@ -28,9 +28,11 @@ import tkSkinner
 reload(tkSkinner)
 tkSkinner.showUI()
 """
+import sys
 import os
 from functools import partial
-from past.builtins import xrange
+if sys.version_info.major  > 2:
+    xrange = range
 import math
 import re
 

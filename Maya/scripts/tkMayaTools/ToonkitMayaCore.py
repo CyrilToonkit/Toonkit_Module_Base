@@ -267,7 +267,8 @@ class ToonkitMayaCore(Tool):
         NEEDEDPLUGINS = {   "extractDeltas.py":False, "tkResPlaneNode.mll":False, "tkSoftIKNode.mll":False,
                             "tkSpreadDeformNode.mll":False, "tkSpringNode.mll":False, "tkWheelNode.mll":False,
                             "ngSkinTools.mll":False, "radialBlendShape.mll":False, "fStretch.mll":False,
-                            "tkMathNodes.mll":False, "tkProjectNode.mll":False}
+                            "tkMathNodes.mll":False, "tkProjectNode.mll":False,
+                            "setPointPosition.py":False, "setSkinWeight":False}
 
         for k in NEEDEDPLUGINS:
             try:

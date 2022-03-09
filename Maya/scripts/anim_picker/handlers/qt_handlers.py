@@ -3,7 +3,9 @@
 # read COPYING and COPYING.LESSER for details.
 
 from maya import OpenMayaUI
-from past.builtins import long
+import sys
+if sys.version_info.major  > 2:
+    long = int
 
 # Main Qt support
 try:

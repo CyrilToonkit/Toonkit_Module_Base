@@ -27,7 +27,7 @@ import fnmatch
 
 import maya.cmds as mc
 import pymel.core as pc
-
+from TkApi import maya_api as tkApi
 import tkMayaCore as tkc
 import tkRig
 import tkOutfits
@@ -241,9 +241,8 @@ def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTarget
         if targetShape is None:
             pc.warning(inTarget.name() + " is not a valid (must be of type {0}) !!".format(VALIDTYPES))
             return False
-
-    refPoints = inRefPoints or refShape.getPoints() if refType == "mesh" else refShape.getCVs()
-    targetPoints = inTargetPoints or targetShape.getPoints() if targetType == "mesh" else targetShape.getCVs()
+    refPoints = inRefPoints or tkApi.getPointPositions(inRef.name()) if refType == "mesh" else refShape.getCVs()
+    targetPoints = inTargetPoints or tkApi.getPointPositions(inTarget.name()) if targetType == "mesh" else targetShape.getCVs()
 
     for i in range(len(refPoints)):
         if i >= len(targetPoints):
@@ -259,7 +258,7 @@ def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTarget
             targetPoints[i][2] = (1 - inMap[i]) * targetPoints[i][2] + inMap[i] * refPoints[i][2]
 
     if targetType == "mesh":
-        targetShape.setPoints(targetPoints)
+        pc.setPointPositions(inTarget.name(), pp=targetPoints)
     else:
         targetShape.setCVs(targetPoints)
         targetShape.updateSurface()

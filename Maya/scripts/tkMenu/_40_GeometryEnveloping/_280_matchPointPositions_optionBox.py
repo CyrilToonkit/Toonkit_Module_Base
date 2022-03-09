@@ -4,7 +4,7 @@ import pymel.core as pc
 UINAME = "matchPointPositionsOptionWD"
 
 def matchPointPositions(*args):#I'll take scope:string(All, LeftOnly, RightOnly), treshold:float
-    print "matchPointPositions(", args
+    print ("matchPointPositions(", args)
     sel = pc.ls(sl=True)
     if len(sel) > 1:
         sided = False

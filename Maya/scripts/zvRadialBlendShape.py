@@ -33,7 +33,8 @@ __date__ = '2015/05/03'
 
 
 import sys, webbrowser
-from past.builtins import xrange
+if sys.version_info.major  > 2:
+    xrange = range
 from maya import cmds
 
 # change the following suffixes as you like

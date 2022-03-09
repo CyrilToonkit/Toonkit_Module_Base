@@ -124,6 +124,8 @@ from functools import partial
 import ast
 import six
 basestring = six.string_types
+if sys.version_info.major  > 2:
+    xrange = range
 
 import maya.cmds as cmds
 import pymel.core as pc
@@ -2635,23 +2637,23 @@ def updateDisplay(node):
                 for shape in shapes:
                     #getPoints transformed by "old" values
 
-                    sl = om.MGlobal.getSelectionListByName(shape.name())
-                    omNode = sl.getDependNode(0)
-                    mFnSet = om.MFnNurbsCurve(omNode)
-                    cvs = mFnSet.cvPositions()
-
-                    newCvs = om.MPointArray()
+                    # sl = om.MGlobal.getSelectionListByName(shape.name())
+                    # omNode = sl.getDependNode(0)
+                    # mFnSet = om.MFnNurbsCurve(omNode)
+                    # cvs = mFnSet.cvPositions()
+                    cvs = tkApi.getPointPositions(shape.name())
+                    newCvs = []
 
                     #setPoints transformed by "new" values
                     for cv in cvs:
-                        newCvs.append(om.MPoint(
-                            size * (s[0] * ((cv.x / OLDsize - OLDt.x * unitScl) / OLDs[0]) + t.x * unitScl),
-                            size * (s[1] * ((cv.y / OLDsize - OLDt.y * unitScl) / OLDs[1]) + t.y * unitScl),
-                            size * (s[2] * ((cv.z / OLDsize - OLDt.z * unitScl) / OLDs[2]) + t.z * unitScl)
+                        newCvs.append((
+                            size * (s[0] * ((cv[0] / OLDsize - OLDt.x * unitScl) / OLDs[0]) + t.x * unitScl),
+                            size * (s[1] * ((cv[1] / OLDsize - OLDt.y * unitScl) / OLDs[1]) + t.y * unitScl),
+                            size * (s[2] * ((cv[2] / OLDsize - OLDt.z * unitScl) / OLDs[2]) + t.z * unitScl)
                             ))
-
-                    mFnSet.setCVPositions(newCvs)
-                    mFnSet.updateCurve()
+                    pc.setPointPositions(shape.name(), pp=newCvs)
+                    # mFnSet.setCVPositions(newCvs)
+                    # mFnSet.updateCurve()
 
             elif nodeType == "joint":
                 pc.setAttr(node.name() + ".radius", size * unitScl)
@@ -2836,79 +2838,170 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
         createdObjects.append(cnsObj.name())
     
     if useFollicule:
-        # creat follicle
-        fol = pc.createNode( 'follicle', name=inObj +'_to_'+inRef.stripNamespace()+'_fol' )
-
-        # let's do a dirty special case for forollicles applied in the case of a geoContrainer
-        #Spere_GeoCons:GeoConstrainer_Constrained_Output
-        #Spere_GeoCons:GeoConstrainer_Root_RigParameters
-
-        if inObj.name().endswith("_Constrained_Output") and pc.objExists(inObj.name().replace("_Constrained_Output", "_Root_RigParameters")):
-            rigName = inObj.stripNamespace()[:-19]
-            rigParamsName = inObj.name().replace("_Constrained_Output", "_Root_RigParameters")
-
-            offsetUNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addU")
-            offsetUNode.input1.set(inU)
-            pc.connectAttr(rigParamsName + "." + rigName + "_OffsetU", offsetUNode.input2)
-            offsetUNode.output >> fol.parameterU
-
-            offsetVNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addV")
-            offsetVNode.input1.set(inV)
-            pc.connectAttr(rigParamsName + "." + rigName + "_OffsetV", offsetVNode.input2)
-            offsetVNode.output >> fol.parameterV
-        else:
-            fol.parameterU.set( inU )
-            fol.parameterV.set( inV )
-
         geoMesh = inRef.getShape()
-
-        folP = fol.getParent()
-
-        folName = inObj.namespace() + 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_polyCnsOffset"
-
-        parentObj = None
-
-        update=False
-        output_trans = None
-        if pc.objExists(folName):
-            update = True
-            output_trans = pc.xform(inObj, query=True, worldSpace=True, matrix=True )
-
-            oldFolP = folP
-
-            folP = getNode(folName)
-
-            folP.addChild(fol, shape=True, add=True)
-            cmds.parent(oldFolP.getShape().name(), shape=True, removeObject=True)
-            fol = folP.getShape()
-            pc.delete(oldFolP)
-
-            parentObj = folP.getParent()
-        else:
-            folP.rename(folName)
-
-            parentObj = inObj.getParent()
-
         isMesh = geoMesh.type() == "mesh"
-
-        # connect
+        print(isMesh)
         if isMesh:
+            
+             # creat follicle
+            fol = pc.createNode( 'follicle', name=inObj +'_to_'+inRef.stripNamespace()+'_fol' )
+
+            # let's do a dirty special case for forollicles applied in the case of a geoContrainer
+            #Spere_GeoCons:GeoConstrainer_Constrained_Output
+            #Spere_GeoCons:GeoConstrainer_Root_RigParameters
+
+            if inObj.name().endswith("_Constrained_Output") and pc.objExists(inObj.name().replace("_Constrained_Output", "_Root_RigParameters")):
+                rigName = inObj.stripNamespace()[:-19]
+                rigParamsName = inObj.name().replace("_Constrained_Output", "_Root_RigParameters")
+
+                offsetUNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addU")
+                offsetUNode.input1.set(inU)
+                pc.connectAttr(rigParamsName + "." + rigName + "_OffsetU", offsetUNode.input2)
+                offsetUNode.output >> fol.parameterU
+
+                offsetVNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addV")
+                offsetVNode.input1.set(inV)
+                pc.connectAttr(rigParamsName + "." + rigName + "_OffsetV", offsetVNode.input2)
+                offsetVNode.output >> fol.parameterV
+            else:
+                fol.parameterU.set( inU )
+                fol.parameterV.set( inV )
+
+            geoMesh = inRef.getShape()
+
+            folP = fol.getParent()
+
+            folName = inObj.namespace() + 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_polyCnsOffset"
+
+            parentObj = None
+
+            update=False
+            output_trans = None
+            if pc.objExists(folName):
+                update = True
+                output_trans = pc.xform(inObj, query=True, worldSpace=True, matrix=True )
+
+                oldFolP = folP
+
+                folP = getNode(folName)
+
+                folP.addChild(fol, shape=True, add=True)
+                cmds.parent(oldFolP.getShape().name(), shape=True, removeObject=True)
+                fol = folP.getShape()
+                pc.delete(oldFolP)
+
+                parentObj = folP.getParent()
+            else:
+                folP.rename(folName)
+
+                parentObj = inObj.getParent()
+
             geoMesh.outMesh >> fol.inputMesh
+            multMatrix = pc.createNode( 'multMatrix', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_multMatrix")
+            geoMesh.worldMatrix[0] >> multMatrix.matrixIn[0]
+            parentObj.worldInverseMatrix[0] >> multMatrix.matrixIn[1]
+            multMatrix.matrixSum >> fol.inputWorldMatrix
+            fol.outTranslate >> folP.translate
+            fol.outRotate >> folP.rotate
+
+            createdObjects.append(fol)
+
+            if not update:
+                pc.parent(folP, inObj.getParent())
+                pc.parent(inObj, folP)
         else:
+            # creat non follicle system
+            folP = pc.createNode("transform")
+            fol = pc.createNode("pointOnSurfaceInfo", name=inObj +'_to_'+inRef.stripNamespace()+'_fol')
+            folP.addAttr("useVDirection", at="bool")
+
+            if inObj.name().endswith("_Constrained_Output") and pc.objExists(inObj.name().replace("_Constrained_Output", "_Root_RigParameters")):
+                rigName = inObj.stripNamespace()[:-19]
+                rigParamsName = inObj.name().replace("_Constrained_Output", "_Root_RigParameters")
+
+                offsetUNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addU")
+                offsetUNode.input1.set(inU)
+                pc.connectAttr(rigParamsName + "." + rigName + "_OffsetU", offsetUNode.input2)
+                offsetUNode.output >> fol.parameterU
+
+                offsetVNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addV")
+                offsetVNode.input1.set(inV)
+                pc.connectAttr(rigParamsName + "." + rigName + "_OffsetV", offsetVNode.input2)
+                offsetVNode.output >> fol.parameterV
+            else:
+                fol.parameterU.set(inU)
+                fol.parameterV.set(inV)
+            
+            geoMesh = inRef.getShape()
+            parentObj = None            
+
+            # Node Created :
             geoMesh.worldSpace[0] >> fol.inputSurface
+            fourByFourMatrix = pc.createNode("fourByFourMatrix", name = 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_fourByFourMatrix")
+            multMatrix = pc.createNode('multMatrix', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_multMatrix")
+            decomposeMatrix = pc.createNode("decomposeMatrix",name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_decompMatrix" )
 
-        multMatrix = pc.createNode( 'multMatrix', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_multMatrix")
-        geoMesh.worldMatrix[0] >> multMatrix.matrixIn[0]
-        parentObj.worldInverseMatrix[0] >> multMatrix.matrixIn[1]
-        multMatrix.matrixSum >> fol.inputWorldMatrix
-        fol.outTranslate >> folP.translate
-        fol.outRotate >> folP.rotate
+            conditionU = pc.createNode("condition", name = 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_condtionU")
+            conditionV = pc.createNode("condition", name = 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_condtionV")
+            folP.useVDirection >> conditionU.firstTerm
+            folP.useVDirection >> conditionV.firstTerm
 
-        createdObjects.append(fol)
+            fol.positionX >> fourByFourMatrix.in30
+            fol.positionY >> fourByFourMatrix.in31
+            fol.positionZ >> fourByFourMatrix.in32
+            fol.normalizedNormalX >> fourByFourMatrix.in10
+            fol.normalizedNormalY >> fourByFourMatrix.in11
+            fol.normalizedNormalZ >> fourByFourMatrix.in12
 
-        if not update:
-            pc.parent(folP, inObj.getParent())
-            pc.parent(inObj, folP)
+            fol.normalizedTangentU >> conditionU.colorIfFalse
+            fol.normalizedTangentV >> conditionU.colorIfTrue
+            fol.normalizedTangentU >> conditionV.colorIfTrue
+            fol.normalizedTangentV >> conditionV.colorIfFalse
+
+            conditionV.outColorR >> fourByFourMatrix.in00
+            conditionV.outColorG >> fourByFourMatrix.in01
+            conditionV.outColorB >> fourByFourMatrix.in02
+            conditionU.outColorR >> fourByFourMatrix.in20
+            conditionU.outColorG >> fourByFourMatrix.in21
+            conditionU.outColorB >> fourByFourMatrix.in22
+
+            fourByFourMatrix.output >> multMatrix.matrixIn[0]
+            folP.parentInverseMatrix >> multMatrix.matrixIn[1]
+            multMatrix.matrixSum >> decomposeMatrix.inputMatrix
+            decomposeMatrix.outputRotate >> folP.rotate
+            decomposeMatrix.outputTranslate >> folP.translate
+
+            update = False
+            output_trans = None
+            folName = inObj.namespace() + 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_polyCnsOffset"
+            if pc.objExists(folName):
+                oldFolP = getNode(folName)
+                output_trans = pc.xform(inObj, query=True, worldSpace=True, matrix=True )
+                pc.parent(folP, oldFolP.getParent())
+                pc.parent(inObj, folP)
+                pc.delete(oldFolP)
+                folP.rename(folName)
+                parentObj = folP.getParent()
+                update = True
+            else:
+                folP.rename(folName)
+                parentObj = folP.getParent()
+
+            if not update:
+                pc.parent(folP, inObj.getParent())
+                pc.parent(inObj, folP)
+            if not inOffset:
+                resetTRS(inObj)
+            else:
+                if not output_trans is None:
+                    pc.xform(inObj, ws=True, matrix= output_trans)
+
+                    constraints = getConstraints(inObj)
+
+                    for constraint in constraints:
+                        if constraint.type() == "orientConstraint":
+                            constraint.restRotate.set(ozms.getPymelRotation(inObj))
+            createdObjects.append(folP)
 
         if not inOffset:
             resetTRS(inObj)
@@ -3117,13 +3210,17 @@ def getConstraintTargets(inCons):
         cons = pc.listConnections(inCons.name() + ".inputMesh")
         if len(cons) > 0:
             targets.append(cons[0])
+    elif inCons.type() == "decomposeMatrix":
+        cons = pc.listHistory(inCons, type="nurbsSurface")
+        if len(cons) > 0:
+            targets.append(cons[0])
     else:
         targets = [c.node() for c in pc.listConnections(inCons.name() + ".target", destination=False, type=["transform","joint","mesh","ikEffector"], exactType=True, plugs=True) if "matrix" in c.name().lower()]
 
     cleanedTargets = []
     for source in targets:
         if not source in cleanedTargets:
-            if source.type() == "mesh":
+            if source.type() == "mesh" or source.type() == "nurbsSurface":
                 source = source.getParent()
             cleanedTargets.append(source)
 
@@ -3194,9 +3291,12 @@ def getConstraints(inObject):
         shape = objParent.getShape()
         if shape != None and shape.type() == "follicle":
             constraints.append(shape)
+        elif objParent.hasAttr("useVDirection"):
+            constraints.append(pc.listConnections(objParent, destination=False)[0])
         else:
             constraints.extend(pc.listConnections(objParent, destination=False, type=["constraint", "motionPath"]))
 
+    # CBB :filteredConstraints = list(set(constraints))
     for cons in constraints:
         if not cons.name() in filteredNames:
             filteredNames.append(cons.name())
@@ -4566,13 +4666,16 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
             for dim2i in range(infLength):
                 pmValues.append(inValues[dim1i + dim2i * nVerts] / 100.0)
 
-        skin.setWeights(skin.getGeometry()[-1], infIndices, pmValues)
+        if pc.objectType(inObject.getShape()) == "lattice" or pc.objectType(inObject.getShape()) == "nurbsSurface":
+            skin.setWeights(skin.getGeometry()[-1], infIndices, pmValues)
+        else:
+            pc.setSkinWeight(skin.name(), wl=pmValues, cl=True)
 
         pc.skinCluster(skin,edit=True,normalizeWeights=defaultNorm)
         if inNormalize:
             #CBB : Can't believe we have to select the mesh...
-            pc.select(inObject, replace=True)
-            pc.skinPercent( skin, normalize=True)
+            # pc.select(inObject, replace=True)
+            pc.skinPercent( skin, inObject, normalize=True)
 
     if len(nullInfs) == 0:#Maybe we can clean 0Deform
         nullInf = ns + CONST_NULLINFNAME
@@ -4601,13 +4704,14 @@ def getWeights(inObject, inInfluence=None):
             break
 
     if not inInfluence is None:
-        if not isinstance(inInfluence, int):
-            inInfluence = getNode(inInfluence)
-            inInfluence = infObjs.index(inInfluence)
+        influenceWeight = tkApi.get_weights_data(inObject.name(), inInfluence = inInfluence)["classic_linear"]
 
-        return [w * 100.0 for w in skin.getWeights(skin.getGeometry()[-1], influenceIndex=inInfluence)]
+        return [w * 100.0 for w in influenceWeight]
     else:
-        rawWeights = list(skin.getWeights(skin.getGeometry()[-1]))
+        skinData = tkApi.get_weights_data(inObject.name())
+        rawWeights = []
+        for x in range(0, len(skinData["classic_linear"]), len(skinData["influences"])):
+            rawWeights.append(tuple(skinData["classic_linear"][x:x+len(skinData["influences"])]))
         dim1 = len(rawWeights)
         if dim1 > 0:
             dim2 = len(rawWeights[0])
@@ -4814,7 +4918,7 @@ def _averagePoints(inSkin, inInfluences, inPointsIndices=None, inStrength=1.0, i
     #Get points weights
     valuesList = []
     for pointIndex in inPointsIndices:
-        valuesList.append(tkc.getPointInfluences(inSkin, inInfluences, pointIndex))
+        valuesList.append(getPointInfluences(inSkin, inInfluences, pointIndex))
 
     #Average
     totals = [0] * NInfs
@@ -4826,24 +4930,24 @@ def _averagePoints(inSkin, inInfluences, inPointsIndices=None, inStrength=1.0, i
 
     for pointIndex in inPointsIndices:
         if inStrength >= 1.0:
-            tkc.setPointInfluences(inSkin, inInfluences, pointIndex, average)
+            setPointInfluences(inSkin, inInfluences, pointIndex, average)
         else:
             values = []
             for i, value in enumerate(valuesList[pointIndex]):
                 values.append(value * (1 - inStrength) + average[i] * inStrength)
 
-            tkc.setPointInfluences(inSkin, inInfluences, pointIndex, values)
+            setPointInfluences(inSkin, inInfluences, pointIndex, values)
 
     return inSkin
 
 def averagePoints(inObj, inPointsIndices=None, inStrength=1.0, inVerbose=True, inProgress=True):
-    skin = tkc.getWeights(inObj)
-    skinCls = tkc.getSkinCluster(inObj)
+    skin = getWeights(inObj)
+    skinCls = getSkinCluster(inObj)
     influences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
     
     skin = _averagePoints(skin, influences, inPointsIndices)
     
-    tkc.setWeights(inObj, inInfluences=influences, inValues=skin, inMode=0, inOpacity=1.0, inNormalize=True)
+    setWeights(inObj, inInfluences=influences, inValues=skin, inMode=0, inOpacity=1.0, inNormalize=True)
 
 def getInfluencedPoints(inObj, inInfluences):
     points = []
@@ -6977,23 +7081,41 @@ def evalAsFunction(code, local_vars = None, global_vars = None):
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 #Displays
-
-def AEupdateDisplays(plug, slider):
+DISPLAY_IS_CHANGING = False
+def AEupdateDisplaysDC(plug, slider):
+    global DISPLAY_IS_CHANGING
     val = pc.floatSliderGrp( slider, q=1, v=1 )
     if val == 0 and ("size" in plug or "scale" in plug):
         val = 0.001
 
     obj_Attr = plug.split(".")
     #pc.setAttr( plug, val )
-
     #try to act on other selected Objects
     sel = pc.selected()
-    pc.undoInfo(openChunk=True)
+    if DISPLAY_IS_CHANGING is False:
+        pc.undoInfo(openChunk=True)
+        DISPLAY_IS_CHANGING = True
+    for selObj in sel:
+        if pc.attributeQuery(obj_Attr[1], node=selObj, exists=True):
+            pc.setAttr( selObj.name() + "." + obj_Attr[1], val )
+            updateDisplay(selObj)
+
+def AEupdateDisplaysCC(plug, slider):
+    global DISPLAY_IS_CHANGING
+    val = pc.floatSliderGrp( slider, q=1, v=1 )
+    if val == 0 and ("size" in plug or "scale" in plug):
+        val = 0.001
+
+    obj_Attr = plug.split(".")
+    #pc.setAttr( plug, val )
+    #try to act on other selected Objects
+    sel = pc.selected()
     for selObj in sel:
         if pc.attributeQuery(obj_Attr[1], node=selObj, exists=True):
             pc.setAttr( selObj.name() + "." + obj_Attr[1], val )
             updateDisplay(selObj)
     pc.undoInfo(closeChunk=True)
+    DISPLAY_IS_CHANGING = False
 
 def AEupdateInitValues(plug, scrollField):
     val = pc.scrollField( scrollField, q=1, text=1 )
@@ -7022,8 +7144,8 @@ def AEaddDisplaysDoubleMenu(plug, sliderLabel, annot ):
         if pc.attributeQuery( obj_Attr[1], node=obj_Attr[0] ,exists=True ):
             val = pc.getAttr( plug )
             slider = pc.floatSliderGrp( annotation=annot, label=sliderLabel, minValue=-10, maxValue=10, fieldMinValue=-100, fieldMaxValue=100, v=val )
-            pc.floatSliderGrp( slider, e=1, dc="tkc.AEupdateDisplays('" + plug + "', '" + slider + "')" )
-            pc.floatSliderGrp( slider, e=1, cc="tkc.AEupdateDisplays('" + plug + "', '" + slider + "')" )
+            pc.floatSliderGrp( slider, e=1, dc="tkc.AEupdateDisplaysDC('" + plug + "', '" + slider + "')" )
+            pc.floatSliderGrp( slider, e=1, cc="tkc.AEupdateDisplaysCC('" + plug + "', '" + slider + "')" )
             pc.setParent( u=1 )
             if obj_Attr[1] == "size":
                 pc.button(label="Reset Displays", c="tkc.setDisplay(pc.PyNode('"+ obj_Attr[0] +"'), select=True)")
@@ -7555,7 +7677,7 @@ def checkHistory(inObjects=None, inAllowedNodes=None, inCheckTypes=None):
         if not isinstance(inObjects, (list, tuple)):
             inObjects = [inObjects]
 
-        objs = [obj for obj in tkc.getNodes(inObjects) if obj.type() in inAllowedNodes]
+        objs = [obj for obj in getNodes(inObjects) if obj.type() in inAllowedNodes]
     else:
         objs = pc.ls(type=inCheckTypes)
 

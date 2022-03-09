@@ -5,8 +5,10 @@
 # PyQt4 user interface for anim_picker
 
 import os
-from past.builtins import long
-from builtins import str
+import sys
+if sys.version_info.major  > 2:
+    xrange = range
+    from builtins import str
 
 import re
 from math import sin, cos, pi
