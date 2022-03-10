@@ -2840,7 +2840,6 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
     if useFollicule:
         geoMesh = inRef.getShape()
         isMesh = geoMesh.type() == "mesh"
-        print(isMesh)
         if isMesh:
             
              # creat follicle
@@ -4995,7 +4994,6 @@ def serializeSkin(skin):
 
 def deserializeSkin(serializedSkin):
     skin = None
-    print(serializedSkin.split(";"))
     try:
         objName, jointNames, weightsString, ns = serializedSkin.split(";")
         obj = getNode(objName)

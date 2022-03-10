@@ -111,5 +111,5 @@ def getPointPositions(inObjectName, worldSpace = False):
             target_mPointArray = om.MFnNurbsCurve(targetDagPathShape).cvPositions(Mspace)
 
         for poses in target_mPointArray:
-            pointsPositions.append((poses[0], poses[1], poses[2]))
+            pointsPositions.append([poses[0], poses[1], poses[2]])
         return pointsPositions
