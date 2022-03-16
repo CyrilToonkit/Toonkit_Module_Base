@@ -9,6 +9,7 @@ import sys
 if sys.version_info.major  > 2:
     xrange = range
     from builtins import str
+    from past.builtins import long
 
 import re
 from math import sin, cos, pi
