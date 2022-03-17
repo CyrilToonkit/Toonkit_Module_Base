@@ -7098,6 +7098,73 @@ def toggleInPlace(inBlendAttrName, inState1Value, inState1Data, inState2Value, i
         #State2 to State1
         matchInPlace(inBlendAttrName, inState1Value, inState2Data, inNs)
 
+# Better PickWalk
+def pickWalkRig(inHierarchy, nameSpace):
+    if not nameSpace.endswith(":"):
+        nameSpace += ":"
+    inHierarchy = getHierarchyData(inHierarchy, nameSpace)
+    for ctrlData in inHierarchy:
+        ctrl = pc.PyNode(ctrlData["Name"] + "_tag")
+        if not ctrlData["Parent"] == "":
+            if not isinstance(ctrlData["Parent"], list):
+                ctrlParentsNames = [ctrlData["Parent"]]
+            else: ctrlParentsNames = ctrlData["Parent"]
+            for ctrlParentName in ctrlParentsNames:
+                ctrlParent = pc.PyNode(ctrlParentName + "_tag")
+                parentChildAttr = getLastMessageArray(ctrlParent.children)
+                isParentGroup = ctrlData["isParentGroup"]
+                if isParentGroup is None:
+                    ctrlParent.prepopulate.connect(ctrl.prepopulate, f=True)
+                    ctrl.parent >> parentChildAttr
+                else:
+                    if not pc.objExists(ctrlData["isParentGroup"] + "_group1_tag"):
+                        ctrlGroup = pc.createNode("controller", name=ctrlData["isParentGroup"] + "_group1_tag")
+                        ctrlGroup.cycleWalkSibling.set(1)
+                    else:
+                        ctrlGroup = pc.PyNode(ctrlData["isParentGroup"]+ "_group1_tag")
+                    # ctrlParent.prepopulate.connect(ctrlGroup.prepopulate, f=True)
+                    listGrpChildrens = ctrlGroup.parent.listConnections()
+                    if not ctrlParent in listGrpChildrens:
+                        ctrlGroup.parent.connect(parentChildAttr, f=True)
+                    ctrlGroup.prepopulate.connect(ctrl.prepopulate, f=True)
+                    ctrlGroupChildAttr = getLastMessageArray(ctrlGroup.children)
+                    listCtrlChildrens = ctrl.parent.listConnections()
+                    if not ctrlGroup in listCtrlChildrens:
+                        ctrl.parent >> ctrlGroupChildAttr
+
+def getHierarchyData(hierarchy, nameSpace):
+    outHierarchy = []
+    
+    for x in hierarchy:
+        for key, value in x.items():
+            if key == "Name":
+                x[key] = nameSpace + value
+            if key == "Parent":
+                renamedParents = []
+                if isinstance(value, list):
+                    for parents in value:
+                        renamedParents.append(nameSpace + parents)
+                    x[key] = renamedParents
+                else:
+                    x[key] = nameSpace + value
+        outHierarchy.append(x)
+    return outHierarchy
+
+def getLastMessageArray(inAttr):
+    childrenArray = inAttr.elements()
+    if childrenArray == []:
+        return inAttr[0]
+    else:
+        isAllConnect = False
+        for childe in childrenArray:
+            if not pc.PyNode(inAttr.attr(childe)).isConnected():
+                return pc.PyNode(inAttr.attr(childe))
+            else:
+                isAllConnect=True
+        if isAllConnect:
+            lastIndexUsed = inAttr.attr(childrenArray[-1]).index()
+            return pc.PyNode(inAttr[lastIndexUsed+1])
+
 def toggleDeformers(*args):
     sel = pc.selected()
     ns = ""
