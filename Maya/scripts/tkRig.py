@@ -39,7 +39,7 @@ import math
 import operator
 import tempfile
 import six
-basestring = six.text_type
+basestring = six.string_types
 
 import Toonkit_Core.tkCore as tc
 
