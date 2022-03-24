@@ -26,6 +26,7 @@ import TkApi.maya_api as tkapi
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
 import maya.cmds as cmds
+import tkMayaCore as tkc
 
 kPluginCmdName = 'setSkinWeight'
 
@@ -68,7 +69,8 @@ class setSkinWeight( om.MPxCommand ):
     def doIt(self, args):
         """Function that set skin cluster with diffrents methodes: classicLinear, dualQuaternion, and can replace skin of one given influance.
 Usage eg: "pc.setSkinWeight("skinCluster1", wl=weight["classic_linear"], cl=True)" 
-            "pc.setSkinWeight("skinCluster1", i="Left_arm_inf", iw = [0.0, 0.0, 1.0, 1.0])"
+          "pc.setSkinWeight("skinCluster1", i="Left_arm_inf", iw = [0.0, 0.0, 1.0, 1.0])"
+          if used without -wl flag will set the skin weight in global variable from tkc.SKIN_DATA.
     Args:
         first no flag arg (str), skinCluster name
         -classicLinear -cl (Bool), is classic linear skin
@@ -89,6 +91,8 @@ Usage eg: "pc.setSkinWeight("skinCluster1", wl=weight["classic_linear"], cl=True
         self.currentSkinWeight = tkapi.get_weights_data(mesh_geo[0], self.inSkinClusterName)
         if self.weightList is not None:
             self.weightList = om.MDoubleArray(self.weightList)
+        elif tkc.SKIN_DATA is not None:
+            self.weightList = om.MDoubleArray(tkc.SKIN_DATA)
         
         self.execute()
 

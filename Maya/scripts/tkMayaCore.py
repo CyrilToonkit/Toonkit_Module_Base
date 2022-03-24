@@ -4435,6 +4435,8 @@ def getFFDs(inObject):
 
     return lattices
 
+SKIN_DATA = None
+
 def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, inNormalize=True):
     """
     inInfluences is an influence short names list (no namespaces) : ["Influence1", "Influence2",...]
@@ -4447,7 +4449,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
         2 : Add
         3 : Blend
     """
-
+    global SKIN_DATA
     skin = getSkinCluster(inObject)
 
     valLength = len(inValues)
@@ -4668,7 +4670,11 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
         if pc.objectType(inObject.getShape()) == "lattice" or pc.objectType(inObject.getShape()) == "nurbsSurface":
             skin.setWeights(skin.getGeometry()[-1], infIndices, pmValues)
         else:
-            pc.setSkinWeight(skin.name(), wl=pmValues, cl=True)
+            SKIN_DATA = pmValues
+            startTimer("API SetSkin", True)
+            pc.setSkinWeight(skin.name(), cl=True)
+            stopTimer("API SetSkin", True, True)
+            SKIN_DATA = None
 
         pc.skinCluster(skin,edit=True,normalizeWeights=defaultNorm)
         if inNormalize:
@@ -7090,8 +7096,9 @@ def AEupdateDisplaysDC(plug, slider):
     #pc.setAttr( plug, val )
     #try to act on other selected Objects
     sel = pc.selected()
-    if DISPLAY_IS_CHANGING is False:
+    if not DISPLAY_IS_CHANGING :
         pc.undoInfo(openChunk=True)
+        print("Undo Chunk Opened")
         DISPLAY_IS_CHANGING = True
     for selObj in sel:
         if pc.attributeQuery(obj_Attr[1], node=selObj, exists=True):
@@ -7100,19 +7107,24 @@ def AEupdateDisplaysDC(plug, slider):
 
 def AEupdateDisplaysCC(plug, slider):
     global DISPLAY_IS_CHANGING
-    val = pc.floatSliderGrp( slider, q=1, v=1 )
-    if val == 0 and ("size" in plug or "scale" in plug):
-        val = 0.001
+    try:
+        val = pc.floatSliderGrp( slider, q=1, v=1 )
+        if val == 0 and ("size" in plug or "scale" in plug):
+            val = 0.001
 
-    obj_Attr = plug.split(".")
-    #pc.setAttr( plug, val )
-    #try to act on other selected Objects
-    sel = pc.selected()
-    for selObj in sel:
-        if pc.attributeQuery(obj_Attr[1], node=selObj, exists=True):
-            pc.setAttr( selObj.name() + "." + obj_Attr[1], val )
-            updateDisplay(selObj)
-    pc.undoInfo(closeChunk=True)
+        obj_Attr = plug.split(".")
+        #pc.setAttr( plug, val )
+        #try to act on other selected Objects
+        sel = pc.selected()
+        for selObj in sel:
+            if pc.attributeQuery(obj_Attr[1], node=selObj, exists=True):
+                pc.setAttr( selObj.name() + "." + obj_Attr[1], val )
+                updateDisplay(selObj)
+    except:
+        pass
+    if DISPLAY_IS_CHANGING:
+        pc.undoInfo(closeChunk=True)
+        print("Undo Chunk Closed")
     DISPLAY_IS_CHANGING = False
 
 def AEupdateInitValues(plug, scrollField):
