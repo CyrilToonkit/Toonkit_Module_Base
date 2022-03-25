@@ -4671,9 +4671,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
             skin.setWeights(skin.getGeometry()[-1], infIndices, pmValues)
         else:
             SKIN_DATA = pmValues
-            startTimer("API SetSkin", True)
             pc.setSkinWeight(skin.name(), cl=True)
-            stopTimer("API SetSkin", True, True)
             SKIN_DATA = None
 
         pc.skinCluster(skin,edit=True,normalizeWeights=defaultNorm)
