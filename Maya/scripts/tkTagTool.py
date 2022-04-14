@@ -193,10 +193,11 @@ def showUI(*args):
 
     pc.frameLayout(label="Add tags", collapsable=True)
     pc.columnLayout()
-    row = pc.rowLayout(numberOfColumns=3)
+    row = pc.rowLayout(numberOfColumns=4)
     pc.button( label='Add "nfr"', command=partial(addTagClick, "nfr"))
-    pc.button( label='Add "model_low"', command=partial(addTagClick, "model_low"))
-    pc.button( label='Add "hd"', command=partial(addTagClick, "hd"))
+    pc.button( label='Add "LD"', command=partial(addTagClick, "LD"))
+    pc.button( label='Add "MD"', command=partial(addTagClick, "MD"))
+    pc.button( label='Add "HD"', command=partial(addTagClick, "HD"))
     
     pc.setParent(upLevel=True)
     row = pc.rowLayout(numberOfColumns=2)
