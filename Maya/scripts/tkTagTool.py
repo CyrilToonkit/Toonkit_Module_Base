@@ -147,68 +147,82 @@ def applyTags(inTags):
 
     return defects == 0
 
-def loadClick(*args):
-    choosenFile = pc.fileDialog2(caption="Select your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
-
-    if choosenFile != None and len(choosenFile) > 0:
-        loadTags(choosenFile[0], inApply=True)
-        showUI()
-    else:
-        pc.warning("No file selected !")
-
-def saveClick(*args):
-    choosenFile = pc.fileDialog2(caption="Save your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
-
-    if choosenFile != None and len(choosenFile) > 0:
-        saveTags(getTags(), choosenFile[0])
-    else:
-        pc.warning("No file selected !")
-
-def addTagClick(*args):
-    addTags(inTags=args[0])
-    showUI()
-
-def addCustomTagClick(*args):
-    addTags(inTags=pc.textFieldGrp(args[0], query=True, text=True))
-    showUI()
-
-def removeTagClick(*args):
-    removeTags(inTags=args[0])
-    showUI()
-
-def showUI(*args):
-    if (pc.window(UINAME, q=True, exists=True)):
-        pc.deleteUI(UINAME)
+class showUI():
+    def __init__(self):
+        if (pc.window(UINAME, q=True, exists=True)):
+            pc.deleteUI(UINAME)
+        
     
-    tags = getTags()
-    
-    ttWindow = pc.window(UINAME, title="Tag Tool", width=150)
+        ttWindow = pc.window(UINAME, title="Tag Tool", width=150)
 
-    pc.columnLayout()
+        pc.columnLayout()
 
-    row = pc.rowLayout(numberOfColumns=2)
-    pc.button( label='Load...', command=loadClick)
-    pc.button( label='Save...', command=saveClick)
-    pc.setParent(upLevel=True)
+        row = pc.rowLayout(numberOfColumns=2)
+        pc.button( label='Load...', command=self.loadClick)
+        pc.button( label='Save...', command=self.saveClick)
+        pc.setParent(upLevel=True)
 
-    pc.frameLayout(label="Add tags", collapsable=True)
-    pc.columnLayout()
-    row = pc.rowLayout(numberOfColumns=4)
-    pc.button( label='Add "nfr"', command=partial(addTagClick, "nfr"))
-    pc.button( label='Add "LD"', command=partial(addTagClick, "LD"))
-    pc.button( label='Add "MD"', command=partial(addTagClick, "MD"))
-    pc.button( label='Add "HD"', command=partial(addTagClick, "HD"))
-    
-    pc.setParent(upLevel=True)
-    row = pc.rowLayout(numberOfColumns=2)
-    pc.button( label='Add custom tag', command=partial(addCustomTagClick, "TagToolCustomTag"))
-    pc.textFieldGrp("TagToolCustomTag", label='Custom tag', text="MyTag")
-    
-    pc.setParent(upLevel=True)
-    frame = pc.frameLayout(label="Edit tags", collapsable=True)
-    for tag, objects in tags.items():
-        pc.rowLayout(numberOfColumns=2, parent=frame)
-        pc.button( label='Select "{0}"'.format(tag), command="pc.select([{0}])".format(",".join(["'{0}'".format(obj) for obj in objects])))
-        pc.button( label='Remove "{0}" tag on selection'.format(tag), command=partial(removeTagClick, tag))
-    
-    pc.showWindow(ttWindow)
+        pc.frameLayout(label="Add tags", collapsable=True)
+        pc.columnLayout()
+        row = pc.rowLayout(numberOfColumns=4)
+        pc.button( label='Add "nfr"', command=partial(self.addTagClick, "nfr"))
+        pc.button( label='Add "LD"', command=partial(self.addTagClick, "LD"))
+        pc.button( label='Add "MD"', command=partial(self.addTagClick, "MD"))
+        pc.button( label='Add "HD"', command=partial(self.addTagClick, "HD"))
+        
+        pc.setParent(upLevel=True)
+        row = pc.rowLayout(numberOfColumns=2)
+        pc.button( label='Add custom tag', command=partial(self.addCustomTagClick, "TagToolCustomTag"))
+        self.textfield = pc.textFieldGrp("TagToolCustomTag", label='Custom tag', text="MyTag")
+        
+        pc.setParent(upLevel=True)
+        self.frame = pc.frameLayout(label="Edit tags", collapsable=True)
+
+        self.updateUI()
+        pc.showWindow()
+
+    def updateUI(self):
+        tags = getTags()
+        childeElements = pc.frameLayout(self.frame, q=True, childArray=True)
+        if childeElements:
+            pc.deleteUI(childeElements)
+        for tag, objects in tags.items():
+            pc.rowLayout(numberOfColumns=2, parent=self.frame)
+            pc.button( label='Select "{0}"'.format(tag), command=partial(self.selectClicked, objects))
+            pc.button( label='Remove "{0}" tag on selection'.format(tag), command=partial(self.removeTagClick, tag))
+
+    def selectClicked(self, objects, *args):
+        getModifier = pc.getModifiers()
+        multiSelect = False
+        if getModifier == 1:
+            multiSelect = True
+        pc.select(objects, add = multiSelect)
+        
+    def loadClick(self, *args):
+        choosenFile = pc.fileDialog2(caption="Select your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
+
+        if choosenFile != None and len(choosenFile) > 0:
+            loadTags(choosenFile[0], inApply=True)
+            self.updateUI()
+        else:
+            pc.warning("No file selected !")
+
+    def saveClick(self, *args):
+        choosenFile = pc.fileDialog2(caption="Save your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
+
+        if choosenFile != None and len(choosenFile) > 0:
+            saveTags(getTags(), choosenFile[0])
+        else:
+            pc.warning("No file selected !")
+
+    def addTagClick(self, *args):
+        addTags(inTags=args[0])
+        self.updateUI()
+
+    def addCustomTagClick(self, *args):
+        addTags(inTags=pc.textFieldGrp(args[0], query=True, text=True))
+        self.updateUI()
+
+    def removeTagClick(self, *args):
+        removeTags(inTags=args[0])
+        self.updateUI()
