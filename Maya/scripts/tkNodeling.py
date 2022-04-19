@@ -622,7 +622,8 @@ def add(inAttr1, inAttr2, inName=None, **kwargs):
         if not attr1Vector:
             if inAttr1.type() is None or inAttr1.type() == "matrix":
                 attr1Matrix = True
-    elif not attr2Scalar:
+
+    if not attr2Scalar:
         ns = str(inAttr2.node().namespace())
         attr2Vector = inAttr2.type() in ["double3", "float3"]
 
