@@ -2912,7 +2912,9 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
             # creat non follicle system
             folP = pc.createNode("transform")
             fol = pc.createNode("pointOnSurfaceInfo", name=inObj +'_to_'+inRef.stripNamespace()+'_fol')
-            folP.addAttr("useVDirection", at="bool")
+            folP.addAttr("useVDirection", at="bool", k=True)
+            folP.addAttr("parameterU", at="float", k=True)
+            folP.addAttr("parameterV", at="float", k=True)
 
             if inObj.name().endswith("_Constrained_Output") and pc.objExists(inObj.name().replace("_Constrained_Output", "_Root_RigParameters")):
                 rigName = inObj.stripNamespace()[:-19]
@@ -2921,15 +2923,15 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
                 offsetUNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addU")
                 offsetUNode.input1.set(inU)
                 pc.connectAttr(rigParamsName + "." + rigName + "_OffsetU", offsetUNode.input2)
-                offsetUNode.output >> fol.parameterU
+                offsetUNode.output >> folP.parameterU
 
                 offsetVNode = pc.createNode( 'addDoubleLinear', name='fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_addV")
                 offsetVNode.input1.set(inV)
                 pc.connectAttr(rigParamsName + "." + rigName + "_OffsetV", offsetVNode.input2)
-                offsetVNode.output >> fol.parameterV
+                offsetVNode.output >> folP.parameterV
             else:
-                fol.parameterU.set(inU)
-                fol.parameterV.set(inV)
+                folP.parameterU.set(inU)
+                folP.parameterV.set(inV)
             
             geoMesh = inRef.getShape()
             parentObj = None            
@@ -2973,6 +2975,9 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
             update = False
             output_trans = None
             folName = inObj.namespace() + 'fol_'+inObj.stripNamespace() +'_to_'+inRef.stripNamespace() + "_polyCnsOffset"
+            folP.parameterU >> fol.parameterU
+            folP.parameterV >> fol.parameterV
+
             if pc.objExists(folName):
                 oldFolP = getNode(folName)
                 output_trans = pc.xform(inObj, query=True, worldSpace=True, matrix=True )
@@ -6188,7 +6193,7 @@ def getPerPointData(inMeshT, inIndex=None, inName="PerPointData"):
     if prop != None:
         data = pc.getAttr(prop.name() + ".data")
         return data if inIndex == None else data[index]
-
+    
     return None
 
 def createBaseMap(inMeshT):

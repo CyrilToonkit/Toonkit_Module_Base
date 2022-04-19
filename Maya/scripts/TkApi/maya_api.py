@@ -113,3 +113,16 @@ def getPointPositions(inObjectName, worldSpace = False):
         for poses in target_mPointArray:
             pointsPositions.append([poses[0], poses[1], poses[2]])
         return pointsPositions
+
+def getClosestVertex(mesh, pos=(0,0,0)):
+    # Return the index of the closets vtx of the given position in world space.
+    
+    pos = om.MPoint(pos)
+    fn_mesh = om.MFnMesh(get_api_nodes(mesh)[0])
+    
+    index = fn_mesh.getClosestPoint(pos, space=om.MSpace.kWorld)[1]  # closest polygon index    
+    face_vertices = fn_mesh.getPolygonVertices(index)  # get polygon vertices
+    
+    vertex_distances = ((vertex, fn_mesh.getPoint(vertex, om.MSpace.kWorld).distanceTo(pos)) 
+                         for vertex in face_vertices)
+    return min(vertex_distances, key=lambda x:x[1])[0]
