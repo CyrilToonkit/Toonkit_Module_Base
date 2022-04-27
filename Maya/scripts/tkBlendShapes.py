@@ -258,7 +258,9 @@ def _matchPointPositions(inRef, inTarget, inMap=None, inRefPoints=None, inTarget
             targetPoints[i][2] = (1 - inMap[i]) * targetPoints[i][2] + inMap[i] * refPoints[i][2]
 
     if targetType == "mesh":
-        pc.setPointPositions(inTarget.name(), pp=targetPoints)
+        tkc.POINT_POSITIONS = targetPoints
+        pc.setPointPositions(inTarget.name())
+        tkc.POINT_POSITIONS = None
     else:
         targetShape.setCVs(targetPoints)
         targetShape.updateSurface()

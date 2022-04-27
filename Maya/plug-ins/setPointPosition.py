@@ -22,8 +22,10 @@
 
 import sys
 import pymel.core as pc
+import tkMayaCore as tkc
 import TkApi.maya_api as tkapi
 import maya.api.OpenMaya as om
+
 
 kPluginCmdName = 'setPointPositions'
 
@@ -49,7 +51,7 @@ class setPointPositions( om.MPxCommand ):
     def __init__(self):
         om.MPxCommand.__init__(self)
         self.inObjectName = None
-        self.inPOintPositions = None
+        self.inPointPositions = None
         self.worldSpace = False
           
 
@@ -75,8 +77,10 @@ class setPointPositions( om.MPxCommand ):
                 self.inObjectName = self.inObjectName[0].name()
             else:
                 om.MGlobal.displayError("You must use select or give an object as first argument !")
-        if not self.inPointPositions:
-            om.MGlobal.displayError("You must use pointsPositions (pp) flag !")
+        if not self.inPointPositions is None:
+            self.MPointPositions = om.MPointArray(self.inPointPositions)
+        elif not tkc.POINT_POSITIONS is None:
+            self.inPointPositions = om.MPointArray(tkc.POINT_POSITIONS)
 
         self.MPointPositions = om.MPointArray(self.inPointPositions)
         self.targetDagPath = tkapi.get_api_nodes([self.inObjectName])[0]

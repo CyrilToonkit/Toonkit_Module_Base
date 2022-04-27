@@ -2604,7 +2604,10 @@ def createRingsIcon(name="cvRings", offset=(0,0,0), scale=(1,1,1), size=1.0, dis
 
     return crv1
 
+POINT_POSITIONS = None
+
 def updateDisplay(node):
+    global POINT_POSITIONS
     if(pc.attributeQuery( "size", node=node, exists=True )):
         unitScl = getUnitScaling()
 
@@ -2651,7 +2654,9 @@ def updateDisplay(node):
                             size * (s[1] * ((cv[1] / OLDsize - OLDt.y * unitScl) / OLDs[1]) + t.y * unitScl),
                             size * (s[2] * ((cv[2] / OLDsize - OLDt.z * unitScl) / OLDs[2]) + t.z * unitScl)
                             ))
-                    pc.setPointPositions(shape.name(), pp=newCvs)
+                    POINT_POSITIONS = newCvs
+                    pc.setPointPositions(shape.name())
+                    POINT_POSITIONS = None
                     # mFnSet.setCVPositions(newCvs)
                     # mFnSet.updateCurve()
 
