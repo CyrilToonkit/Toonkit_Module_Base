@@ -1,22 +1,22 @@
 """
 ------------------------- LICENCE INFORMATION -------------------------------
-    This file is part of Toonkit Module Lite, Python Maya library and module.
-    Authors : Cyril GIBAUD - Toonkit, Stephane Bonnot - Parallel Dev
-    Copyright (C) 2014-2017 Toonkit
-    http://toonkit-studio.com/
+	This file is part of Toonkit Module Lite, Python Maya library and module.
+	Authors : Cyril GIBAUD - Toonkit, Stephane Bonnot - Parallel Dev
+	Copyright (C) 2014-2017 Toonkit
+	http://toonkit-studio.com/
 
-    Toonkit Module Lite is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	Toonkit Module Lite is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Lesser General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    Toonkit Module Lite is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
+	Toonkit Module Lite is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public License
-    along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU Lesser General Public License
+	along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
 
@@ -88,15 +88,6 @@ def stringtolistobject(st):
 	return [stringtoobject(strObj) for strObj in spl]
 	
 def listobjecttostring(lst):
-	'''
-	strNames = ""
-
-	for obj in lst:
-		if len(strNames) != 0:
-			strNames = strNames + subsubsplitcharacter + objecttostring(obj)
-		else:
-			strNames = objecttostring(obj)
-	'''
 	return subsubsplitcharacter.join([objecttostring(obj) for obj in lst])
 
 def stringtobool(bs):
@@ -135,17 +126,6 @@ def stringtoliststring(st):
 	return spl
 
 def liststringtostring(lst):
-	'''
-	strNames = ""
-	first = True
-	for stringObj in lst:
-		if not first:
-			strNames = strNames + subsubsplitcharacter + stringObj
-		else:
-			first = False
-			strNames = stringObj
-	'''
-
 	return subsubsplitcharacter.join(lst)
 
 def stringtolistfloat(st):
@@ -156,18 +136,6 @@ def stringtolistfloat(st):
 	
 def listfloattostring(lst):
 	return subsubsplitcharacter.join([str(num) for num in lst])
-	'''
-	strNames = ""
-	first = True
-	for stringObj in lst:
-		if not first:
-			strNames = strNames + subsubsplitcharacter + str(stringObj)
-		else:
-			first = False
-			strNames = str(stringObj)
-
-	return strNames
-	'''
 
 def stringtolistint(st):
 	spl = st.split(subsubsplitcharacter)
@@ -177,16 +145,6 @@ def stringtolistint(st):
 	
 def listinttostring(lst):
 	return subsubsplitcharacter.join([str(num) for num in lst])
-	'''
-	strNames = ""
-	for stringObj in lst:
-		if len(strNames) != 0:
-			strNames = strNames + subsubsplitcharacter + str(stringObj)
-		else:
-			strNames = str(stringObj)
-
-	return strNames
-	'''
 
 def stringtocolor(st):
 	spl = st.split(subsubsplitcharacter)
@@ -217,25 +175,7 @@ def stringtolisttuple(st):
 	return listtuple
 
 def listtupletostring(lst):
-	strNames = ""
-	first = True
-	for tup in lst:
-		subfirst = True
-		strtup = ""
-		for val in tup:
-			if not subfirst:
-				strtup = strtup + subsubsplitcharacter + floattostring(val)
-			else:
-				subfirst = False
-				strtup = floattostring(val)
-		if strtup != "":
-			if not first:
-				strNames = strNames + subsplitcharacter + strtup
-			else:
-				first = False
-				strNames = strtup
-
-	return strNames
+	return str(lst)[2:-2].replace("), (", subsplitcharacter).replace(", ", subsubsplitcharacter)
 
 def stringtodic(st):
 	dictionary = {}

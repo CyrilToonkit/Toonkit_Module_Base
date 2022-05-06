@@ -224,7 +224,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True, inSearc
 
     if os.path.isdir(in_scriptsPath) or not in_checkServer or os.path.isdir(alternatePath):
         elements = os.listdir(in_scriptsPath) if os.path.isdir(in_scriptsPath) else []
-        elements.sort()
+        elements = sorted(elements, key=lambda x:x.lower())
 
         for element in elements:
             if (element.endswith(".pyc") and (element[:-4]+".py") in elementsDic) or (element.endswith(".py") and (element[:-3]+".pyc") in elementsDic):
