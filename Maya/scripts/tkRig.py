@@ -6904,7 +6904,10 @@ def getWorldMat(inObj, inOffset=None):
     return worldRefMat
 
 def setAttr(inObj, inValue):
-    inObj.set(inValue)
+    try:
+        inObj.set(inValue)
+    except:
+        pass
 
 def match(inObj, inValue):
     #Put the "target" rotate pivot offset in world space
@@ -6987,10 +6990,15 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
     
     confirmMessages = []
 
+    matched = []
+
     #First calculate all attribute values that need to be set
     for matcher in inMatchData:
         for matchObj, matchSteps in matcher.items():
             matchObj = inNs + matchObj
+
+            if matchObj in matched:
+                continue
 
             #print "matchObj",matchObj
             for matchRule, matchRef in matchSteps.items():
@@ -7026,8 +7034,12 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
                                 matchRefItem, strOffset = matchRefItem.split("+")
                                 offset = eval(strOffset.replace(":", ","))
 
-                            matrices.append(getWorldMat(pc.PyNode(inNs + matchRefItem), offset))
-                        setAttrs.append((matchRule, matchObj, matrices))
+                            matchRefItemObj = tkc.getNode(inNs + matchRefItem)
+                            if not matchRefItemObj is None:
+                                matrices.append(getWorldMat(matchRefItemObj, offset))
+                        if len(matrices) == len(matchRef):
+                            setAttrs.append((matchRule, matchObj, matrices))
+                            matched.append(matchObj)
                     else:
                         offset = None
 
@@ -7035,12 +7047,16 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
                             matchRef, strOffset = matchRef.split("+")
                             offset = eval(strOffset.replace(":", ","))
 
-                        setAttrs.append((matchRule, matchObj, getWorldMat(pc.PyNode(inNs + matchRef), offset)))
+                        matchRefObj = tkc.getNode(inNs + matchRef)
+                        if not matchRefObj is None:
+                            setAttrs.append((matchRule, matchObj, getWorldMat(matchRefObj, offset)))
+                            matched.append(matchObj)
                 else:
                     #Simple "setAttr"
                     attrName = "{0}.{1}".format(matchObj, matchRule)
-                    if not pc.attributeQuery(matchRule, node=matchObj, exists=True):
-                        raise ValueError("Given attribute '{0}' does not exists !".format(attrName))
+                    if not pc.objExists(matchObj) or not pc.attributeQuery(matchRule, node=matchObj, exists=True):
+                        continue
+                        #raise ValueError("Given attribute '{0}' does not exists !".format(attrName))
                        
                     if isinstance(matchRef, basestring):
                         exprComponents = tkExpressions.Expr.getTerms(matchRef)
@@ -7054,9 +7070,13 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
                                     matchRef = matchRef.replace(exprComponent, str(pc.getAttr(inNs + exprComponent)))
 
                         #print " -MODIFIED matchRef",matchRef
-                        matchRef = eval(matchRef)
-
-                    setAttrs.append(("setAttr", attrName, matchRef))
+                        matchRef = None
+                        try:
+                            eval(matchRef)
+                        except:
+                            pass
+                    if not matchRef is None:
+                        setAttrs.append(("setAttr", attrName, matchRef))
 
         #print ""
 
