@@ -3,18 +3,41 @@ import tkRig
 
 def do(inNs):
     IK_To_FK = [
+        {"Right_Arm_FK_1_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
+        },
         {"Right_Arm_FK_1":
             {"matchR":"Right_Arm_Bone_0",
              "sx":"(TK_Right_Arm_Root_SetupParameters.Right_Arm_Bone0_length/TK_Right_Arm_Root_SetupParameters.Right_Arm_Bone0_Init)*TK_Right_Arm_Root_SetupParameters.Right_Arm_Scale",
              "t":[0,0,0]}
+        },
+
+        {"Right_Arm_FK_2_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Arm_FK_2":
             {"matchR":"Right_Arm_Bone_1",
              "sx":"(TK_Right_Arm_Root_SetupParameters.Right_Arm_Bone1_length/TK_Right_Arm_Root_SetupParameters.Right_Arm_Bone1_Init)*TK_Right_Arm_Root_SetupParameters.Right_Arm_Scale",
              "t":[0,0,0]}
         },
+
+        {"Right_Hand_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
+        },
         {"Right_Hand":
             {"match":"Right_Arm_FK_Eff_IKREF"}
+        },
+
+        {"Right_Arm_Middle_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Arm_Middle":
             {"match":"Right_Arm_Middle"}
@@ -22,6 +45,11 @@ def do(inNs):
     ]
 
     FK_To_IK = [
+        {"Right_Arm_IK_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
+        },
         {"Right_Arm_IK":
             {"match":"Right_Arm_IK_FKREF",
             "Bone0_Scale":"Right_Arm_FK_1.sx",
@@ -32,8 +60,18 @@ def do(inNs):
             "Stretch":1,
             "Squash":0}
         },
+
+        {"Right_Arm_upV":
+            {"matchPV":("Right_Arm_FK_1_Offset", "Right_Arm_FK_2_Offset", "TK_Right_Arm_FK_Bone_1_Eff")}
+        },
         {"Right_Arm_upV":
             {"matchPV":("Right_Arm_FK_1", "Right_Arm_FK_2", "TK_Right_Arm_FK_Bone_1_Eff")}
+        },
+
+        {"Right_Arm_Middle_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Arm_Middle":
             {"match":"Right_Arm_Middle"}

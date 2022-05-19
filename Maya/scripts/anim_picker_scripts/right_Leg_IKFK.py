@@ -3,21 +3,50 @@ import tkRig
 
 def do(inNs):
     IK_To_FK = [
+        {"Right_Leg_FK_1_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
+        },
         {"Right_Leg_FK_1":
             {"matchR":"Right_Leg_Bone_0",
              "sx":"(TK_Right_Leg_Root_SetupParameters.Right_Leg_Bone0_length/TK_Right_Leg_Root_SetupParameters.Right_Leg_Bone0_Init)*TK_Right_Leg_Root_SetupParameters.Right_Leg_Scale",
              "t":[0,0,0]}
+        },
+        
+        {"Right_Leg_FK_2_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Leg_FK_2":
             {"matchR":"Right_Leg_Bone_1",
              "sx":"(TK_Right_Leg_Root_SetupParameters.Right_Leg_Bone1_length/TK_Right_Leg_Root_SetupParameters.Right_Leg_Bone1_Init)*TK_Right_Leg_Root_SetupParameters.Right_Leg_Scale",
              "t":[0,0,0]}
         },
+        
+        {"Right_Foot_FK_1_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
+        },
         {"Right_Foot_FK_1":
             {"match":"Right_Leg_FK_Eff_IKREF"}
         },
+        
+        {"Right_Foot_FK_2_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
+        },
         {"Right_Foot_FK_2":
             {"match":"Right_IK_Tip"}
+        },
+        
+        {"Right_Leg_Middle_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Leg_Middle":
             {"match":"Right_Leg_Middle"}
@@ -29,6 +58,12 @@ def do(inNs):
             {"check":("abs(Right_Leg_FK_1.translateX) <= 0.002", "Right_Leg_FK_1 translateX is not 0"),
              "check":("abs(Right_Leg_FK_1.translateY) <= 0.002", "Right_Leg_FK_1 translateY is not 0"),
              "check":("abs(Right_Leg_FK_1.translateZ) <= 0.002", "Right_Leg_FK_1 translateZ is not 0"),}
+        },
+        
+        {"Right_Leg_IK_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Leg_IK":
             {"match":"Right_Leg_IK_FKREF",
@@ -50,11 +85,22 @@ def do(inNs):
         {"Right_Foot_Reverse":
             {"match":"Right_Foot_Reverse_0_FKREF"}
         },
+        
+        {"Right_IK_Tip":
+            {"match":"Right_Foot_FK_2_Offset"}
+        },
         {"Right_IK_Tip":
             {"match":"Right_Foot_FK_2"}
         },
+        
         {"Right_Leg_upV":
             {"matchPV":("Right_Leg_FK_1", "Right_Leg_FK_2", "TK_Right_Leg_FK_Bone_1_Eff")}
+        },
+        
+        {"Right_Leg_Middle_Offset":
+            {"t":[0,0,0],
+            "r":[0,0,0],
+            "s":[1,1,1]}
         },
         {"Right_Leg_Middle":
            {"match":"Right_Leg_Middle"}
