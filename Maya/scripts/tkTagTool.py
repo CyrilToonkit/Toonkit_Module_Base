@@ -20,7 +20,7 @@
 -------------------------------------------------------------------------------
 """
 from functools import partial
-
+import tkMayaCore as tkc
 import pymel.core as pc
 
 __author__ = "Cyril GIBAUD - Toonkit"
@@ -53,6 +53,79 @@ def getTags(inObjects=None, inTags=None):
                 tags[note].append(meshT.name())
         
     return tags
+
+def getOSCARTags():
+    tagsParams = pc.ls("*_Root_OSCAR_Attributes.GenerationTags")
+    allTags = {}
+    for tagParam in tagsParams:
+        tagValue = tagParam.get()
+        tagsValue = tagValue.split(",")
+        for tag in tagsValue:
+            if not tag in allTags.keys():
+                allTags[tag] = [tagParam.node().getParent().name()]
+            else:
+                allTags[tag].append(tagParam.node().getParent().name())
+
+    deletedJoints = {}
+    for tag, componds in allTags.items():
+        for compond in componds:
+            if not tag in deletedJoints.keys():
+                deletedJoints[tag] = [x for x in pc.listRelatives(compond, allDescendents=True, type="joint")]
+            else:
+                deletedJoints[tag] += [x for x in pc.listRelatives(compond, allDescendents =True, type="joint")]
+
+    for tag, deletedJoin in deletedJoints.items():
+        toDeleteSkins = []
+        for join in deletedJoin:
+            try:
+                toDeleteSkins += [x.name() for x in pc.listConnections(join.lockInfluenceWeights) if x not in toDeleteSkins]
+            except:pass
+        allTags[tag] += toDeleteSkins
+
+    return allTags
+
+def getAllTags():
+    modTags = getTags()
+    oscarTags = getOSCARTags()
+    allTags = {}
+
+    for key, value in modTags.items():
+        if not key in allTags.keys():
+            allTags[key] = value
+        else:
+            allTags[key] += value
+            
+    for key, value in oscarTags.items():
+        if not key in allTags.keys():
+            allTags[key] = value
+        else:
+            allTags[key] += value
+    
+    return allTags
+
+def allButCurrentTag(inTag, allTags, exclusif=False):
+    if inTag not in allTags.keys():
+        pc.error("The given tag does not exist !")
+    
+    toDelete = []
+    if not exclusif:    
+        for key, value in allTags.items():
+            if key != inTag:
+                for obj in value:
+                    if obj not in allTags[inTag]:
+                        toDelete.append(obj)
+    elif exclusif is True:
+        meshs = list(set([x.getParent() for x in pc.ls(type="mesh")]))
+        for mesh in meshs:
+            if mesh not in allTags[inTag]:
+                toDelete.append(mesh.name())
+        for key, value in allTags.items():
+            if key != inTag:
+                for obj in value:
+                    if obj not in allTags[inTag]:
+                        toDelete.append(obj)
+        toDelete = list(set(toDelete))
+    return toDelete
 
 def printTags(inObjects=None, inTags=None):
     if inObjects == None:
@@ -187,9 +260,11 @@ class showUI():
         if childeElements:
             pc.deleteUI(childeElements)
         for tag, objects in tags.items():
-            pc.rowLayout(numberOfColumns=2, parent=self.frame)
+            pc.rowLayout(numberOfColumns=5, parent=self.frame)
             pc.button( label='Select "{0}"'.format(tag), command=partial(self.selectClicked, objects))
             pc.button( label='Remove "{0}" tag on selection'.format(tag), command=partial(self.removeTagClick, tag))
+            pc.button( label='Select all no ' + tag, command=partial(self.selectButCurrentTag, tag))
+            pc.button( label='Select all but ' + tag, command=partial(self.selectAllButCurrentTag, tag))
 
     def selectClicked(self, objects, *args):
         getModifier = pc.getModifiers()
@@ -226,3 +301,11 @@ class showUI():
     def removeTagClick(self, *args):
         removeTags(inTags=args[0])
         self.updateUI()
+
+    def selectButCurrentTag(self, tag, *args):
+        allTags = getTags()
+        pc.select(allButCurrentTag(tag, allTags))
+    
+    def selectAllButCurrentTag(self, tag, *args):
+        allTags = getTags()
+        pc.select(allButCurrentTag(tag, allTags, exclusif=True))
