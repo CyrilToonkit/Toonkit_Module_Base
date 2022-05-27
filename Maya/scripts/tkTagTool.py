@@ -66,22 +66,6 @@ def getOSCARTags():
             else:
                 allTags[tag].append(tagParam.node().getParent().name())
 
-    deletedJoints = {}
-    for tag, componds in allTags.items():
-        for compond in componds:
-            if not tag in deletedJoints.keys():
-                deletedJoints[tag] = [x for x in pc.listRelatives(compond, allDescendents=True, type="joint")]
-            else:
-                deletedJoints[tag] += [x for x in pc.listRelatives(compond, allDescendents =True, type="joint")]
-
-    for tag, deletedJoin in deletedJoints.items():
-        toDeleteSkins = []
-        for join in deletedJoin:
-            try:
-                toDeleteSkins += [x.name() for x in pc.listConnections(join.lockInfluenceWeights) if x not in toDeleteSkins]
-            except:pass
-        allTags[tag] += toDeleteSkins
-
     return allTags
 
 def getAllTags():
@@ -230,9 +214,11 @@ class showUI():
 
         pc.columnLayout()
 
-        row = pc.rowLayout(numberOfColumns=2)
+        row = pc.rowLayout(numberOfColumns=4)
         pc.button( label='Load...', command=self.loadClick)
         pc.button( label='Save...', command=self.saveClick)
+        self.modTagsCb = pc.checkBox(label = "Mod Tags", value = True, cc=self.updateUI)
+        self.oscarTagsCb = pc.checkBox(label = "Oscar Tags", value = False, cc=self.updateUI)
         pc.setParent(upLevel=True)
 
         pc.frameLayout(label="Add tags", collapsable=True)
@@ -254,24 +240,31 @@ class showUI():
         self.updateUI()
         pc.showWindow()
 
-    def updateUI(self):
-        tags = getTags()
+    def updateUI(self, *args):
+        self.tags = None
+        if pc.checkBox(self.modTagsCb, value=True, q=True) and pc.checkBox(self.oscarTagsCb, value=True, q=True):
+            self.tags = getAllTags()
+        elif pc.checkBox(self.modTagsCb, value=True, q=True) and not pc.checkBox(self.oscarTagsCb, value=True, q=True):
+            self.tags = getTags()
+        elif not pc.checkBox(self.modTagsCb, value=True, q=True) and pc.checkBox(self.oscarTagsCb, value=True, q=True):
+            self.tags = getOSCARTags()
+
         childeElements = pc.frameLayout(self.frame, q=True, childArray=True)
         if childeElements:
             pc.deleteUI(childeElements)
-        for tag, objects in tags.items():
+        for tag, objects in self.tags.items():
             pc.rowLayout(numberOfColumns=5, parent=self.frame)
-            pc.button( label='Select "{0}"'.format(tag), command=partial(self.selectClicked, objects))
+            pc.button( label='Select "{0}"'.format(tag), command=partial(self.selectClicked, tag))
             pc.button( label='Remove "{0}" tag on selection'.format(tag), command=partial(self.removeTagClick, tag))
             pc.button( label='Select all no ' + tag, command=partial(self.selectButCurrentTag, tag))
             pc.button( label='Select all but ' + tag, command=partial(self.selectAllButCurrentTag, tag))
 
-    def selectClicked(self, objects, *args):
+    def selectClicked(self, tag, *args):
         getModifier = pc.getModifiers()
         multiSelect = False
         if getModifier == 1:
             multiSelect = True
-        pc.select(objects, add = multiSelect)
+        pc.select(self.tags[tag], add = multiSelect)
         
     def loadClick(self, *args):
         choosenFile = pc.fileDialog2(caption="Select your tags file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
@@ -303,9 +296,7 @@ class showUI():
         self.updateUI()
 
     def selectButCurrentTag(self, tag, *args):
-        allTags = getTags()
-        pc.select(allButCurrentTag(tag, allTags))
+        pc.select(allButCurrentTag(tag, self.tags))
     
     def selectAllButCurrentTag(self, tag, *args):
-        allTags = getTags()
-        pc.select(allButCurrentTag(tag, allTags, exclusif=True))
+        pc.select(allButCurrentTag(tag, self.tags, exclusif=True))
