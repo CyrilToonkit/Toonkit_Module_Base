@@ -6042,20 +6042,35 @@ channelsIndices =   {
 
 mirrorBaseRule = ("tx", "ry", "rz")
 alternativeRule = ("tz", "rx", "ry")
+XZBaseRule = ("tx", "tz", "rx", "rz")
 
 overrideMirrorTrue =    (
-                            "Foot_Reverse_0",
-                            "Foot_Reverse_1",
-                            "Foot_Reverse_2",
-                            "Fore_FOOT_Reverse_0_Bone_Ctrl",
-                            "Fore_FOOT_Reverse_1_Bone_Ctrl",
-                            "Fore_FOOT_Reverse_2_Bone_Ctrl",
-                            "Rear_FOOT_Reverse_0_Bone_Ctrl",
-                            "Rear_FOOT_Reverse_1_Bone_Ctrl",
-                            "Rear_FOOT_Reverse_2_Bone_Ctrl",
-                            "Fore_FOOT_FK_0_Bone_Ctrl",
-                            "Rear_FOOT_FK_0_Bone_Ctrl"
+                            "Leg_IK",
+                            "Arm_IK",
+
+                            "Eye_Global",
+                            "Eye",
+                            "Eye_Extra",
+
+                            "Bk_Up_Teeth",
+                            "Bk_Dn_Teeth",
+
+                            "Mouth_Bullet",
+                            "Eyebrow_Area_Bullet",
+                            "Ear_Bullet",
                         )
+
+mirrorRules =   {
+                    "Eye_Global"            :alternativeRule,
+                    "Eye"                   :alternativeRule,
+                    "Eye_Extra"             :alternativeRule,
+
+                    "Mouth_Bullet"          :XZBaseRule,
+                    "Eyebrow_Area_Bullet"   :XZBaseRule,
+                    "Ear_Bullet"            :XZBaseRule,
+                }
+
+"""
 mirrorRules =   {
                     "UpperLip_Point1_Ctrl_Control":alternativeRule,
                     "UpperLip_Point2_Ctrl_Control":alternativeRule,
@@ -6216,6 +6231,8 @@ if pc.versions.current() > 201600:
     mirrorRules["Ring_Mtc"] = ()
     mirrorRules["Pinky_Mtc"] = ()
 
+"""
+
 translatedRules = None
 
 def getRule(inName, i_inTrans, i_inChannel):
@@ -6257,7 +6274,7 @@ def getMirrorAttr(inObjName):
 
     return mirror
 
-def mirrorPose(inModel, symmetry=False, inAttrs=True):
+def mirrorPose(inModel, symmetry=False, inAttrs=True, inMirrorByDefault=True):
     pc.undoInfo(openChunk=True)
     keySet = "All"
     sel = pc.ls(sl=True)
@@ -6269,85 +6286,88 @@ def mirrorPose(inModel, symmetry=False, inAttrs=True):
         ctrls = tkc.orderControls(sel)
 
     oppositeObjs=[]
-    if len(ctrls)>0:
-        leftregexes = []
-        rightregexes = []
-
-        #pre-compile regexes
-        for prefixIndex in range(len(CONST_LEFTPREFIXES)):
-            leftPrefix = CONST_LEFTPREFIXES[prefixIndex]
-            rightPrefix = CONST_RIGHTPREFIXES[prefixIndex]
-
-            leftregexes.append([re.compile(leftPrefix), rightPrefix.replace("^", "")])
-            rightregexes.append([re.compile(rightPrefix), leftPrefix.replace("^", "")])
-
-        controlsDic = {}
-
-        for control in ctrls:
-            oppositeName = control.name()
-            regexes = []
-            for regexRule in leftregexes:
-                if regexRule[0].search(oppositeName):
-                    regexes = leftregexes
-                    break
-            if len(regexes) == 0:
-                for regexRule in rightregexes:
-                    if regexRule[0].search(oppositeName):
-                        regexes = rightregexes
-                        break
-
-            for regexRule in regexes:
-                oppositeName = regexRule[0].sub(regexRule[1], oppositeName)
-
-            t = control.getTranslation(space="object")
-            r = ozms.getPymelRotation(control, space="object")
-            s = control.getScale()
-
-            transform = [t,r,s]
-
-            if oppositeName != control.name():
-                if pc.objExists(oppositeName):
-                    oppositeObjs.append(pc.PyNode(oppositeName))
-
-                    rightName = oppositeName if "Right_" in oppositeName else control.name()
-                    if pc.objExists(rightName + "_OSCAR_Attributes.Mirror"):
-                        lazyName = oppositeName.split(':')[-1].replace("Left_", "").replace("Right_", "")
-                        if not getMirrorAttr(rightName) or lazyName in overrideMirrorTrue:
-                            for transIndex in range(3):
-                                trans = transform[transIndex]
-                                for channelIndex in range(3):
-                                    if getRule(lazyName, transIndex, channelIndex):
-                                        transform[transIndex][channelIndex] = -transform[transIndex][channelIndex]
-                    if symmetry:
-                        t[2] = -t[2]
-                        r[2] = -r[2]
-
-                    controlsDic[oppositeName] = {"Name":oppositeName,"Pos":t,"Rot":r,"Scl":s, "Attrs":{}}
-                    if inAttrs:
-                        attrs = tkc.getParameters(control, keyableOnly=True)
-                        for attr in attrs:
-                            controlsDic[oppositeName]["Attrs"][attr] = pc.getAttr(control.name()+"."+attr)
-            elif not symmetry and pc.objExists(oppositeName + "_OSCAR_Attributes.inversed_Axes"):
-                oppositeObjs.append(control)
-                trans = [t, r, s]
-                inversedAxis = pc.getAttr(oppositeName + "_OSCAR_Attributes.inversed_Axes").split(",")
-
-                for axis in inversedAxis:
-                    indices = findIndices(axis)
-                    trans[indices[0]][indices[1]] = -trans[indices[0]][indices[1]]
-
-                controlsDic[control.name()] = {"Name":oppositeName,"Pos":trans[0],"Rot":trans[1],"Scl":trans[2], "Attrs":{}}
-
-        for control in oppositeObjs:
-            data = controlsDic[control.name()]
-            tkc.setTRS(control, data["Pos"], data["Rot"], data["Scl"])
-            for attrName, value in data["Attrs"].items():
-                if pc.attributeQuery(attrName,node=control ,exists=True ):
-                    pc.setAttr(control.name()+"."+attrName, value)
-                else:
-                    pc.warning("Attribute {0} cannot be found".format(control.name()+"."+attrName))
-    else:
+    if len(ctrls) == 0:
         pc.error("No controls selected or key set don't exists ("+ keySet  +") !")
+
+    leftregexes = []
+    rightregexes = []
+
+    #pre-compile regexes
+    for prefixIndex in range(len(CONST_LEFTPREFIXES)):
+        leftPrefix = CONST_LEFTPREFIXES[prefixIndex]
+        rightPrefix = CONST_RIGHTPREFIXES[prefixIndex]
+
+        leftregexes.append([re.compile(leftPrefix), rightPrefix.replace("^", "")])
+        rightregexes.append([re.compile(rightPrefix), leftPrefix.replace("^", "")])
+
+    controlsDic = {}
+
+    for control in ctrls:
+        oppositeName = control.name()
+        regexes = []
+        for regexRule in leftregexes:
+            if regexRule[0].search(oppositeName):
+                regexes = leftregexes
+                break
+        if len(regexes) == 0:
+            for regexRule in rightregexes:
+                if regexRule[0].search(oppositeName):
+                    regexes = rightregexes
+                    break
+
+        for regexRule in regexes:
+            oppositeName = regexRule[0].sub(regexRule[1], oppositeName)
+
+        t = control.getTranslation(space="object")
+        r = ozms.getPymelRotation(control, space="object")
+        s = control.getScale()
+
+        transform = [t,r,s]
+
+        if oppositeName != control.name():
+            if pc.objExists(oppositeName):
+                oppositeObjs.append(pc.PyNode(oppositeName))
+
+                rightName = oppositeName if "Right_" in oppositeName else control.name()
+                if pc.objExists(rightName + "_OSCAR_Attributes.Mirror"):
+                    lazyName = oppositeName.split(':')[-1].replace("Left_", "").replace("Right_", "")
+
+                    needsMirroring = False
+
+                    if not (inMirrorByDefault or getMirrorAttr(rightName)) or lazyName in overrideMirrorTrue:
+                        for transIndex in range(3):
+                            trans = transform[transIndex]
+                            for channelIndex in range(3):
+                                if getRule(lazyName, transIndex, channelIndex):
+                                    transform[transIndex][channelIndex] = -transform[transIndex][channelIndex]
+                if symmetry:
+                    t[2] = -t[2]
+                    r[2] = -r[2]
+
+                controlsDic[oppositeName] = {"Name":oppositeName,"Pos":t,"Rot":r,"Scl":s, "Attrs":{}}
+                if inAttrs:
+                    attrs = tkc.getParameters(control, keyableOnly=True)
+                    for attr in attrs:
+                        controlsDic[oppositeName]["Attrs"][attr] = pc.getAttr(control.name()+"."+attr)
+        elif not symmetry and pc.objExists(oppositeName + "_OSCAR_Attributes.inversed_Axes"):
+            oppositeObjs.append(control)
+            trans = [t, r, s]
+            inversedAxis = pc.getAttr(oppositeName + "_OSCAR_Attributes.inversed_Axes").split(",")
+
+            for axis in inversedAxis:
+                indices = findIndices(axis)
+                trans[indices[0]][indices[1]] = -trans[indices[0]][indices[1]]
+
+            controlsDic[control.name()] = {"Name":oppositeName,"Pos":trans[0],"Rot":trans[1],"Scl":trans[2], "Attrs":{}}
+
+    for control in oppositeObjs:
+        data = controlsDic[control.name()]
+        tkc.setTRS(control, data["Pos"], data["Rot"], data["Scl"])
+        for attrName, value in data["Attrs"].items():
+            if pc.attributeQuery(attrName,node=control ,exists=True ):
+                pc.setAttr(control.name()+"."+attrName, value)
+            else:
+                pc.warning("Attribute {0} cannot be found".format(control.name()+"."+attrName))
 
     pc.undoInfo(closeChunk=True)
 
