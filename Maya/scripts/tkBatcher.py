@@ -111,7 +111,7 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
         code += "    print (','.join([str(s) for s in arguments]))\r\n"
         code += "    fo = open('"+logFilePath.replace("\\", "\\\\")+"', 'a')\r\n"
         code += "    for argument in arguments:\r\n"
-        code += "        fo.write(argument + '\\r\\n')\r\n"
+        code += "        fo.write(str(argument) + '\\r\\n')\r\n"
         code += "    fo.close()\r\n"
 
 
