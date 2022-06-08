@@ -111,6 +111,26 @@ def allButCurrentTag(inTag, allTags, exclusif=False):
         toDelete = list(set(toDelete))
     return toDelete
 
+def addTagedSkin(allTags):
+    oscarTags = getOSCARTags()
+    deletedJoints = {}
+    for tag, componds in oscarTags.items():
+        for compond in componds:
+            if not tag in deletedJoints.keys():
+                deletedJoints[tag] = [x for x in pc.listRelatives(compond, allDescendents=True, type="joint")]
+            else:
+                deletedJoints[tag] += [x for x in pc.listRelatives(compond, allDescendents =True, type="joint")]
+
+    for tag, deletedJoin in deletedJoints.items():
+        toDeleteSkins = []
+        for join in deletedJoin:
+            try:
+                toDeleteSkins += [x.name() for x in pc.listConnections(join.lockInfluenceWeights) if x not in toDeleteSkins]
+            except:pass
+        allTags[tag] += toDeleteSkins
+    
+    return allTags
+
 def printTags(inObjects=None, inTags=None):
     if inObjects == None:
         inObjects = getObjectsWithNotes()
