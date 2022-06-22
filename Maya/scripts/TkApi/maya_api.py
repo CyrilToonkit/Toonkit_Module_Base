@@ -53,7 +53,13 @@ def get_weights_data(inTransformNode = None, inSkinCluster=None, inInfluence = N
             if cmds.objectType(inTransformNode) != "transform":
                 inTransformNode = None
             else:
-                inSkinCluster = [x for x in cmds.listHistory(inTransformNode) if cmds.objectType(x) == "skinCluster"][0]
+                for shape in cmds.listRelatives(inTransformNode, shapes=True):
+                    if cmds.getAttr(shape + ".intermediateObject"):
+                        continue
+                    skins = [x for x in cmds.listHistory(shape) if cmds.objectType(x) == "skinCluster"]
+                    if len(skins) > 0:
+                        inSkinCluster = skins[0]
+                        break
         else:
             inTransformNode = None
     if inSkinCluster is None:
@@ -66,7 +72,13 @@ def get_weights_data(inTransformNode = None, inSkinCluster=None, inInfluence = N
                 else:
                     inTransformNode = cmds.skinCluster(inSkinCluster, q=1, g=1)[0]
         else:
-            inSkinCluster = [x for x in cmds.listHistory(inTransformNode) if cmds.objectType(x) == "skinCluster"][0]
+            for shape in cmds.listRelatives(inTransformNode, shapes=True):
+                if cmds.getAttr(shape + ".intermediateObject"):
+                    continue
+                skins = [x for x in cmds.listHistory(shape) if cmds.objectType(x) == "skinCluster"]
+                if len(skins) > 0:
+                    inSkinCluster = skins[0]
+                    break
     elif inTransformNode is None and inSkinCluster is not None:
         inTransformNode = cmds.skinCluster(inSkinCluster, q=1, g=1)[0]
     if inTransformNode is None and inSkinCluster is None:
