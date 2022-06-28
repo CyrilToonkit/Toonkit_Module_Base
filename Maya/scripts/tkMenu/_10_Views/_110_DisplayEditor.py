@@ -1,0 +1,2 @@
+import tkDisplayEditor
+tkDisplayEditor.showUI()

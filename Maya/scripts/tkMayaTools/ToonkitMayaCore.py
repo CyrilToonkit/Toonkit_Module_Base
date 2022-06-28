@@ -122,6 +122,11 @@ HOTKEYS =   {
                     {"key":"f" , "ctrl":True , "alt":False, "mel":False,
                         "desc":"Show toonkit menu search tool",
                         "code":"tkc.showSearch()"
+                    },
+                "showDisplayEditor":
+                    {"key": "V", "ctrl":True, "alt":False,"mel":False,
+                        "desc":"Show Display Editor",
+                        "code": "import tkDisplayEditor;tkDisplayEditor.toggleUI()"
                     }
             }
 
@@ -214,6 +219,10 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("searchInTkMenuKey", "f", None, "Key", False, "HotKeys.searchInTkMenu")
         self.options.addOption("searchInTkMenuCtrl", True, None, "Ctrl", False, "HotKeys.searchInTkMenu")
         self.options.addOption("searchInTkMenuAlt", False, None, "Alt", False, "HotKeys.searchInTkMenu")
+
+        self.options.addOption("showDisplayEditorKey", "V", None, "Key", False, "HotKeys.showDisplayEditor")
+        self.options.addOption("showDisplayEditorCtrl", True, None, "Ctrl", False, "HotKeys.showDisplayEditor")
+        self.options.addOption("showDisplayEditorAlt", False, None, "Alt", False, "HotKeys.showDisplayEditor")
 
         if not self.options.isSaved():
             self.saveOptions()
