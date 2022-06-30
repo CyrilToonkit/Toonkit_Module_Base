@@ -127,6 +127,11 @@ HOTKEYS =   {
                     {"key": "V", "ctrl":True, "alt":False,"mel":False,
                         "desc":"Show Display Editor",
                         "code": "import tkDisplayEditor;tkDisplayEditor.toggleUI()"
+                    },
+                "showOscarParamEditor":
+                    {"key": "B", "ctrl":True, "alt":False,"mel":False,
+                        "desc":"Show Oscar Param Editor",
+                        "code": "import tkOscarParamEditor;tkOscarParamEditor.toggleUI()"
                     }
             }
 
@@ -223,6 +228,10 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("showDisplayEditorKey", "V", None, "Key", False, "HotKeys.showDisplayEditor")
         self.options.addOption("showDisplayEditorCtrl", True, None, "Ctrl", False, "HotKeys.showDisplayEditor")
         self.options.addOption("showDisplayEditorAlt", False, None, "Alt", False, "HotKeys.showDisplayEditor")
+
+        self.options.addOption("showOscarParamEditorKey", "B", None, "Key", False, "HotKeys.showOscarParamEditor")
+        self.options.addOption("showOscarParamEditorCtrl", True, None, "Key", False, "HotKeys.showOscarParamEditor")
+        self.options.addOption("showOscarParamEditorAlt", False, None, "Key", False, "HotKeys.showOscarParamEditor")
 
         if not self.options.isSaved():
             self.saveOptions()
@@ -339,7 +348,6 @@ class ToonkitMayaCore(Tool):
                 hotkeyName = categ.split(".")[-1]
                 if hotkeyName in HOTKEYS:
                     hotKey=HOTKEYS[hotkeyName]
-
                     setHotKey(COMMAND_FORMAT.format(hotkeyName),
                         self.options[hotkeyName+"Key"],
                         self.options[hotkeyName+"Ctrl"],
