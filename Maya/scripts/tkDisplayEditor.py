@@ -123,13 +123,19 @@ class Display_Editor(QtWidgets.QVBoxLayout):
         pc.undoInfo(closeChunk=True)
 
     def cleenEventId(self, *args):
-        pc.evalDeferred(partial(om.MMessage.removeCallback, self.mayaEventId))
-        print("Script Job Killed")
+        pc.evalDeferred(self.removeScriptJobs)
 
     def closeEvent(self, event):
         self.close.emit()
 
+    def removeScriptJobs(self):
+        try:
+            om.MMessage.removeCallback(self.mayaEventId)
+            print("tkDisplayEditor killed.")
+        except:pass
 
+
+    
 def UIVisChanged(displayWindow, *args):
     #Defer the execution in case hiding is temporary (docking/undocking)
     pc.evalDeferred(partial(cleenIfIsHidden, displayWindow))
@@ -140,9 +146,8 @@ def cleenIfIsHidden(displayWindow):
 
 def cleenScriptJob(displayWindow, *args):
     pc.evalDeferred(displayWindow.cleenEventId)
-    pc.deleteUI("DisplayEditorWindow")
-    pc.deleteUI("DisplayEditorLayout")
-    pc.deleteUI("DisplayEditorDoc")
+    if pc.control("DisplayEditorDoc", q=True, exists=True):
+        pc.deleteUI("DisplayEditorDoc")
     
 
 def showUI():

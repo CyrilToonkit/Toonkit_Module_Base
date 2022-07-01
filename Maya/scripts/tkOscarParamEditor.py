@@ -107,8 +107,13 @@ class OscarParamEditor(QtWidgets.QVBoxLayout):
                     self.cleenLayout(layout = item)
 
     def cleenEventId(self, *args):
-        pc.evalDeferred(partial(om.MMessage.removeCallback, self.mayaEventId))
-        print("Script Job Killed")
+        pc.evalDeferred(self.removeScriptJobs)
+
+    def removeScriptJobs(self):
+        try:
+            om.MMessage.removeCallback(self.mayaEventId)
+            print("tkOscarParamEditor killed.")
+        except:pass
 
 
 def UIVisChanged(displayWindow, *args):
