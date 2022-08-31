@@ -174,6 +174,39 @@ def editTargets(inBlendShape):
 
     return targets
 
+def rebuildAllTargets(inObject, inProgress=True):
+    inObject = tkc.getNode(inObject)
+
+    bss = []
+    targets = []
+
+    if inObject.type() == "blendShape":
+        bss = [inObject]
+    else:
+        bss = pc.listHistory(inObject, type="blendShape")
+
+    for bs in bss:
+        targetCount = pc.blendShape(bs, wc=True, q=True)
+
+        gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+        if inProgress:
+            pc.progressBar( gMainProgressBar,
+                edit=True,
+                beginProgress=True,
+                isInterruptable=True,
+                status="Rebuilding shape targets",
+                maxValue=targetCount )
+
+        for i in range(targetCount):
+            targets.extend(pc.sculptTarget(bs, e=True, regenerate=True, target=i))
+            if inProgress:
+                pc.progressBar(gMainProgressBar, edit=True, step=1)
+            
+        if inProgress:
+            pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+    return targets
+
 def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=True, inMaterials=False):
     #Make sure every deformer is at 0 before duplication
     envelopes = {}
