@@ -7126,6 +7126,22 @@ def setAttr(inObj, inValue):
     except:
         pass
 
+def setAttrs(inAttrValues, inReturnOld=False):
+    oldValues = {}
+    for attrNode, attrValue in inAttrValues.iteritems():
+
+        if not pc.objExists(attrNode):
+            continue
+
+        attrNode = pc.PyNode(attrNode)
+
+        if inReturnOld:
+            oldValues[attrNode] = attrNode.get()
+
+        attrNode.set(attrValue)
+
+    return oldValues
+
 def match(inObj, inValue):
     #Put the "target" rotate pivot offset in world space
     worldTargetMat = inObj.worldMatrix.get()
