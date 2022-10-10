@@ -4300,6 +4300,203 @@ def bsTargetNameFromPose(inPoseName):
 
     return inPoseName
 
+def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True):
+    attrs = {}
+    for channel in tkc.CHANNELS:
+        attr = inJoint.attr(channel)
+        attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+        attr.setLocked(False)
+
+    oldParent = inJoint.getParent()
+    cons = tkc.storeConstraints([inJoint], inRemove=True)
+    inputscons = tkc.getNodeConnections(inJoint, 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', inSource=True, inDestination=False, inDisconnect=True)
+    outputscons = tkc.getNodeConnections(inJoint, 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', inSource=False, inDestination=True, inDisconnect=True)
+    if len(cons) + len(inputscons) + len(outputscons) > 0:
+        connector = pc.group(name=inJoint.name() + '_Connect', empty=True)
+        oldParent.addChild(connector)
+        tkc.matchTRS(connector, inJoint)
+        if len(cons) > 0:
+            tkc.loadConstraints(cons, [connector])
+        if len(inputscons) > 0:
+            tkc.setNodeConnections(inputscons, inNode=connector)
+        if len(outputscons) > 0:
+            tkc.setNodeConnections(outputscons, inNode=connector, inDestination=True)
+        oldParent = connector
+    tkc.constrain(inJoint, oldParent)
+    pc.parent(inJoint, inParent)
+    try:
+        inJoint.s.set([1.0, 1.0, 1.0])
+    except:
+        pass
+
+    infFinalParent = inJoint.getParent()
+    if infFinalParent != inParent:
+        try:
+            infFinalParent.s.set([1.0, 1.0, 1.0])
+        except:pass 
+
+        pc.parent(inJoint, inParent)
+        try:
+            inJoint.s.set([1.0, 1.0, 1.0])
+        except:
+            pass
+
+        pc.delete(infFinalParent)
+    tkc.constrain(inJoint, oldParent, 'Scaling')
+    if inRadius is not None:
+        inJoint.radius.set(inRadius)
+    if inResetOrient:
+        inJoint.jointOrient.set([0.0, 0.0, 0.0])
+    inJoint.overrideColor.set(0)
+    inJoint.overrideEnabled.set(False)
+    if inRelock:
+        for channel, info in attrs.iteritems():
+            attr = inJoint.attr(channel)
+            attr.setLocked(info[0])
+
+    return
+
+def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False):
+    skinClusters = []
+    deformers = []
+    skeleton = []
+    fullSkeleton = []
+    skinedGeo = []
+    root = None
+    if inParentName is not None:
+        inParentName = inParentName.replace('$NS', inNs.rstrip(':'))
+        if pc.objExists(inNs + inParentName):
+            root = pc.PyNode(inNs + inParentName)
+    geos = getGeometries(inNs)
+    for geo in geos:
+        skin = tkc.getSkinCluster(geo)
+        if skin is not None:
+            skinedGeo.append(geo)
+            skinClusters.append(skin)
+            deformers.extend(skin.influenceObjects())
+
+    deformers = list(set(deformers))
+    for deformer in deformers:
+        skins = deformer.listHistory(future=True, levels=2, type='skinCluster')
+        for skin in skins:
+            geo = skin.getGeometry()[0].getParent()
+            if geo not in geos:
+                  skinedGeo.append(geo)
+                  geos.append(geo)
+
+    remainingdeformers = deformers[:]
+    deformersDict = {d.name():d for d in deformers}
+    nodeDeformersDict = {}
+    for d in deformers:
+        thisRoot = tkc.getParent(d, root=True)
+        if thisRoot.name() not in nodeDeformersDict:
+            nodeDeformersDict[thisRoot.name()] = [d]
+        else:
+            nodeDeformersDict[thisRoot.name()].append(d)
+
+    if inDebug:
+        print ('geos', len(geos), geos)
+        print ('deformers', len(deformers), deformers)
+        print ('inHierarchy', len(inHierarchy), inHierarchy)
+    skins = tkc.storeSkins(geos)
+    for geo in skinedGeo:
+        pc.skinCluster(geo, edit=True, unbind=True)
+
+    gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+    pc.progressBar(gMainProgressBar, edit=True, beginProgress=True, isInterruptable=False, status='Create shadow rig...', minValue=0, maxValue=len(deformers))
+    hierarchyDict = {h['name']:h for h in inHierarchy}
+    shadowrigDict = {}
+    for mapItem in inHierarchy:
+        jointItemName = (inNs or '') + (inPrefix or '') + mapItem['name'] + (inSuffix or '')
+        if inDebug:
+            print (jointItemName)
+        jointItem = deformersDict.get(jointItemName)
+        if jointItem is None:
+            if inDebug:
+                print (jointItemName + ' does not exists !')
+            continue
+        remainingdeformers.remove(jointItem)
+        shadowrigDict[jointItemName] = jointItem
+        if root is None:
+            root = jointItem.getParent()
+            if root is None:
+                root = jointItem
+        curParent = mapItem['parent']
+        while curParent is not None:
+            newParent = (inNs or '') + (inPrefix or '') + curParent + (inSuffix or '')
+            if newParent in deformersDict:
+                curParent = newParent
+                break
+            else:
+                curParent = hierarchyDict[curParent]['parent']
+
+        if inDebug:
+            print (' -parent :', curParent)
+        if not inDryRun:
+            if curParent is not None:
+                reparentJoint(jointItem, deformersDict[curParent])
+            else:
+                if not root.name() == inNs + inName:
+                    newGrp = pc.group(empty=True, name=inNs + inName)
+                    root.addChild(newGrp)
+                    root = newGrp
+                reparentJoint(jointItem, root)
+        pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+    print ("remainingdeformers",remainingdeformers)
+
+    remainingdeformers.sort(key=lambda n: n.name(), reverse=True)
+
+    print ("remainingdeformers sort",remainingdeformers)
+    
+    for remainingdeformer in remainingdeformers:
+        if inDebug:
+            print (' -remainingdeformer :', remainingdeformer)
+        target = remainingdeformer
+        root = tkc.getParent(target, root=True)
+        joints = nodeDeformersDict.get(root.name(), [])
+        foundDeformers = []
+        pad = '   '
+        if inDebug:
+            print (pad + '-target :', remainingdeformer)
+            print (pad + '-root :', root)
+            print (pad + '-joints :', joints)
+        while target is not None:
+            for joint in joints:
+                if joint in deformers:
+                    if joint == remainingdeformer:
+                        continue
+                    if joint.isChildOf(remainingdeformer):
+                        continue
+                    foundDeformers.append((joint, (joint.getTranslation(world=True) - remainingdeformer.getTranslation(world=True)).length()))
+            if len(foundDeformers) > 0:
+                break
+            cns = tkc.getConstraints(root)
+            if len(cns) == 0:
+                target = None
+                break
+            target = tkc.getConstraintTargets(cns[0])[0]
+            root = tkc.getParent(target, root=True)
+            joints = nodeDeformersDict.get(root.name(), [])
+            if inDebug:
+                pad += pad
+                print (pad + '-target :', target)
+                print (pad + '-root :', root)
+                print (pad + '-joints :', joints)
+
+        if len(foundDeformers) == 0:
+            pc.warning("Can't find parent for " + remainingdeformer.name())
+        else:
+            foundDeformers.sort(key=lambda couple: couple[1])
+
+            print (remainingdeformer, foundDeformers[0][0])
+            reparentJoint(remainingdeformer, foundDeformers[0][0])
+        pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+    tkc.loadSkins(skins, skinedGeo)
+    pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+    return
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                       ____                     
   / _ \ ___  ___ __ _ _ __  |  _ \ ___  ___  ___  ___ 
