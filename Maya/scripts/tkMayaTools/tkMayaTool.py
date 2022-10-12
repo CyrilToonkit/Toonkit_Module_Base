@@ -46,7 +46,6 @@ def addShelfButton(inLabel, inCode, inDCode=None, inImage=None, inShelf=None):
 
     pc.shelfButton(label=inLabel, imageOverlayLabel=inLabel, command=inCode, dcc=inDCode, image=inImage)
     pc.mel.eval("shelfTabRefresh")
-
 class MayaTool(Tool):
     def log(self, *args, **kwargs):
         if kwargs.get("inPrefix") == tkTool.WARNING_PREFIX :
@@ -104,6 +103,11 @@ class MayaTool(Tool):
     def floatValueChanged(self, inControlName, inOptionName, uiArg):
         self.options[inOptionName] = pc.floatSliderGrp(inControlName, query=True, value=True)
 
+    def optionMenuValueChanged(self, inControlName, inOptionName, uiArg):
+        menuItems =[pc.menuItem(x, q=True, label=True) for x in [x for x in pc.optionMenu(inControlName, q=True, itemListShort = True)]]
+        self.options[inOptionName] = [i for i, x in enumerate(menuItems) if x == pc.optionMenu(inControlName, q=True, value=True)][0]
+        print(self.options[inOptionName])
+
     def setOptionItem(self, inOption):
         if inOption.type == "bool":
             return pc.checkBox(inOption.name, edit=True, value=self.options[inOption.name])
@@ -113,6 +117,10 @@ class MayaTool(Tool):
             return pc.intSliderGrp(inOption.name, edit=True, value=self.options[inOption.name])
         elif inOption.type == "float":
             return pc.floatSliderGrp(inOption.name, edit=True, value=self.options[inOption.name])
+        elif inOption.type == "enum":
+            menuItems = [pc.menuItem(x, q=True, label=True) for x in [y for y in pc.optionMenu(inOption.name, q=True, itemListShort = True)]]
+            print(self.options[inOption.name])
+            return pc.optionMenu(inOption.name, edit=True, value = menuItems[self.options[inOption.name]])
         else:
             self.warning("Option {0} have unmanaged type {1}, no item set !".format(inOption.name, inOption.type))
 
@@ -125,6 +133,12 @@ class MayaTool(Tool):
             return pc.intSliderGrp(inOption.name, label=inOption.niceName, field=True, value=self.options[inOption.name], minValue=inOption.min, maxValue=inOption.max, fieldMinValue=-1000000, fieldMaxValue=1000000, columnAlign=[1, "left"], adjustableColumn=3, cc=partial(self.intValueChanged, inOption.name, inOption.name) )
         elif inOption.type == "float":
             return pc.floatSliderGrp(inOption.name, label=inOption.niceName, field=True, value=self.options[inOption.name], minValue=inOption.min, maxValue=inOption.max, fieldMinValue=-1000000.0, fieldMaxValue=1000000.0, pre = 3, columnAlign=[1, "left"], adjustableColumn=3, cc=partial(self.floatValueChanged, inOption.name, inOption.name) )
+        elif inOption.type == "enum":
+            optionMenu =  pc.optionMenu(inOption.name, label=inOption.niceName, cc=partial(self.optionMenuValueChanged, inOption.name, inOption.name))
+            for value in inOption.values:
+                pc.menuItem(parent=optionMenu, label=value)
+            pc.optionMenu(inOption.name, edit=True, value = inOption.values[inOption.defaultValue])
+            return optionMenu
         else:
             self.warning("Option {0} have unmanaged type {1}, no item created !".format(inOption.name, inOption.type))
 
@@ -134,8 +148,8 @@ class MayaTool(Tool):
             pc.deleteUI(uiName, control=True)
 
         uiName = pc.window(uiName, title=self.getFullName())
-
-        colLayout = pc.columnLayout(adjustableColumn=True)
+        scrollLayout = pc.scrollLayout(parent = uiName, childResizable=True)
+        colLayout = pc.columnLayout(parent = scrollLayout, adjustableColumn=True)
 
         if len(self.description) > 0:
             pc.text(label=self.description, align="left")
@@ -174,6 +188,7 @@ class MayaTool(Tool):
         pc.button(label='Default options', c=self.defaultOptionsUI)
         if inExecutable:
             pc.button(label='Add to shelf', c=self.addToShelf)
+        pc.scrollLayout(scrollLayout, e=True, width= pc.columnLayout(colLayout, q=True, width=True) + 16)
         return uiName
 
     def showPrefs(self, *args):
