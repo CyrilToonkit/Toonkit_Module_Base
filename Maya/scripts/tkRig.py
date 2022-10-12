@@ -4356,7 +4356,7 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
 
     return
 
-def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False):
+def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False, inForceInfluences=None):
     skinClusters = []
     deformers = []
     skeleton = []
@@ -4384,8 +4384,17 @@ def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = N
                   skinedGeo.append(geo)
                   geos.append(geo)
 
+    if not inForceInfluences is None:
+        if not isinstance(inForceInfluences, (list, tuple)):
+            inForceInfluences = [inForceInfluences]
+        for influenceName in inForceInfluences:
+            influence = tkc.getNode(inNs + influenceName)
+            if not influence is None:
+                deformers.append(influence)
+
     remainingdeformers = deformers[:]
     deformersDict = {d.name():d for d in deformers}
+
     nodeDeformersDict = {}
     for d in deformers:
         thisRoot = tkc.getParent(d, root=True)
