@@ -126,8 +126,15 @@ import six
 basestring = six.string_types
 if sys.version_info.major  > 2:
     xrange = range
-from statistics import mean
-
+try:
+    from statistics import mean
+except:
+    def meanFunction(inArray):
+        theSum = 0
+        for inItem in inArray:
+            theSum += inItem
+        return theSum / len(inArray)
+    mean = meanFunction
 import maya.cmds as cmds
 import pymel.core as pc
 import pymel.core.general as pm
