@@ -126,7 +126,15 @@ import six
 basestring = six.string_types
 if sys.version_info.major  > 2:
     xrange = range
-
+try:
+    from statistics import mean
+except:
+    def meanFunction(inArray):
+        theSum = 0
+        for inItem in inArray:
+            theSum += inItem
+        return theSum / len(inArray)
+    mean = meanFunction
 import maya.cmds as cmds
 import pymel.core as pc
 import pymel.core.general as pm
@@ -2800,9 +2808,10 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
         closestValues["normal"] = (closestNode.normalX.get(), closestNode.normalY.get(), closestNode.normalZ.get())
         closestValues["face"] = closestNode.closestFaceIndex.get()
         closestValues["vertex"] = closestNode.closestVertexIndex.get()
+    """
     else:
         #spans = inMesh.spansUV.get()
-
+        
         rangeU = inMesh.mmu.get()
         rangeU = rangeU[1] - rangeU[0]
 
@@ -2814,7 +2823,7 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
 
         if rangeV != 1.0:
             closestValues["v"] /= rangeV
-
+    """
     if not inKeepNode:
         pc.delete(closestNode)
 
@@ -5067,7 +5076,7 @@ def storeSkins(inObjects, inPath=None):
 def zeroOutDeformers(inSkin, inInfluences=[]):
     infs = inSkin[1]
     weights = inSkin[2]
-    nVerts = len(weights) / len(infs)
+    nVerts = int(len(weights) / len(infs))
 
     i = 0
     for inf in inInfluences:
@@ -5881,14 +5890,14 @@ def disconnect(inParam):
 
     return True
 
-def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=None):
+def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=None, inVerbose=False):
     inExcludeTypes = inExcludeTypes or []
 
     cons = []
     if inSource:
         #print "inSource",inAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
-        for connnn in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True):
-            print (connnn[1].node().type())
+        #for connnn in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True):
+        #    print (connnn[1].node().type())
         
         tempCons = [ c for c in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
         for i in range(len(tempCons)):
@@ -5914,6 +5923,10 @@ def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=
                 #print "childAttr",inAttr.listConnections(source=False, destination=True, plugs=True, connections=True)
                 cons.extend([ c for c in childAttr.listConnections(source=False, destination=True, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes])
 
+    if inVerbose:
+        for con in cons:
+            print(str(con), con[1].node().type())
+
     return cons
 
 def getNodeConnections(inNode, *args, **kwargs):
@@ -5924,6 +5937,7 @@ def getNodeConnections(inNode, *args, **kwargs):
         inDisconnect (default False)
         inExcludeTypes (default None)
         inCustomOnly (default False)
+        inVerbose (default False)
     """
     
     inSource = kwargs.get("inSource", True)
@@ -5931,7 +5945,8 @@ def getNodeConnections(inNode, *args, **kwargs):
     inDisconnect = kwargs.get("inDisconnect", False)
     inExcludeTypes = kwargs.get("inExcludeTypes")
     inCustomOnly = kwargs.get("inCustomOnly", False)
-    
+    inVerbose = kwargs.get("inVerbose", False)
+
     if len(args) == 0:#Auto-detect attrs
         connections = inNode.listConnections(source=inSource, destination=inDestination, plugs=True, connections=True, skipConversionNodes=False)
         args = []
@@ -5942,7 +5957,7 @@ def getNodeConnections(inNode, *args, **kwargs):
 
     cons = []
     for arg in args:
-        cons.extend(getAllConnections(inNode.attr(arg), inSource, inDestination, inExcludeTypes))
+        cons.extend(getAllConnections(inNode.attr(arg), inSource, inDestination, inExcludeTypes, inVerbose))
 
     if kwargs.get("inDisconnect", False):
         for con in cons:
@@ -5958,8 +5973,7 @@ def setNodeConnections(inCons, inNode=None, inDestination=False, inSetBefore=Fal
 
         if not inNode is None:
             if inDestination:
-                
-                print ("linkOutput",linkOutput, type(linkOutput))
+                #print ("linkOutput",linkOutput, type(linkOutput))
                 outputName = linkOutput.split(".")[-1]
                 
                 """
@@ -5972,7 +5986,7 @@ def setNodeConnections(inCons, inNode=None, inDestination=False, inSetBefore=Fal
                 except:
                     continue
             else:
-                print ("linkInput",linkInput, type(linkInput))
+                #print ("linkInput",linkInput, type(linkInput))
                 inputName = linkInput.split(".")[-1]
                 """
                 if not pc.attributeQuery(inputName, node=inNode, exists=True):
@@ -6017,6 +6031,185 @@ def matchConnections(inNode, inRefNode, *args, **kwargs):
 
         if not shape is None and not refShape is None:
             setNodeConnections(getNodeConnections(refShape, *args, **kwargs), shape)
+
+def serializeConnections(inCons):
+    return "|".join([a.stripNamespace() + ";" + b.stripNamespace() for a,b in inCons])
+
+def deserializeConnections(serializedCons):
+    newCons = []
+
+    serCons = serializedCons.split("|")
+
+    for serCon in serCons:
+        a,b = serCon.split(";")
+
+
+        nodeName, attrName = a.split(".", 1)
+        node = getNode(nodeName, inConsiderNs=True)
+        aAttr = "." + attrName
+
+        if not node is None and node.hasAttr(attrName):
+            aAttr = node.attr(attrName)
+
+        nodeName, attrName = b.split(".", 1)
+        node = getNode(nodeName, inConsiderNs=True)
+        bAttr = "." + attrName
+
+        if not node is None and node.hasAttr(attrName):
+            bAttr = node.attr(attrName)
+
+        newCons.append((aAttr, bAttr))
+
+    return newCons
+
+def storeConnections(inNode, *args, **kwargs):
+    """
+    kwargs includes :
+        inSource (default True)
+        inDestination (default True)
+        inDisconnect (default False)
+        inExcludeTypes (default None)
+        inCustomOnly (default False)
+        inVerbose (default False)
+
+        inPath (default None)
+    """
+    
+    inPath = kwargs.get("inPath")
+
+    cons = getNodeConnections(inNode, *args, **kwargs)
+
+    if len(cons) > 0 and inPath != None:
+        f = None
+        try:
+            f = open(inPath, 'w')
+            f.write(serializeConnections(cons))
+        except Exception as e:
+            pc.warning("Cannot save connections file to " + inPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    return cons
+
+def loadConnections(inCons, inObject):
+    if isinstance(inCons, basestring):
+        consPath = inCons
+
+        inCons = []
+        f = None
+        try:
+            f = open(consPath, 'r')
+            lines =  f.read()
+            inCons = deserializeConnections(lines)
+        except Exception as e:
+            pc.warning("Cannot load connections file from " + consPath + " : " + str(e))
+        finally:
+            if f != None:
+                f.close()
+
+    #Resolve destinations
+    cleanCons = []
+
+    for a,b in inCons:
+        if isinstance(a, basestring):
+            pc.warning("Can't find source '{0}'".format(a))
+            continue
+
+        attrName = b
+        if isinstance(b, basestring):
+            attrName = b[1:]
+        else:
+            attrName = b.longName()
+
+        if inObject.hasAttr(attrName):
+            cleanCons.append((a, inObject.attr(attrName)))
+        else:
+            pc.warning("Can't find attribute '{0}' on '{1}'".format(attrName, inObject))
+
+    setNodeConnections(cleanCons, inObject)
+
+#connectDisconnectedChildren(pc.PyNode("rl4Embedded_Alix.bsOutputs"), inNode=None)
+def connectEmptyChildren(inAttr, inNode=None):
+    inNode = inNode or inAttr.node()
+    
+    arrayIndices = inAttr.getArrayIndices()
+    
+    lastIndex = arrayIndices[-1]
+    
+    for i in range(lastIndex+1):
+        if not i in arrayIndices or len(inAttr[i].listConnections(source=False, destination=True)) == 0:
+            inNode.addAttr("mock" + str(i))
+            inAttr[i] >> inNode.attr("mock" + str(i))
+
+#Valid for metahuman topology
+MH_MEASURES = [
+    (1537, 4608),
+    (16972, 16851),
+    (6004, 2925),
+    ]
+
+def getDistances(inMesh, inPoints):
+    dist = []
+    
+    for startPoint, endPoint in inPoints:
+        dist.append((pc.pointPosition("{0}.vtx[{1}]".format(inMesh, endPoint)) - pc.pointPosition("{0}.vtx[{1}]".format(inMesh, startPoint))).length())
+    
+    return dist
+    
+def getOffsets(inMesh1, inMesh2, inMesh1Points, inMesh2Points=None):
+    inMesh2Points = inMesh2Points or inMesh1Points[:]
+
+    dists1 = getDistances(inMesh1, inMesh1Points)
+    dists2 = getDistances(inMesh2, inMesh2Points)
+    
+    offsets = []
+    
+    for i, d in enumerate(dists1):
+        offsets.append(dists2[i]/d)
+
+    return offsets
+
+def matchMeshes(inMesh1, inMesh2, inMesh1Points, inMesh2Points=None, inReturnOnly=False):
+    inMesh2Points = inMesh2Points or inMesh1Points[:]
+
+    offsets = getOffsets(inMesh1, inMesh2, inMesh1Points, inMesh2Points)
+    offset = mean(offsets)
+
+    origScale = inMesh1.scale.get()
+
+    newScale = [
+        (origScale[0] * offset) / inMesh2.scaleX.get(),
+        (origScale[1] * offset) / inMesh2.scaleY.get(),
+        (origScale[2] * offset) / inMesh2.scaleZ.get(),
+    ]
+
+    lockedChannels = []
+    channels = ["tx","ty","tz","rx","ry","rz","sx","sy","sz"]
+    for channel in channels:
+        if inMesh1.attr(channel).isLocked():
+            inMesh1.attr(channel).unlock()
+            lockedChannels.append(channel)
+
+    inMesh1.scale.set(newScale)
+
+    tOffset = pc.pointPosition("{0}.vtx[{1}]".format(inMesh2, inMesh2Points[1][1]), world=True) - pc.pointPosition("{0}.vtx[{1}]".format(inMesh1, inMesh1Points[1][1]), world=True)
+
+    newTranslation = [
+        inMesh1.translateX.get() + tOffset[0],
+        inMesh1.translateY.get() + tOffset[1],
+        inMesh1.translateZ.get() + tOffset[2],
+    ]
+
+    if inReturnOnly:
+        inMesh1.scale.set(origScale)
+    else:
+        inMesh1.translate.set(newTranslation)
+
+    for channel in lockedChannels:
+        inMesh1.attr(channel).lock()
+
+    return (newTranslation, [0.0, 0.0, 0.0], newScale)
 
 def getParameters(inobject=None, customOnly=True, containerName="", keyableOnly=False):
     if containerName != "":
