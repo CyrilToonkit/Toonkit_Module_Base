@@ -33,11 +33,12 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.73.7"
+VERSIONINFO = "1.5.68.1"
 
 MENU_NAME = "tkMainMenu"
 
 COMMAND_FORMAT = "tk{0}_C"
+TK_PROJECT_NAME = "TK_PROJECT_NAME"
 
 HOTKEYS =   {
                 #SI Style
@@ -233,9 +234,11 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("showOscarParamEditorCtrl", True, None, "Key", False, "HotKeys.showOscarParamEditor")
         self.options.addOption("showOscarParamEditorAlt", False, None, "Key", False, "HotKeys.showOscarParamEditor")
 
+        
         if not self.options.isSaved():
             self.saveOptions()
 
+        projectVEnv(self)
         self.options.addCallback(self.optionChanged)
 
     def getOptionsPath(self):
@@ -370,3 +373,9 @@ def setHotKey(inName, inShortCut, inCtrlMod=False, inAltMod=False, code="print '
     pc.nameCommand(inName, ann=desc, c=code if mel else "python(\""+ code +"\");", default=False)
     #assign it a hotkey
     pc.hotkey( keyShortcut=inShortCut, ctrlModifier=inCtrlMod, altModifier=inAltMod, name=inName)
+
+def projectVEnv(inTool):
+    project = os.environ.get(TK_PROJECT_NAME)
+    if project is None:
+        project = inTool.options["project"]
+    inTool.options["project"] = project
