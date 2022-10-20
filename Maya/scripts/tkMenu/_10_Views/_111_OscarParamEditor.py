@@ -1,2 +1,0 @@
-import tkOscarParamEditor
-tkOscarParamEditor.showUI()
