@@ -377,5 +377,11 @@ def setHotKey(inName, inShortCut, inCtrlMod=False, inAltMod=False, code="print '
 def projectVEnv(inTool):
     project = os.environ.get(TK_PROJECT_NAME)
     if project is None:
-        project = inTool.options["project"]
-    inTool.options["project"] = project
+        return
+
+    pickerPath = os.path.join(locationModule.get(), "anim_picker", "Picker_Files", project)
+
+    if os.path.isdir(pickerPath):
+        inTool.options["project"] = project
+    else:
+        pc.warning("Can't find a project named '{}', loading '{0}' instead".format(project, inTool.options["project"]))
