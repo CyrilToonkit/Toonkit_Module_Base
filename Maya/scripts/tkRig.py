@@ -4391,9 +4391,10 @@ def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = N
             influence = tkc.getNode(inNs + influenceName)
             if not influence is None:
                 deformers.append(influence)
-
+                
     remainingdeformers = deformers[:]
     deformersDict = {d.name():d for d in deformers}
+
 
     nodeDeformersDict = {}
     for d in deformers:
@@ -4430,7 +4431,14 @@ def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = N
             root = jointItem.getParent()
             if root is None:
                 root = jointItem
+
         curParent = mapItem['parent']
+        if isinstance(mapItem['parent'], (list, tuple)):
+            for parentName in mapItem['parent']:
+                parent = tkc.getNode((inNs or '') + (inPrefix or '') + parentName + (inSuffix or ''))
+                if not parent is None:
+                    curParent = parentName
+
         while curParent is not None:
             newParent = (inNs or '') + (inPrefix or '') + curParent + (inSuffix or '')
             if newParent in deformersDict:
