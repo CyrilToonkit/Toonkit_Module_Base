@@ -55,6 +55,7 @@ import PAlt as palt
 import tkNodeling as tkn
 import tkExpressions
 import Toonkit_Core.tkProjects.tkContext as context
+import tkJointOrient as tkj
 
 import logging
 logging.basicConfig()
@@ -4300,7 +4301,7 @@ def bsTargetNameFromPose(inPoseName):
 
     return inPoseName
 
-def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True):
+def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True, inOrientPreset=None, inRotateOrder=None):
     attrs = {}
     for channel in tkc.CHANNELS:
         attr = inJoint.attr(channel)
@@ -4322,6 +4323,15 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
         if len(outputscons) > 0:
             tkc.setNodeConnections(outputscons, inNode=connector, inDestination=True)
         oldParent = connector
+
+    if not inOrientPreset is None:
+        print (inJoint.name() + " orientJoint " + str(inOrientPreset))
+        tkj.orientJoint(inJoint, **inOrientPreset)
+
+    if not inRotateOrder is None:
+        print (inJoint.name() + " rotateOrder " + str(inRotateOrder))
+        inJoint.rotateOrder.set(inRotateOrder)
+
     tkc.constrain(inJoint, oldParent)
     pc.parent(inJoint, inParent)
     try:
@@ -4356,7 +4366,8 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
 
     return
 
-def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False, inForceInfluences=None):
+def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False,
+                    inForceInfluences=None, inRenamings=None, inOrientations=None, inRotateOrders=None):
     skinClusters = []
     deformers = []
     skeleton = []
@@ -4443,13 +4454,13 @@ def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = N
             print (' -parent :', curParent)
         if not inDryRun:
             if curParent is not None:
-                reparentJoint(jointItem, deformersDict[curParent])
+                reparentJoint(jointItem, deformersDict[curParent], inOrientPreset=inOrientations.get(inPrefix + str(jointItem.stripNamespace())), inRotateOrder=inRotateOrders.get(inPrefix + str(jointItem.stripNamespace())))
             else:
                 if not root.name() == inNs + inName:
                     newGrp = pc.group(empty=True, name=inNs + inName)
                     root.addChild(newGrp)
                     root = newGrp
-                reparentJoint(jointItem, root)
+                reparentJoint(jointItem, root, inOrientPreset=inOrientations.get(inPrefix + str(jointItem.stripNamespace())), inRotateOrder=inRotateOrders.get(inPrefix + str(jointItem.stripNamespace())))
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     print ("remainingdeformers",remainingdeformers)
@@ -4498,11 +4509,14 @@ def makeShadowRig(inHierarchy = {}, inNs = '', inParentName = None, inPrefix = N
         else:
             foundDeformers.sort(key=lambda couple: couple[1])
 
-            print (remainingdeformer, foundDeformers[0][0])
-            reparentJoint(remainingdeformer, foundDeformers[0][0])
+            reparentJoint(remainingdeformer, foundDeformers[0][0], inOrientPreset=inOrientations.get(inPrefix + str(remainingdeformer.stripNamespace())), inRotateOrder=inRotateOrders.get(inPrefix + str(remainingdeformer.stripNamespace())))
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     tkc.loadSkins(skins, skinedGeo)
+
+    if not inRenamings is None:
+        tkc.renameFromMapping(inRenamings)
+
     pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
     return
 

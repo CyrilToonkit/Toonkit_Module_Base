@@ -384,4 +384,4 @@ def projectVEnv(inTool):
     if os.path.isdir(pickerPath):
         inTool.options["project"] = project
     else:
-        pc.warning("Can't find a project named '{}', loading '{0}' instead".format(project, inTool.options["project"]))
+        pc.warning("Can't find a project named '{0}', loading '{1}' instead".format(project, inTool.options["project"]))

@@ -820,6 +820,12 @@ def getInstances(inPyNodes=None, inLog=False):
 def getRigName(inName):
     return inName if inName[-len(CONST_ROOTSUFFIX):] != CONST_ROOTSUFFIX else inName[:-len(CONST_ROOTSUFFIX)]
 
+def renameFromMapping(inRenamings, inRememberOldName=True):
+    for origName, newName in inRenamings.items():
+        origObject = getNode(origName)
+        if not origObject is None:
+            origObject.rename(str(origObject.namespace) + newName)
+
 def renameRemember(inObj, inName, inRememberOldName=True):
     inObj = getNode(inObj)
 
