@@ -90,6 +90,18 @@ ALLOWED_GEOMETRIES = ["mesh"]
 
 CONST_BAKERSUFFIX = "_tkBaker"
 
+WORLD_PRESET =  {
+    "inPrimary":0,
+    "inPrimaryType":0,
+    "inPrimaryData":[1.0, 0.0, 0.0],
+    "inPrimaryNegate":False,
+    "inPrimaryChild":"",
+    "inSecondary":1,
+    "inSecondaryType":0,
+    "inSecondaryData":[0.0, 1.0, 0.0],
+    "inSecondaryNegate":False
+}
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                          _    ____ ___ 
   / _ \ ___  ___ __ _ _ __     / \  |  _ \_ _|
@@ -4301,7 +4313,7 @@ def bsTargetNameFromPose(inPoseName):
 
     return inPoseName
 
-def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True, inOrientPreset=None, inRotateOrder=None):
+def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True):
     attrs = {}
     for channel in tkc.CHANNELS:
         attr = inJoint.attr(channel)
@@ -4323,14 +4335,6 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
         if len(outputscons) > 0:
             tkc.setNodeConnections(outputscons, inNode=connector, inDestination=True)
         oldParent = connector
-
-    if not inOrientPreset is None:
-        print (inJoint.name() + " orientJoint " + str(inOrientPreset))
-        tkj.orientJoint(inJoint, **inOrientPreset)
-
-    if not inRotateOrder is None:
-        print (inJoint.name() + " rotateOrder " + str(inRotateOrder))
-        inJoint.rotateOrder.set(inRotateOrder)
 
     tkc.constrain(inJoint, oldParent)
     pc.parent(inJoint, inParent)
@@ -4368,6 +4372,10 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
 
 def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False,
                     inForceInfluences=None, inRenamings=None, inOrientations=None, inRotateOrders=None):
+    inRenamings = inRenamings or {}
+    inOrientations = inOrientations or {}
+    inRotateOrders = inRotateOrders or {}
+    
     skinClusters = []
     deformers = []
     skeleton = []
@@ -4462,13 +4470,13 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             print (' -parent :', curParent)
         if not inDryRun:
             if curParent is not None:
-                reparentJoint(jointItem, deformersDict[curParent], inOrientPreset=inOrientations.get(inPrefix + str(jointItem.stripNamespace())), inRotateOrder=inRotateOrders.get(inPrefix + str(jointItem.stripNamespace())))
+                reparentJoint(jointItem, deformersDict[curParent], inOrientPreset=inOrientations.get(str(jointItem.stripNamespace()).lstrip(inPrefix)), inRotateOrder=inRotateOrders.get(str(jointItem.stripNamespace()).lstrip(inPrefix)))
             else:
                 if not root.name() == inNs + inName:
                     newGrp = pc.group(empty=True, name=inNs + inName)
                     root.addChild(newGrp)
                     root = newGrp
-                reparentJoint(jointItem, root, inOrientPreset=inOrientations.get(inPrefix + str(jointItem.stripNamespace())), inRotateOrder=inRotateOrders.get(inPrefix + str(jointItem.stripNamespace())))
+                reparentJoint(jointItem, root, inOrientPreset=inOrientations.get(str(jointItem.stripNamespace()).lstrip(inPrefix)), inRotateOrder=inRotateOrders.get(str(jointItem.stripNamespace()).lstrip(inPrefix)))
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     print ("remainingdeformers",remainingdeformers)
@@ -4517,8 +4525,22 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
         else:
             foundDeformers.sort(key=lambda couple: couple[1])
 
-            reparentJoint(remainingdeformer, foundDeformers[0][0], inOrientPreset=inOrientations.get(inPrefix + str(remainingdeformer.stripNamespace())), inRotateOrder=inRotateOrders.get(inPrefix + str(remainingdeformer.stripNamespace())))
+            reparentJoint(remainingdeformer, foundDeformers[0][0], inOrientPreset=inOrientations.get(str(remainingdeformer.stripNamespace()).lstrip(inPrefix)), inRotateOrder=inRotateOrders.get(str(remainingdeformer.stripNamespace()).lstrip(inPrefix)))
         pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+    #Reorient
+    for preset in inOrientations:
+        tkj.writePreset(tkc.getNode(inNs + inPrefix + preset[0]), **preset[1])
+
+    root = tkc.getNode(inNs + inName)
+    tkj.orientJointPreset(root, WORLD_PRESET, inIdentity=True)
+
+    #Set rotation orders
+    for deformer in deformers:
+        ro = inRotateOrders.get(str(deformer.stripNamespace()).lstrip(inPrefix))
+        if not ro is None:
+            deformer.rotateOrder.set(k=True, cb=True)
+            deformer.rotateOrder.set(ro)
 
     tkc.loadSkins(skins, skinedGeo)
 
@@ -4526,7 +4548,214 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
         tkc.renameFromMapping(inRenamings)
 
     pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
     return
+
+def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True):
+    inRoot = tkc.getNode(inRoot)
+    allObjs = [inRoot] if inRoot.type() == "joint" else []
+    allObjs.extend(tkc.getChildren(inRoot, True, False, False))
+
+    inStart = inStart or pc.playbackOptions(query=True, animationStartTime=True)
+    inEnd = inEnd or pc.playbackOptions(query=True, animationEndTime=True)
+
+    skeleton = []
+    other = []
+
+    for obj in allObjs:
+        if obj.type() == "joint":
+            skeleton.append(obj)
+        else:
+            other.append(obj)
+
+    if inMeshes is None:
+        inMeshes = []
+        for jointItem in skeleton:
+            skinClusters = pc.listHistory(jointItem, future=True, type="skinCluster", levels=2)
+            for skinCluster in skinClusters:
+                inMeshes.extend([geo.getParent() for geo in skinCluster.getGeometry()])
+
+        inMeshes = list(set(inMeshes))
+
+    pc.cycleCheck(e=0)
+
+    pc.currentTime(inStart)
+
+    #Unlock everything that'll be baked
+    for skelJoint in skeleton:
+        for channel in tkc.CHANNELS:
+            attr = skelJoint.attr(channel)
+            attr.setLocked(False)
+
+    #Bake blendShapes as well
+    blendShapeNodes = pc.ls(type="blendShape")
+
+    pc.bakeResults(skeleton + blendShapeNodes, simulation=True, t=(inStart, inEnd), sampleBy=1, oversamplingRate=1, disableImplicitControl=True, preserveOutsideKeys=False, sparseAnimCurveBake=False,
+        removeBakedAttributeFromLayer=False, removeBakedAnimFromLayer=False, bakeOnOverrideLayer=False, minimizeRotation=False, controlPoints=False, shape=False)
+
+    pc.cycleCheck(e=1)
+
+    if inClean:
+        for skeletonObj in skeleton:
+            tkc.removeAllCns(skeletonObj)
+
+        pc.refresh()
+        if inEnd - inStart < 2:
+            pc.cutKey(skeleton + blendShapeNodes)
+
+        for otherItem in other:
+            try:
+                pc.delete(otherItem)
+            except:
+                pass
+
+        ns = str(inRoot.namespace())
+        if len(ns) < 2:
+            ns = "charGroup"
+
+        assemblies = pc.ls(assemblies=True)
+
+        if inRoot in assemblies:
+            assemblies.remove(inRoot)
+
+        root = pc.group(empty=True, name=ns + "_root")
+        geo = pc.group(empty=True, name=ns + "_geo")
+        skeletonGrp = pc.group(empty=True, name=ns + "_skeleton")
+
+        root.addChild(geo)
+        root.addChild(skeletonGrp)
+
+        skeletonGrp.addChild(inRoot)
+
+        for mesh in inMeshes:
+            shape = mesh.getShape()
+
+            if shape is None or shape.type() != "mesh":
+                continue
+
+            """
+            if not mesh.visibility.get() and len(mesh.visibility.listConnections()) == 0:
+                 continue
+            """
+
+            lockedChannels = []
+            channels = ["tx","ty","tz","rx","ry","rz","sx","sy","sz"]
+            for channel in channels:
+                if mesh.attr(channel).isLocked():
+                    mesh.attr(channel).unlock()
+                    lockedChannels.append(channel)
+
+            print("About to reparent " + mesh.name())
+
+            geo.addChild(mesh)
+
+            for channel in lockedChannels:
+                mesh.attr(channel).lock()
+
+        for assembly in assemblies:
+            try:
+                pc.delete(assembly)
+            except:
+                pass
+
+        skeleton.insert(0, root)
+
+    return skeleton
+
+#EXPORT
+#-------------------------------------------------------------------------------
+
+def exportUnrealFbx(inRoot, inPath):
+    pc.mel.FBXResetExport()
+    pc.mel.FBXExportBakeComplexAnimation(v=False)
+    pc.mel.FBXExportConstraints(v=False)
+    pc.mel.FBXExportInputConnections(v=False)
+    pc.mel.FBXExportUseSceneName(v=True)
+    pc.mel.FBXExportInAscii(v=False)
+    pc.mel.FBXExportSkins(v=True)
+    pc.mel.FBXExportShapes(v=True)
+    pc.mel.FBXExportCameras(v=False)
+    pc.mel.FBXExportLights(v=False)
+    pc.mel.FBXExportSmoothingGroups(v=True)
+    pc.mel.FBXExportSmoothMesh(v=False)
+    pc.mel.FBXExportTriangulate(v=True)
+    pc.mel.FBXExportFileVersion(v='FBX201800')
+
+    pc.select(inRoot)
+
+    pc.mel.FBXExport(s=True, f=inPath)
+
+def getPathTrunk(inPath, inSuffix="_Backup"):
+    path = inPath
+
+    sceneRe = re.compile(".+"+inSuffix+"(\d*)")
+
+    matchObj = sceneRe.match(inPath)
+
+    if matchObj:
+        path = path[:path.index(inSuffix)]
+
+    return path
+
+def exportToUnreal(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="shadowrig"):
+    if inPath is None:
+        
+        additionnalArgs = {}
+
+        scenePath = pc.sceneName()
+        if len(scenePath) > 0:
+            trunk = getPathTrunk(scenePath)
+            dirPath, filePath = os.path.split(trunk)
+            filePath = os.path.splitext(filePath)[0]
+
+            additionnalArgs["startingDirectory"] = os.path.join(dirPath, "{0}_{1}.fbx".format(filePath, inNs.rstrip(":")))
+
+        inPath = pc.fileDialog2(caption="Save your fbx export", fileFilter="Fbx file (*.fbx)(*.fbx)", dialogStyle=2, fileMode=0, **additionnalArgs)
+
+        if inPath != None and len(inPath) > 0:
+            inPath = inPath[0]
+
+    if inPath is None or len(inPath) == 0:
+        pc.warning("Output fbx not saved, aborting")
+        return
+
+    inStart = inStart or pc.playbackOptions(query=True, animationStartTime=True)
+    inEnd = inEnd or pc.playbackOptions(query=True, animationEndTime=True)
+
+    refNs = inNs
+    if len(refNs) == 0:
+        refNs = ":"
+
+    #Parallel evaluation is still uncertain for this task (especially in batch)
+    mode = pc.evaluationManager(query=True, mode=True)
+    if mode != ["off"]:
+        pc.evaluationManager(mode="off")
+    else:
+        mode = None
+
+    #Break reference
+    refFile = None
+    try:
+        refFile = pc.FileReference(namespace=refNs)
+        refFile.importContents()
+    except:
+        pass
+
+    #Go to first frame
+    start = pc.playbackOptions(query=True, animationStartTime=True)
+    skeleton = bakeShadowRig(inNs + inRootName, inStart=inStart, inEnd=inEnd, inClean=True)
+
+    if len(inNs) > 0:
+        pc.namespace(removeNamespace=inNs, mergeNamespaceWithParent=True)
+
+    exportUnrealFbx(skeleton[0], inPath)
+
+    if not mode is None:
+        pc.evaluationManager(mode=mode[0])
+
+    message = "Unreal fbx exported to : {0}".format(inPath)
+    print(message)
+    pc.confirmDialog(title='Unreal fbx', message=message, button=['OK'], defaultButton='OK')
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                       ____                     
