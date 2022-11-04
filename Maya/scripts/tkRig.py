@@ -4470,13 +4470,13 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             print (' -parent :', curParent)
         if not inDryRun:
             if curParent is not None:
-                reparentJoint(jointItem, deformersDict[curParent], inOrientPreset=inOrientations.get(str(jointItem.stripNamespace()).lstrip(inPrefix)), inRotateOrder=inRotateOrders.get(str(jointItem.stripNamespace()).lstrip(inPrefix)))
+                reparentJoint(jointItem, deformersDict[curParent])
             else:
                 if not root.name() == inNs + inName:
                     newGrp = pc.group(empty=True, name=inNs + inName)
                     root.addChild(newGrp)
                     root = newGrp
-                reparentJoint(jointItem, root, inOrientPreset=inOrientations.get(str(jointItem.stripNamespace()).lstrip(inPrefix)), inRotateOrder=inRotateOrders.get(str(jointItem.stripNamespace()).lstrip(inPrefix)))
+                reparentJoint(jointItem, root)
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     print ("remainingdeformers",remainingdeformers)
@@ -4525,15 +4525,16 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
         else:
             foundDeformers.sort(key=lambda couple: couple[1])
 
-            reparentJoint(remainingdeformer, foundDeformers[0][0], inOrientPreset=inOrientations.get(str(remainingdeformer.stripNamespace()).lstrip(inPrefix)), inRotateOrder=inRotateOrders.get(str(remainingdeformer.stripNamespace()).lstrip(inPrefix)))
+            reparentJoint(remainingdeformer, foundDeformers[0][0])
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     #Reorient
-    for preset in inOrientations:
-        tkj.writePreset(tkc.getNode(inNs + inPrefix + preset[0]), **preset[1])
+    if len(inOrientations) > 0:
+        for preset in inOrientations:
+            tkj.writePreset(tkc.getNode(inNs + inPrefix + preset[0]), **preset[1])
 
-    root = tkc.getNode(inNs + inName)
-    tkj.orientJointPreset(root, WORLD_PRESET, inIdentity=True)
+        root = tkc.getNode(inNs + inName)
+        tkj.orientJointPreset(root, WORLD_PRESET, inIdentity=True)
 
     #Set rotation orders
     for deformer in deformers:
@@ -4544,7 +4545,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
 
     tkc.loadSkins(skins, skinedGeo)
 
-    if not inRenamings is None:
+    if len(inRenamings) > 0:
         tkc.renameFromMapping(inRenamings)
 
     pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
