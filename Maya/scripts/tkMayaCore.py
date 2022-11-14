@@ -6595,6 +6595,7 @@ def getDefinition(inParam):
     hardmax = None if stype== "string" else pcParam.getMax();
     softmin = None if stype== "string" else pcParam.getSoftMin();
     softmax = None if stype== "string" else pcParam.getSoftMax();
+    niceName = pc.attributeName(pcParam, nice=True)
 
     if stype == "enum" and hardmin == 0 and hardmax == 1:
         stype = "bool"
@@ -6602,7 +6603,13 @@ def getDefinition(inParam):
     elif stype == "doubleAngle":
         stype = "double"
 
-    return (stype, default, hardmin, hardmax, softmin, softmax)
+    if stype == "enum":
+        enumDict = pcParam.getEnums()
+        enumValues = enumDict.keys()
+        enumValues.sort(key=lambda v: enumDict[v])
+        stype = stype + ";" + ":".join(enumValues)
+
+    return (stype, default, hardmin, hardmax, softmin, softmax, niceName)
 
 def getParamsDictionary(inNode, strName, bidirectionnal=False):
     dic = {}

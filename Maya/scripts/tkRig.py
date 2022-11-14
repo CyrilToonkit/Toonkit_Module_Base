@@ -6984,8 +6984,21 @@ def replaceController(inCtrl, inPos=None, inRot=None, inScl=None):
         newAttr.setKeyable(attr.isKeyable())
         newAttr.showInChannelBox(attr.isInChannelBox())
 
-    #TODO Match custom attributes
-
+    #Match custom attributes
+    params = tkc.getParameters(inCtrl)
+    for paramName in params:
+        paramNode = inCtrl.attr(paramName)
+        paramKeyable = paramNode.get(k=True)
+        paramCBVisible = paramNode.get(cb=True)
+        paramLocked = paramNode.get(lock=True)
+        if paramKeyable or paramCBVisible:
+            definition = tkc.getDefinition(paramNode.name())
+            tkc.addParameter(newCtrl, name=paramName, inType=definition[0], default=definition[1], min=definition[2], max = definition[3], softmin=definition[4], softmax=definition[5], nicename=definition[6])
+            newAtrrNode = newCtrl.attr(paramName)
+            if paramLocked:
+                paramNode.set(lock=False)
+            newAtrrNode >> paramNode
+            newAtrrNode.set(k=paramKeyable, cb=paramCBVisible, lock=paramLocked)
 
     return newCtrl
 
