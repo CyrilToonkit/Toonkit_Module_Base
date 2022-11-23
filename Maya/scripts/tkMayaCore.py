@@ -2252,6 +2252,19 @@ def getShapes(transform):
 
     return shapes
 
+def getShape(inTransform):
+    shapes = inTransform.getShapes()
+
+    for shape in shapes:
+        if not shape.intermediateObject.get() and shape.name().endswith("Deformed"):
+            return shape
+
+    for shape in shapes:
+        if not shape.intermediateObject.get():
+            return shape
+
+    return inTransform.getShape()
+
 def getTransform(shape ):
     if shape.type() != "transform" :
         return getDirectParent(shape)
@@ -2817,7 +2830,7 @@ def closestPoint(inMesh, inPositions=[0.0, 0.0, 0.0], inKeepNode=False):
     """
     else:
         #spans = inMesh.spansUV.get()
-        
+
         rangeU = inMesh.mmu.get()
         rangeU = rangeU[1] - rangeU[0]
 
@@ -7922,6 +7935,36 @@ def checkHistory(inObjects=None, inAllowedNodes=None, inCheckTypes=None):
         print ("No problematic history found on given objects ({0})".format(",".join([n.name() for n in objs])))
 
     return defectObjects
+
+MANAGED_DEFORMERS = {
+    "ffd":True,
+    "skinCluster":True,
+    "blendShape":True,
+    "tweak":False,
+}
+
+def getCleanHistory(inTransform):
+    histo = inTransform.listHistory()
+    
+    cleanHisto = []
+    
+    for deform in histo:
+        if not isinstance(deform, pc.nodetypes.GeometryFilter):
+            continue
+        
+        deformType = deform.type()
+        
+        if not deformType in MANAGED_DEFORMERS:
+            pc.warning("Unmanaged deformer '{0}' ({1}) on '{2}'".format(deform, deform.type(), inTransform))
+            continue
+            
+        if MANAGED_DEFORMERS[deformType]:
+            affected = False
+            for geo in deform.getOutputGeometry():
+                if geo.getParent() == inTransform:
+                    cleanHisto.append(deform)
+        
+    return cleanHisto
 
 def killTurtle(*args):
     pc.mel.eval("ilrClearScene")
