@@ -1938,7 +1938,7 @@ def transferRig(inGeos, outNamespace):
         
         transfers[geo.name()] = otherGeo
         
-    for refName, target in transfers.iteritems():
+    for refName, target in transfers.items():
         refNode = tkc.getNode(refName)
         
         #Shaders
@@ -4449,7 +4449,7 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
     inJoint.overrideColor.set(0)
     inJoint.overrideEnabled.set(False)
     if inRelock:
-        for channel, info in attrs.iteritems():
+        for channel, info in attrs.items():
             attr = inJoint.attr(channel)
             attr.setLocked(info[0])
 
@@ -7488,7 +7488,7 @@ def setAttr(inObj, inValue):
 
 def setAttrs(inAttrValues, inReturnOld=False):
     oldValues = {}
-    for attrNode, attrValue in inAttrValues.iteritems():
+    for attrNode, attrValue in inAttrValues.items():
 
         if not pc.objExists(attrNode):
             continue
