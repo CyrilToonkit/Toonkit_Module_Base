@@ -4563,7 +4563,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             print (' -parent :', curParent)
         if not inDryRun:
             if curParent is not None:
-                reparentJoint(jointItem, deformersDict[curParent], inMatchT=False, inMatchR=False)
+                reparentJoint(jointItem, deformersDict[curParent], inMatchT=inMatchT, inMatchR=inMatchR)
             else:
                 if not root.name() == inNs + inName:
                     newGrp = pc.group(empty=True, name=inNs + inName)
@@ -4576,7 +4576,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
 
                         tkc.matchConnections(root, jointItem, "visibility", inDestination=False)
                         
-                reparentJoint(jointItem, root, inMatchT=False, inMatchR=False)
+                reparentJoint(jointItem, root, inMatchT=inMatchT, inMatchR=inMatchR)
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     remainingdeformers.sort(key=lambda n: n.name(), reverse=True)
@@ -4623,7 +4623,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
                 foundDeformers = [defo for defo in foundDeformers if not str(defo[0].stripNamespace()).lstrip(inPrefix) in inForceLeaves]
             foundDeformers.sort(key=lambda couple: couple[1])
 
-            reparentJoint(remainingdeformer, foundDeformers[0][0], inMatchT=False, inMatchR=False)
+            reparentJoint(remainingdeformer, foundDeformers[0][0], inMatchT=inMatchT, inMatchR=inMatchR)
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     #Reorient
