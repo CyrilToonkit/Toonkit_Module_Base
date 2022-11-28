@@ -54,6 +54,7 @@ import tkSIGroups
 import PAlt as palt
 import tkNodeling as tkn
 import tkExpressions
+import tkTagTool
 import Toonkit_Core.tkProjects.tkContext as context
 import tkJointOrient as tkj
 
@@ -1924,7 +1925,91 @@ print "----------------------------------------------"
 """
 
 
+def transferRig(inGeos, outNamespace):
+    if not outNamespace.endswith(":") and outNamespace != "":
+        outNamespace = outNamespace + ":"
+    transfers = {}
+    for geo in inGeos:
+        otherGeo = tkc.getNode(outNamespace + geo)
+        
+        if otherGeo is None:
+            pc.warning("Can't find '{}'".format(geo))
+            continue
+        
+        transfers[geo.name()] = otherGeo
+        
+    for refName, target in transfers.items():
+        refNode = tkc.getNode(refName)
+        
+        #Shaders
+        pc.select([refName, target.name()])
+        pc.transferShadingSets(sampleSpace=0, searchMethod=3)
 
+        #Deformers
+        histo = tkc.getCleanHistory(refNode)
+        histo.reverse()
+
+        for deform in histo:
+            print("Transfering", deform, deform.type())
+
+            if deform.type() == "blendShape":
+                aliases = pc.aliasAttr(deform, query=True)
+                weightAttrs = [aliases[i*2] for i in range(len(aliases)/2)]
+                consistentIndices = [int(aliases[i*2 + 1][7:-1]) for i in range(len(aliases)/2)]
+                weightValues = []
+
+                targets = []
+                tempTargets = []
+
+                for bsIndex in consistentIndices:
+                    liveTargets = deform.inputTarget[bsIndex].inputTargetGroup[0].inputTargetItem[6000].inputGeomTarget.listConnections()
+                    weightValues.append(pc.getAttr(deform.name() +"." +weightAttrs[bsIndex]))
+                    if len(liveTargets) == 0:
+                        bsTarget = pc.sculptTarget(deform, e=True, regenerate=True, target=bsIndex)[0]
+                        targets.append(bsTarget)
+                        tempTargets.append(bsTarget)
+                    else:
+                        targets.append(liveTargets[0].name())
+
+                targets.append(target.name())
+                #print "targets",targets
+                #print "pc.blendShape("+",".join(["'{}'".format(obj) for obj in targets])+", name='" + outNamespace + str(deform.stripNamespace()) +"'')"
+                newBs = pc.blendShape(*targets, name=outNamespace + str(deform.stripNamespace()))[0]
+
+                for bsIndex in consistentIndices:
+                    bsAttr  = tkc.getNode(newBs.name() + "." + weightAttrs[bsIndex])
+                    bsAttr.set(weightValues[bsIndex])
+                tkc.matchConnections(newBs, deform)
+
+                if len(tempTargets) > 0:
+                    pc.delete(tempTargets)
+
+            elif deform.type() == "skinCluster":
+                tkc.gator([target], refNode, inCopyMatrices=True, inDirectCopy=True)
+
+
+            elif deform.type() == "ffd":
+                #print "target",target
+                #print "shape",getShape(target)
+                deform.addGeometry(tkc.getShape(target))
+                #raise Exception("STOP")
+
+        #Transform connections
+        tkc.matchConnections(target, refNode, inDestination=False, inExcludeTypes=["mesh", "shapeEditorManager", "groupParts", "groupId", "skinCluster", "tweak"])
+        
+        #Shape connections
+        refShape = tkc.getShape(refNode)
+        targetShape = tkc.getShape(target)
+        
+        if not refShape is None and not targetShape is None:
+            tkc.matchConnections(targetShape, refShape, inDestination=False, inExcludeTypes=["mesh", "shapeEditorManager", "groupParts", "groupId", "skinCluster", "tweak"])
+            targetShape.overrideEnabled.set(True)
+
+        #Sets
+        objSets = [mSet for mSet in pc.listSets(object=refNode) if mSet.type() == "objectSet"]
+        
+        for objSet in objSets:
+            pc.sets(objSet, forceElement=target)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _     ___  ____  
@@ -7431,7 +7516,7 @@ def setAttr(inObj, inValue):
 
 def setAttrs(inAttrValues, inReturnOld=False):
     oldValues = {}
-    for attrNode, attrValue in inAttrValues.iteritems():
+    for attrNode, attrValue in inAttrValues.items():
 
         if not pc.objExists(attrNode):
             continue
