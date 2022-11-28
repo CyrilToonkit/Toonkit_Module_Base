@@ -4313,14 +4313,15 @@ def bsTargetNameFromPose(inPoseName):
 
     return inPoseName
 
-def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True):
+def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRelock = True, inMatchT=False, inMatchR=False):
     attrs = {}
     for channel in tkc.CHANNELS:
         attr = inJoint.attr(channel)
         attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
         attr.setLocked(False)
 
-    oldParent = inJoint.getParent()
+    realParent = inJoint.getParent()
+    oldParent = realParent
     cons = tkc.storeConstraints([inJoint], inRemove=True)
     inputscons = tkc.getNodeConnections(inJoint, 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', inSource=True, inDestination=False, inDisconnect=True)
     outputscons = tkc.getNodeConnections(inJoint, 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', inSource=False, inDestination=True, inDisconnect=True)
@@ -4335,6 +4336,9 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
         if len(outputscons) > 0:
             tkc.setNodeConnections(outputscons, inNode=connector, inDestination=True)
         oldParent = connector
+
+    if inMatchT or inMatchR:
+        pc.matchTransform(inJoint, realParent, piv=False, pos=inMatchT, rot=False, scl=False)
 
     tkc.constrain(inJoint, oldParent)
     pc.parent(inJoint, inParent)
@@ -4364,18 +4368,19 @@ def reparentJoint(inJoint, inParent, inRadius = 1.0, inResetOrient = True, inRel
     inJoint.overrideColor.set(0)
     inJoint.overrideEnabled.set(False)
     if inRelock:
-        for channel, info in attrs.iteritems():
+        for channel, info in attrs.items():
             attr = inJoint.attr(channel)
             attr.setLocked(info[0])
 
     return
 
 def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix = None, inSuffix = None, inRootName = None, inName = 'shadowrig', inDryRun = False, inDebug = False,
-                    inForceInfluences=None, inRenamings=None, inOrientations=None, inRotateOrders=None):
+                    inForceInfluences=None, inForceLeaves=None, inRootJoint=None, inRenamings=None, inOrientations=None, inRotateOrders=None, inMatchT=False, inMatchR=False):
     inRenamings = inRenamings or {}
     inOrientations = inOrientations or {}
     inRotateOrders = inRotateOrders or {}
-    
+    inForceLeaves = inForceLeaves or []
+
     skinClusters = []
     deformers = []
     skeleton = []
@@ -4410,7 +4415,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             influence = tkc.getNode(inNs + influenceName)
             if not influence is None:
                 deformers.append(influence)
-                
+
     remainingdeformers = deformers[:]
     deformersDict = {d.name():d for d in deformers}
 
@@ -4418,6 +4423,8 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
     nodeDeformersDict = {}
     for d in deformers:
         thisRoot = tkc.getParent(d, root=True)
+        #print("thisRoot " + str(thisRoot) + " getParent " + str(d))
+        
         if thisRoot.name() not in nodeDeformersDict:
             nodeDeformersDict[thisRoot.name()] = [d]
         else:
@@ -4460,7 +4467,8 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
 
         while curParent is not None:
             newParent = (inNs or '') + (inPrefix or '') + curParent + (inSuffix or '')
-            if newParent in deformersDict:
+
+            if newParent in deformersDict and not curParent in inForceLeaves:
                 curParent = newParent
                 break
             else:
@@ -4470,21 +4478,24 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             print (' -parent :', curParent)
         if not inDryRun:
             if curParent is not None:
-                reparentJoint(jointItem, deformersDict[curParent])
+                reparentJoint(jointItem, deformersDict[curParent], inMatchT=False, inMatchR=False)
             else:
                 if not root.name() == inNs + inName:
                     newGrp = pc.group(empty=True, name=inNs + inName)
                     root.addChild(newGrp)
                     root = newGrp
-                reparentJoint(jointItem, root)
-        pc.progressBar(gMainProgressBar, edit=True, step=1)
 
-    print ("remainingdeformers",remainingdeformers)
+                    if not inRootJoint is None:
+                        pc.select(root)
+                        root = pc.joint(name=inNs + inRootJoint)
+
+                        tkc.matchConnections(root, jointItem, "visibility", inDestination=False)
+                        
+                reparentJoint(jointItem, root, inMatchT=False, inMatchR=False)
+        pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     remainingdeformers.sort(key=lambda n: n.name(), reverse=True)
 
-    print ("remainingdeformers sort",remainingdeformers)
-    
     for remainingdeformer in remainingdeformers:
         if inDebug:
             print (' -remainingdeformer :', remainingdeformer)
@@ -4523,9 +4534,11 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
         if len(foundDeformers) == 0:
             pc.warning("Can't find parent for " + remainingdeformer.name())
         else:
+            if len(foundDeformers) > 1:
+                foundDeformers = [defo for defo in foundDeformers if not str(defo[0].stripNamespace()).lstrip(inPrefix) in inForceLeaves]
             foundDeformers.sort(key=lambda couple: couple[1])
 
-            reparentJoint(remainingdeformer, foundDeformers[0][0])
+            reparentJoint(remainingdeformer, foundDeformers[0][0], inMatchT=False, inMatchR=False)
         pc.progressBar(gMainProgressBar, edit=True, step=1)
 
     #Reorient
@@ -4534,14 +4547,30 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             tkj.writePreset(tkc.getNode(inNs + inPrefix + preset[0]), **preset[1])
 
         root = tkc.getNode(inNs + inName)
-        tkj.orientJointPreset(root, WORLD_PRESET, inIdentity=True)
+        jointRoot = root.getChildren()[0]
+
+        #raise Exception("tkj.orientJointPreset(tkc.getNode('" + jointRoot.name() + "'), " + str(WORLD_PRESET) + ", inIdentity=True)")
+        tkj.orientJointPreset(jointRoot, WORLD_PRESET, inIdentity=True, inOrientPresettedOnly=True)
 
     #Set rotation orders
     for deformer in deformers:
         ro = inRotateOrders.get(str(deformer.stripNamespace()).lstrip(inPrefix))
         if not ro is None:
+
+            attrs = {}
+            for channel in tkc.CHANNELS:
+                attr = deformer.attr(channel)
+                attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+                attr.setLocked(False)
+
             deformer.rotateOrder.set(k=True, cb=True)
             deformer.rotateOrder.set(ro)
+            deformer.rotate.set([0.0,0.0,0.0])
+            tkc.compensateCns(deformer)
+
+            for channel, info in attrs.items():
+                attr = deformer.attr(channel)
+                attr.setLocked(info[0])
 
     tkc.loadSkins(skins, skinedGeo)
 

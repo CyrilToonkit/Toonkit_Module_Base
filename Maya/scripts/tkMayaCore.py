@@ -3817,6 +3817,12 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
 
         #print "constrain({0}, {1}, '{2}')".format(node, target, con["type"])
         
+        attrs = {}
+        for channel in CHANNELS:
+            attr = node.attr(channel)
+            attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+            attr.setLocked(False)
+
         newCns = constrain(node, target, con["type"])
         if node == oldNode and con["type"] == oldType:
             offsetIndex += 1
@@ -3829,6 +3835,10 @@ def loadConstraints(inConstraints, inObjects=None, inRemoveOld=False, inMaintain
             setCnsOffset(newCns,    t = dt.Vector(con["offset"][0][0],con["offset"][0][1],con["offset"][0][2]),
                                     r = dt.EulerRotation(con["offset"][1][0],con["offset"][1][1],con["offset"][1][2]),
                                     s = (con["offset"][2][0],con["offset"][2][1],con["offset"][2][2]), inIndex=offsetIndex)
+
+        for channel, info in attrs.items():
+            attr = node.attr(channel)
+            attr.setLocked(info[0])
 
 def storePoses(inObjects, customOnly=False, containerName="", keyableOnly=True, inPath=None):
     poses = []

@@ -371,14 +371,78 @@ def getPoleVector(inStartPoint, inMiddlePoint, inEndPoint, inDistance=1.0, inDis
 
     return inMiddlePoint + (midToStart + midToEnd) * -1 * inDistance * factor
 
+def makeIdentity(inObj):
+    attrs = {}
+    for channel in tkc.CHANNELS:
+        attr = inObj.attr(channel)
+        attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+        attr.setLocked(False)
+
+    children = inObj.getChildren()
+    if len(children) > 0:
+        dupe = pc.duplicate(inObj, parentOnly=True)[0]
+        pc.makeIdentity(dupe, apply=True)
+
+        inObj.rotate.set(dupe.rotate.get())
+        inObj.jointOrient.set(dupe.jointOrient.get())
+
+        pc.delete(dupe)
+    else:
+        pc.makeIdentity(inObj, apply=True)
+
+    for channel, info in attrs.items():
+        attr = inObj.attr(channel)
+        attr.setLocked(info[0])
+
+    """
+    inObj.jointOrientX.set(inObj.rotateX.get() + inObj.jointOrientX.get())
+    inObj.jointOrientY.set(inObj.rotateY.get() + inObj.jointOrientY.get())
+    inObj.jointOrientZ.set(inObj.rotateZ.get() + inObj.jointOrientZ.get())
+    
+    attrs = {}
+    for channel in tkc.CHANNELS:
+        attr = inObj.attr(channel)
+        attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+        attr.setLocked(False)
+
+    inObj.rotate.set([0.0,0.0,0.0])
+    tkc.compensateCns(inObj)
+
+    for channel, info in attrs.items():
+        attr = inObj.attr(channel)
+        attr.setLocked(info[0])
+    """
+
+def getFirstOrientedChild(inTransform):
+    children = inTransform.getChildren()
+
+    if len(children) == 0:
+        return None
+
+    if len(children) == 1:
+        return children[0]
+
+    for child in children:
+        if len(readPreset(child)) > 0:
+            return child
+
+    return children[0]
+
+
 """
-inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child, 5 = matched
+inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child, 3 = towards parent, 5 = matched
 inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent, 5 = towards parent
 
 TODO : same options for Primary and Secondary !
 TODO : tackle last aiming bugs (for instance Spine needs to point [0,0,-1] to point [0,0,1]) !
 """
 def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0.0, 0.0], inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False, inIdentity=False):
+
+    attrs = {}
+    for channel in tkc.CHANNELS:
+        attr = inTransform.attr(channel)
+        attrs[channel] = (attr.isLocked(), attr.isKeyable(), attr.isInChannelBox())
+        attr.setLocked(False)
 
     cns = tkc.storeConstraints([inTransform], inRemove=True)
 
@@ -418,7 +482,6 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
             if not matchObj is None:
                 pc.delete(matchObj)
     else:
-
         if not inPrimaryChild is None and inPrimaryChild != "":
             if not isinstance(inPrimaryChild, (list, tuple)):
                 inPrimaryChild = [inPrimaryChild]
@@ -432,9 +495,12 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
                     else:
                         pc.warning("Given primary child cannot be found ({0}) !".format(childName))
 
-        elif len(children) > 0:
-            childObj = children[0]
-        
+        else:
+            if inPrimaryType == 2 and len(children) > 0:
+                childObj = getFirstOrientedChild(inTransform)
+            elif inPrimaryType == 3:
+                childObj = inTransform.getParent()
+
         #Calculations for inPrimary "Point" (child direction, or inverse parent direction)
         if not childObj is None:
             childTrans = [0,0,0]
@@ -478,12 +544,12 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
                             secondPoint = firstPoint
                             firstPoint = parent.getTranslation(space='world')
                 else:
-                    childChildren = children[0].getChildren()
-                    if len(childChildren) > 0:
-                        thirdPoint = childChildren[0].getTranslation(space="world")
+                    childChild = getFirstOrientedChild(getFirstOrientedChild(inTransform))
+                    if not childChild is None:
+                        thirdPoint = childChild.getTranslation(space="world")
 
         primaryPoint = childTrans
-        if inPrimaryType != 2:
+        if inPrimaryType != 2 and inPrimaryType != 3:
             primaryPoint = inPrimaryData
             primaryIsDirection = inPrimaryType == 0
 
@@ -511,9 +577,12 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
                 else:
                     upV = getPoleVector(firstPoint, secondPoint, thirdPoint)
                     aim(inTransform,  inPrimary=inPrimary, inPrimaryPoint=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryPoint=upV, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
-
+    """
+    print "orientJoint({}, inPrimary={}, inPrimaryType={}, inPrimaryData={}, inPrimaryNegate={}, inPrimaryChild={}, inSecondary={}, inSecondaryType={}, inSecondaryData={}, inSecondaryNegate={}, inOrientChildren={}, inIdentity={}, CHILD={})".format(
+            inTransform, inPrimary, inPrimaryType, inPrimaryData, inPrimaryNegate, inPrimaryChild, inSecondary, inSecondaryType, inSecondaryData, inSecondaryNegate, inOrientChildren, inIdentity, childObj)
+    """
     if inIdentity:
-        pc.makeIdentity(inTransform, apply=True)
+        makeIdentity(inTransform)
     else:
         bakeOrientJoint([inTransform])
 
@@ -523,6 +592,10 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
     if len(cons) > 0:
         tkc.setNodeConnections(cons, inTransform)
 
+    for channel, info in attrs.items():
+        attr = inTransform.attr(channel)
+        attr.setLocked(info[0])
+
     if inOrientChildren:
         for child in childen:
             if child.type() == "joint":
@@ -530,7 +603,7 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
 
 def addAttr(inTransform, inName, inValue, inEnumValues=None):
     attType = type(inValue).__name__
-    #print "attType",attType
+    #print inTransform, inName, inValue, " : attType",attType
     
     if attType == "int":
         attType = "long"
@@ -595,16 +668,16 @@ writePreset(pc.selected()[0], **DEFAULT_PRESET)
 print readPreset(pc.selected()[0])
 """
 
-def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChildren=True, inSkipPrefix=None, inSkipIfFound=None, inIdentity=False):
+def orientJointPreset(inTransform, inDefaultPreset=DEFAULT_PRESET, inOrientChildren=True, inSkipPrefix=None, inSkipIfFound=None, inIdentity=False, inOrientPresettedOnly=False):
     if not inSkipPrefix is None and inTransform.stripNamespace().startswith(inSkipPrefix):
         return
 
     preset = inDefaultPreset.copy()
-    preset.update(readPreset(inTransform))
-
-    preset["inIdentity"] = inIdentity
-
-    orientJoint(inTransform, **preset)
+    actualPreset = readPreset(inTransform)
+    if len(actualPreset) > 0 or not inOrientPresettedOnly:
+        preset.update(actualPreset)
+        preset["inIdentity"] = inIdentity
+        orientJoint(inTransform, **preset)
 
     if inOrientChildren and inSkipIfFound != inTransform.stripNamespace():
         for child in inTransform.getChildren(type="joint"):
