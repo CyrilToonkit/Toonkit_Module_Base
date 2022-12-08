@@ -73,25 +73,17 @@ def getCharacter(inJoint):
     char = chars[0] if len(chars) > 0 else None
 
     if char is None:
+        checkHIKExists()
 
-        valid=True
+        char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
+        
         for key,value in DEFINITION.iteritems():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
-                valid=False
-                
-        if(valid):
-            checkHIKExists()
-
-            char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
-            
-            for key,value in DEFINITION.iteritems():
-                print "setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);"
+            else:
                 pc.mel.eval("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
-            
-            pc.mel.eval("hikToggleLockDefinition")
-        else:
-            pc.warning("Motion capture model is not valid !")
+        
+        pc.mel.eval("hikToggleLockDefinition")
         
     return char
 
