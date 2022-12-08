@@ -2269,6 +2269,21 @@ def getTransform(shape ):
     if shape.type() != "transform" :
         return getDirectParent(shape)
 
+def getDuplicatedShapes(noIntermediate=True):
+    transform_shapes = {}
+
+    for s in pc.ls(type="mesh", noIntermediate=noIntermediate):
+        transformName = s.getParent().name()
+
+        if not transformName in transform_shapes:
+            transform_shapes[transformName] = []
+
+        transform_shapes[transformName].append(s)
+
+    duplicatedShapes = {key:value for (key,value) in transform_shapes.items() if len(value) > 1}
+
+    return duplicatedShapes
+
 def getProperties(node):
     children = pc.listRelatives(node, children=True)
     filteredChildren =  []
