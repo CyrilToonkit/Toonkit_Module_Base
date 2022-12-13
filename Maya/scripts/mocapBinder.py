@@ -77,7 +77,7 @@ def getCharacter(inJoint):
 
         char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
         
-        for key,value in DEFINITION.iteritems():
+        for key,value in DEFINITION.items():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
             else:
@@ -186,15 +186,15 @@ def injectControlLayer(inCLRootName, inRigRootName, inTemplate, inAttrHolder=Non
             func = connectionData[4]
             if isinstance(func, str):
                 func = eval(func)
-            #print "func", func
+            #print ("func", func)
 
             args = [clNS, connectionData[0]]
             args.extend(connectionData[5])
-            #print "args", args
+            #print ("args", args)
 
             #execute matcher function
             matcher = func(*args)
-            #print "matcher", matcher
+            #print ("matcher", matcher)
 
             if matcher != None:
                 templateObj = matcher
