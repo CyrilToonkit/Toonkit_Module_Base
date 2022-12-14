@@ -313,6 +313,22 @@ TOOL = None
 
 HELP_LIST = []
 
+# tkDecorators
+def noUndos(func):
+    def wrapper(*args, **kwargs):
+        _exception = None
+        oldUndoState = pc.undoInfo(q=True, state=True)
+        pc.undoInfo(state=False)
+        try:
+            rslt = func(*args, **kwargs)
+        except Exception as f:
+            _exception = f
+        pc.undoInfo(state=oldUndoState)
+        
+        if not _exception is None:
+            raise _exception
+        return rslt
+    return wrapper
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _   _      _                     
