@@ -425,6 +425,29 @@ def setLOD(inValue, inNamespaces=None, inAttrs=["Body_LOD", "Facial_LOD", "LOD"]
 
     return changed
 
+FILE_PATTERN_FORMAT = "{{START}}{}{{END}}"
+def switchLOD(inNamespace, inLOD, inLODPattern="lod{LOD:[0-9]+}"):
+    refFile = pc.FileReference(namespace=inNamespace)
+    
+    fullPattern = FILE_PATTERN_FORMAT.format(inLODPattern)
+    
+    variables = {}
+    if not(context.match(fullPattern, refFile.path, variables)):
+        pc.error("File path '{}' does not match pattern : '{}'".format(refFile.path, inLODPattern))
+
+    if int(variables["LOD"]) == inLOD:
+        pc.warning("LOD '{}' is already loaded".format(inLOD))
+        return
+    
+    variables["LOD"] = inLOD
+        
+    newPath = context.expandVariables(fullPattern, variables)
+    
+    if not os.path.isfile(newPath):
+        pc.error("File '{}' does not exist !".format(newPath))
+        
+    refFile.replaceWith(newPath)
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____       _       
  / ___|  ___| |_ ___ 
