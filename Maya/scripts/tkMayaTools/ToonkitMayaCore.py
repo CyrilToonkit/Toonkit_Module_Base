@@ -25,6 +25,7 @@ import pymel.core as pc
 
 import locationModule
 import Toonkit_Core.tkCore as tc
+from Toonkit_Core import tkLogger
 from Toonkit_Core.tkToolOptions.tkOptions import Options
 from tkMayaTools.tkMayaTool import MayaTool as Tool
 
@@ -33,7 +34,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.76.17"
+VERSIONINFO = "1.5.75.3"
 
 MENU_NAME = "tkMainMenu"
 
@@ -158,7 +159,10 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("mayabatchpath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "mayabatch.exe"), "Maya batch path", "Maya batch path", False, "Configuration")
         self.options.addOption("hidemenu", False, "Hide Toonkit menu", "Hide menu", False, "Configuration")
         self.options.addOption("hookmayabatch", True, "Intercep a mayabatch call to execute a python script given as argument", "Hook mayabatch", False, "Configuration")
-        self.options.addOption("debug", inDebug, "Log more verbose messages", "Debug", False, "Configuration")
+        self.options.addOption("logLevel", 0, "Set the logging value","Log Level :", False, "Logs.Level", inValues=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR"])
+        self.options.addOption("logFile", False, None, " ", False, "Logs.File")
+        self.options.addOption("logPath", "ToonKit", None, "Log to File :", False, "Logs.File")
+
         self.options.addOption("hookDagMenuProc", True, "Override Maya 'dagMenuProc'", "Override Maya 'dagMenuProc'", False, "Configuration")
 
         #Hotkeys
@@ -240,6 +244,9 @@ class ToonkitMayaCore(Tool):
 
         projectVEnv(self)
         self.options.addCallback(self.optionChanged)
+        setLoggingLevel(self)
+        setLoggingOptions(self)
+
 
     def getOptionsPath(self):
         return os.path.abspath(os.path.join(locationModule.get(), os.pardir, os.pardir, "Preferences", "{0}.json".format(type(self).__name__)))
@@ -250,11 +257,11 @@ class ToonkitMayaCore(Tool):
     def optionChanged(self, *args, **kwargs):
         self.logDebug("{0} changed ({1} => {2})".format(kwargs["option"].name, kwargs["old"], kwargs["new"]))
 
-        if kwargs["option"].name == "debug":
-            self.debug = kwargs["new"]
-            tc.getTool().options["debug"] = kwargs["new"]
-            tc.getTool().debug = kwargs["new"]
-            tc.getTool().saveOptions()
+        if kwargs["option"].name == "logFile":
+            setLoggingOptions(self)
+
+        if kwargs["option"].name == "logLevel":
+            setLoggingLevel(self)
 
         elif kwargs["option"].name == "project":
             tc.getTool().options["project"] = kwargs["new"]
@@ -385,3 +392,19 @@ def projectVEnv(inTool):
         inTool.options["project"] = project
     else:
         pc.warning("Can't find a project named '{0}', loading '{1}' instead".format(project, inTool.options["project"]))
+
+
+def setLoggingLevel(tool):
+    tkLogger.setLevel(tool.options["logLevel"] * 10)
+
+def setLoggingOptions(tool):
+    if tool.options["logFile"] == True:
+        formatDict = {"path":"\\".join(locationModule.get().split("\\")[:-2]) + "\\Logs\\",
+                        "pid":str(os.getpid()),
+                        "name":tool.options["logPath"]}
+        path = "{path}\\{pid}_{name}.log".format(**formatDict)
+        tkLogger.setLogsFiles(path)
+        tkLogger.info("TkLog is now bounth to file :\n%s" %path)
+    elif tool.options["logFile"] is False:
+        tkLogger.removeHandlers()
+        tkLogger.info("TkLog is now unbounth to file")
