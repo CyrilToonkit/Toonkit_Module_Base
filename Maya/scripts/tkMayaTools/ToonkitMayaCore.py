@@ -139,17 +139,14 @@ HOTKEYS =   {
 
 class ToonkitMayaCore(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        print ("Toonkit Maya Core {0} initializing...".format(VERSIONINFO))
+        tkLogger.info("Toonkit Maya Core {0} initializing...".format(VERSIONINFO))
 
         super(ToonkitMayaCore, self).__init__(inName="ToonkitMayaCore", inDescription="Toonkit's Maya base library",
             inUsage="", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
-        self.options = Options(inPath=self.getOptionsPath())
-
         self.boundPort = -1
 
-        if self.options["debug"]:
-            self.debug = self.options["debug"]
+        self.options = Options()
 
         # OPTIONS : inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None
         #Configuration
@@ -238,6 +235,16 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("showOscarParamEditorCtrl", True, None, "Key", False, "HotKeys.showOscarParamEditor")
         self.options.addOption("showOscarParamEditorAlt", False, None, "Key", False, "HotKeys.showOscarParamEditor")
 
+
+        savedOption = Options(inPath=self.getOptionsPath())
+        for key, value in savedOption.iteritems():
+            if key in self.options.keys():
+                tkLogger.debug("The option '" +key+ "' allrady exists, his value is set to " + str(value))
+                self.options[key] = value
+            elif not key in self.options.keys():
+                tkLogger.warning("The options'" + key + "' is not in bases options !" )
+        del savedOption
+        self.options.path = self.getOptionsPath()
         
         if not self.options.isSaved():
             self.saveOptions()
@@ -395,7 +402,8 @@ def projectVEnv(inTool):
 
 
 def setLoggingLevel(tool):
-    tkLogger.setLevel(tool.options["logLevel"] * 10)
+    if not tool.options["logLevel"] is None:
+        tkLogger.setLevel(tool.options["logLevel"] * 10)
 
 def setLoggingOptions(tool):
     if tool.options["logFile"] == True:
