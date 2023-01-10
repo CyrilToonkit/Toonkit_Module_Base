@@ -324,7 +324,7 @@ def aim(inTransform,  inPrimary=0, inPrimaryDirection=None, inPrimaryPoint=None,
 
     #Build axis list
     axis = [primaryAxis, secondaryAxis, lastAxis]
-    possibleLast = range(3)
+    possibleLast = list(range(3))
     possibleLast.remove(inPrimary)
     possibleLast.remove(inSecondary)
 
@@ -648,11 +648,11 @@ DEFAULT_PRESET = {
 
 def writePreset(inTransform, inClearDict=DEFAULT_PRESET, **inPreset):
     if not inClearDict is None:
-        for key, value in inClearDict.iteritems():
+        for key, value in inClearDict.items():
             if pc.attributeQuery(key, node=inTransform, exists=True):
                 pc.deleteAttr(inTransform, at=key)
 
-    for key, value in inPreset.iteritems():
+    for key, value in inPreset.items():
         addAttr(inTransform, key, value)
 
 def readPreset(inTransform):
