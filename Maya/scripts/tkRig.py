@@ -3194,6 +3194,31 @@ def createSuperIKLink(inSuperIK, inCtrl, inValue=1.0, invertX=False, invertZ=Fal
         else:
             output >> neutralInput
 
+def createCurveAttributes(inCurve, inAttrParent, inAttrFormat="mod_Scale_{}", inNbOutputs=84, inNoInputs=False):
+    inCurveShape = inCurve.getShape()
+    cvs = inCurve.getCVs()
+    
+    if not inNoInputs:
+        for i, cv in enumerate(cvs):
+            attrName = inAttrFormat.format("Input_{:02d}".format(i))
+            inAttrParent.addAttr(attrName, keyable=True)
+            inAttrParent.attr(attrName).set(cv[1])
+            yPosAttr = tkc.getNode("{0}.controlPoints[{1}].yValue".format(inCurveShape.name(), i))
+            inAttrParent.attr(attrName) >> yPosAttr
+
+    crvLength = inCurve.length()
+    for i in range(inNbOutputs):
+        
+        poc = pc.createNode("pointOnCurveInfo", name=inCurve.name() + "_POC_" + str(i))
+        inCurveShape.worldSpace[0] >> poc.inputCurve
+        poc.turnOnPercentage.set(True)
+        poc.parameter.set(float(i) / (inNbOutputs - 1))
+        
+        attrName = inAttrFormat.format("Output_{:02d}".format(i))
+        inAttrParent.addAttr(attrName, keyable=True)
+        
+        poc.result.position.positionY >> inAttrParent.attr(attrName)
+
 def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None, inFunction=None):
     filePath = inPath
     deltaPath = inDeltaPath
@@ -6367,6 +6392,110 @@ else
     pc.expression(s=expr)
 
     return hi[inContainer]
+
+def matchLatticePoints(inLattice, inRefLattice, inMirror=False, inMirrorAxis="x"):
+    latticeShape = inLattice.getShape()
+    refLatticeShape = inRefLattice.getShape()
+    
+    x, y, z = refLatticeShape.getDivisions()
+    
+    for i in range(x):
+        for j in range(y):
+            for k in range(z):
+                pt = refLatticeShape.point(i, j, k)
+                
+                realX = -pt[0] if (inMirror and inMirrorAxis == "x") else pt[0]
+                realY = -pt[1] if (inMirror and inMirrorAxis == "y") else pt[1]
+                realZ = -pt[2] if (inMirror and inMirrorAxis == "z") else pt[2]
+
+                realI = (x - 1 - i) if (inMirror and inMirrorAxis == "x") else i
+                realJ = (y - 1 - j) if (inMirror and inMirrorAxis == "y") else j
+                realK = (z - 1 - k) if (inMirror and inMirrorAxis == "z") else k
+
+                pc.move(realX,realY,realZ, "{0}.pt[{1}][{2}][{3}]".format(latticeShape,realI, realJ, realK), absolute=True, objectSpace=True)
+
+"""
+assert len(pc.selected()) > 0 and pc.selected()[0].type() == "transform", "Please select some meshes to test"
+
+result = pc.promptDialog(
+        title="Check influences",
+        message="Input the max number of influences allowed",
+        text="4",
+        button=['OK', 'Cancel'],
+        defaultButton='OK',
+        cancelButton='Cancel',
+        dismissString='Cancel')
+        
+print result
+if result == 'OK':
+    nbInfs = 0
+    try:
+        nbInfs = int(pc.promptDialog(query=True, text=True))
+    except:
+        pc.error("Your entry '{0}' is not an int !".format(pc.promptDialog(query=True, text=True)))
+
+    if nbInfs > 0:
+        multiSelectVertsWithTooMuchInfs(pc.selected(), nbInfs)
+"""
+
+def selectVertsWithTooMuchInfs(inObj, inMax=4, inSelect=True, inVerbose=False):
+    inObj = tkc.getNode(inObj)
+    skinCls = tkc.getSkinCluster(inObj)
+
+    inSkin = tkc.getWeights(inObj)
+    inInfluences = [inf.name() for inf in pc.skinCluster(skinCls, query=True, inf=True)]
+    
+    NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
+
+    NSkin = len(inSkin)
+    pointsN = NSkin / NInfs
+    
+    invalidIndices = []
+
+    for i in range(int(pointsN)):
+        values = tkc.getPointInfluences(inSkin, inInfluences, i)
+
+        inf_vals = []
+        for j in range(len(values)):
+            inf_vals.append([inInfluences[j], values[j]])
+
+        #sort by value
+        inf_vals.sort(key=lambda v: -v[1])
+        
+        counter = 0
+        remainingWeight = 0
+        
+        for inf_val in inf_vals:
+            if inf_val[1] <= 0.0001:
+                break
+            
+            counter += 1
+
+            if counter > inMax:
+                invalidIndices.append(i)
+                break
+
+    if len(invalidIndices) > 0:
+        if inSelect:
+            pc.select(["{0}.vtx[{1}]".format(inObj.name(), i) for i in invalidIndices])
+            
+        if inVerbose:
+            pc.warning("Mesh '{0}' have {1} vertices with more than {2} influences ({3})".format(inObj.name(), len(invalidIndices), inMax, invalidIndices))
+    else:
+        if inVerbose:
+            print("Mesh '{0}' is conform (no more than {1} influences)".format(inObj.name(), inMax))
+        
+    return invalidIndices
+
+def multiSelectVertsWithTooMuchInfs(inObjs, inMax=4):
+    sel = []
+    
+    for inObj in inObjs:
+        invalidIndices = selectVertsWithTooMuchInfs(inObj, inMax=inMax, inSelect=False, inVerbose=True)
+        sel.extend(["{0}.vtx[{1}]".format(inObj.name(), i) for i in invalidIndices])
+
+    if len(sel) > 0:
+        pc.select(sel)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                          _   _      
