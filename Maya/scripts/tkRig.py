@@ -6393,6 +6393,9 @@ else
 
     return hi[inContainer]
 
+"""
+matchLatticePoints(pc.selected()[0], pc.selected()[1], inMirror=True)
+"""
 def matchLatticePoints(inLattice, inRefLattice, inMirror=False, inMirrorAxis="x"):
     latticeShape = inLattice.getShape()
     refLatticeShape = inRefLattice.getShape()
