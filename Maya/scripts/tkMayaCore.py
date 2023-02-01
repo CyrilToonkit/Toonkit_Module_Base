@@ -4326,7 +4326,7 @@ def sampleGeometry(inObj, inRef, inType=POLYTOPOLY, inProgress=True):
             #get polygon center
             ids = inObj.getPolygonVertices(i)
             centerPoint = points[ids[0]]
-            for j in range(1,len(ids)): 
+            for j in range(1,len(ids)):
                 centerPoint += points[ids[j]]
             centerPoint /= len(ids)
 
@@ -5780,7 +5780,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                         except:
                             pass
 
-                        managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
+                        managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=list(inTypesPriorities.keys()))
                         break
     else:
         print ("No need to reorder {0} deformers".format(objName))
