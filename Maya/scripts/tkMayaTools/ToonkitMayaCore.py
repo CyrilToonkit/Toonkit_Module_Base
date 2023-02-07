@@ -156,7 +156,7 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("mayabatchpath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "mayabatch.exe"), "Maya batch path", "Maya batch path", False, "Configuration")
         self.options.addOption("hidemenu", False, "Hide Toonkit menu", "Hide menu", False, "Configuration")
         self.options.addOption("hookmayabatch", True, "Intercep a mayabatch call to execute a python script given as argument", "Hook mayabatch", False, "Configuration")
-        self.options.addOption("logLevel", 3, "Set the logging value","Log Level :", False, "Logs.Level", inValues=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR"])
+        self.options.addOption("logLevel", 2, "Set the logging value","Log Level :", False, "Logs.Level", inValues=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR"])
         self.options.addOption("logFile", False, None, " ", False, "Logs.File")
         self.options.addOption("logPath", "ToonKit", None, "Log to File :", False, "Logs.File")
 
@@ -239,10 +239,10 @@ class ToonkitMayaCore(Tool):
         savedOption = Options(inPath=self.getOptionsPath())
         for key, value in savedOption.iteritems():
             if key in self.options.keys():
-                tkLogger.debug("The option '" +key+ "' allrady exists, his value is set to " + str(value))
+                tkLogger.debug("The option '" +key+ "' allready exists, his value is set to " + str(value))
                 self.options[key] = value
             elif not key in self.options.keys():
-                tkLogger.warning("The options'" + key + "' is not in bases options !" )
+                tkLogger.warning("The options'" + key + "' is not in base options !" )
         del savedOption
         self.options.path = self.getOptionsPath()
         
