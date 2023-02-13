@@ -5753,7 +5753,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
     if inTypesPriorities == None:
         inTypesPriorities = type_priority
 
-    managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=inTypesPriorities.keys())
+    managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=list(inTypesPriorities.keys()))
     if len(managedHistory) < 2:
         return
 
