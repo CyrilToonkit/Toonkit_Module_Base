@@ -34,7 +34,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.77.8"
+VERSIONINFO = "1.5.78.7"
 
 MENU_NAME = "tkMainMenu"
 
