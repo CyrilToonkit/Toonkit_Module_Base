@@ -115,7 +115,7 @@ class ExportAbcs(Tool):
             endFrame = int(cmds.playbackOptions(animationEndTime=True, query=True))
 
             overrides = {"frameRange":(startFrame,endFrame)}
-            if not doubleBarelyEquals(self.options["Speed"], 1.0):
+            if not tkc.doubleBarelyEquals(self.options["Speed"], 1.0):
                 overrides["step"]=self.options["Speed"]
 
             ABC_PRESETS[raw_path]={"def":objsDef, "args":[], "overrides":overrides}
