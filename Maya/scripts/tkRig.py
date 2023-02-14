@@ -40,7 +40,7 @@ import operator
 import tempfile
 import six
 basestring = six.string_types
-
+from Toonkit_Core import tkLogger
 import Toonkit_Core.tkCore as tc
 
 import pymel.core as pc
@@ -4563,10 +4563,9 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
         else:
             nodeDeformersDict[thisRoot.name()].append(d)
 
-    if inDebug:
-        print ('geos', len(geos), geos)
-        print ('deformers', len(deformers), deformers)
-        print ('inHierarchy', len(inHierarchy), inHierarchy)
+    tkLogger.debug(('geos', len(geos), geos))
+    tkLogger.debug(('deformers', len(deformers), deformers))
+    tkLogger.debug(('inHierarchy', len(inHierarchy), inHierarchy))
     skins = tkc.storeSkins(geos)
     for geo in skinedGeo:
         pc.skinCluster(geo, edit=True, unbind=True)
@@ -4577,12 +4576,10 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
     shadowrigDict = {}
     for mapItem in inHierarchy:
         jointItemName = (inNs or '') + (inPrefix or '') + mapItem['name'] + (inSuffix or '')
-        if inDebug:
-            print (jointItemName)
+        tkLogger.debug(jointItemName)
         jointItem = deformersDict.get(jointItemName)
         if jointItem is None:
-            if inDebug:
-                print (jointItemName + ' does not exists !')
+            tkLogger.debug(jointItemName + ' does not exists !')
             continue
         remainingdeformers.remove(jointItem)
         shadowrigDict[jointItemName] = jointItem
@@ -4607,8 +4604,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             else:
                 curParent = hierarchyDict[curParent]['parent']
 
-        if inDebug:
-            print (' -parent :', curParent)
+        tkLogger.debug((' -parent :', curParent))
         if not inDryRun:
             if curParent is not None:
                 reparentJoint(jointItem, deformersDict[curParent], inMatchT=inMatchT, inMatchR=inMatchR)
@@ -4630,17 +4626,15 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
     remainingdeformers.sort(key=lambda n: n.name(), reverse=True)
 
     for remainingdeformer in remainingdeformers:
-        if inDebug:
-            print (' -remainingdeformer :', remainingdeformer)
+        tkLogger.debug((' -remainingdeformer :', remainingdeformer))
         target = remainingdeformer
         root = tkc.getParent(target, root=True)
         joints = nodeDeformersDict.get(root.name(), [])
         foundDeformers = []
         pad = '   '
-        if inDebug:
-            print (pad + '-target :', remainingdeformer)
-            print (pad + '-root :', root)
-            print (pad + '-joints :', joints)
+        tkLogger.debug((pad + '-target :', remainingdeformer))
+        tkLogger.debug((pad + '-root :', root))
+        tkLogger.debug((pad + '-joints :', joints))
         while target is not None:
             for joint in joints:
                 if joint in deformers:
@@ -4658,11 +4652,11 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             target = tkc.getConstraintTargets(cns[0])[0]
             root = tkc.getParent(target, root=True)
             joints = nodeDeformersDict.get(root.name(), [])
-            if inDebug:
+            if tkLogger.tkLogger.level <= 10:
                 pad += pad
-                print (pad + '-target :', target)
-                print (pad + '-root :', root)
-                print (pad + '-joints :', joints)
+                tkLogger.debug((pad + '-target :', target))
+                tkLogger.debug((pad + '-root :', root))
+                tkLogger.debug((pad + '-joints :', joints))
 
         if len(foundDeformers) == 0:
             pc.warning("Can't find parent for " + remainingdeformer.name())

@@ -31,6 +31,9 @@ import OscarZmqMayaString as ozms
 import tkMayaCore as tkc
 import tkNodeling as tkn
 
+try: basestring
+except: basestring=str
+
 """
 import tkJointOrient as tkj
 reload(tkj)
@@ -431,12 +434,24 @@ def getFirstOrientedChild(inTransform):
 
 """
 inPrimaryType : 0 = World vector, 1 = World point, 2 = towards child, 3 = towards parent, 5 = matched
-inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent, 5 = towards parent
+inSecondaryType : 0 = World vector, 1 = World point, 2 = UpVChildren, 3 = UpVParent, 4 = UpVParentParent, 5 = towards parent, 6 = External UpV
 
 TODO : same options for Primary and Secondary !
 TODO : tackle last aiming bugs (for instance Spine needs to point [0,0,-1] to point [0,0,1]) !
 """
-def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0.0, 0.0], inPrimaryNegate=False, inPrimaryChild=None, inSecondary=1, inSecondaryType=0, inSecondaryData=[0.0, 1.0, 0.0], inSecondaryNegate=False, inOrientChildren=False, inIdentity=False):
+def orientJoint(inTransform,
+                inPrimary=0,
+                inPrimaryType=2,
+                inPrimaryData=[1.0, 0.0, 0.0],
+                inPrimaryNegate=False,
+                inPrimaryChild=None,
+                inSecondary=1,
+                inSecondaryType=0,
+                inSecondaryData=[0.0, 1.0, 0.0],
+                inSecondaryNegate=False,
+                inOrientChildren=False,
+                inIdentity=False,
+                ):
 
     attrs = {}
     for channel in tkc.CHANNELS:
@@ -554,7 +569,8 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
             primaryIsDirection = inPrimaryType == 0
 
         #print "primaryPoint",primaryPoint
-
+        if isinstance(inSecondaryData, (tuple, list)) and isinstance(inSecondaryData[0], basestring):
+            inSecondaryData = eval(inSecondaryData[0] + "({})".format(",".join(["\"{}\"".format(d) if isinstance(d, basestring) else str(d) for d in inSecondaryData[1:]])))
         if primaryIsDirection:
             if inSecondaryType == 0:
                 aim(inTransform,  inPrimary=inPrimary, inPrimaryDirection=primaryPoint, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryDirection=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inPreserveChildren=True)
@@ -601,6 +617,14 @@ def orientJoint(inTransform, inPrimary=0, inPrimaryType=2, inPrimaryData=[1.0, 0
             if child.type() == "joint":
                 orientJoint(child,  inPrimary=inPrimary, inPrimaryNegate=inPrimaryNegate, inSecondary=inSecondary, inSecondaryType=inSecondaryType, inSecondaryData=inSecondaryData, inSecondaryNegate=inSecondaryNegate, inOrientChildren=True)
 
+def getUpVPos(inTopRef, inMiddleRef, inEndRef):
+    upVector = pc.group(empty=True)
+    resPlan = tkc.createResPlane(target=upVector, topRef = tkc.getNode("::"+inTopRef), middleRef = tkc.getNode("::"+inMiddleRef), endRef = tkc.getNode("::"+inEndRef))
+    poses = upVector.translate.get()
+    pc.delete(resPlan)
+    pc.delete(upVector)
+    return list(poses)
+
 def addAttr(inTransform, inName, inValue, inEnumValues=None):
     attType = type(inValue).__name__
     #print inTransform, inName, inValue, " : attType",attType
@@ -610,6 +634,8 @@ def addAttr(inTransform, inName, inValue, inEnumValues=None):
     elif attType == "str":
         attType = "string"
     elif attType in ['list', 'tuple']:
+        if isinstance(inValue, tuple):
+            inValue = list(inValue)
         subType = type(inValue[0]).__name__
         
         #print "subType",subType

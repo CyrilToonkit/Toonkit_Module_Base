@@ -7,62 +7,6 @@ from Toonkit_Core import tkLogger
 from maya import cmds, mel
 from maya.api import OpenMaya
 
-DEFINITION = {
-    "Head":15,
-    "Hips":1,
-    "LeftArm":9,
-    "LeftFoot":4,
-    "LeftForeArm":10,
-    "LeftHand":11,
-    "LeftHandIndex1":54,
-    "LeftHandIndex2":55,
-    "LeftHandIndex3":56,
-    "LeftHandMiddle1":58,
-    "LeftHandMiddle2":59,
-    "LeftHandMiddle3":60,
-    "LeftHandPinky1":66,
-    "LeftHandPinky2":67,
-    "LeftHandPinky3":68,
-    "LeftHandRing1":62,
-    "LeftHandRing2":63,
-    "LeftHandRing3":64,
-    "LeftHandThumb1":50,
-    "LeftHandThumb2":51,
-    "LeftHandThumb3":52,
-    "LeftLeg":3,
-    "LeftShoulder":18,
-    "LeftToeBase":16,
-    "LeftUpLeg":2,
-    "Neck":20,
-    "Reference":0,
-    "RightArm":12,
-    "RightFoot":7,
-    "RightForeArm":13,
-    "RightHand":14,
-    "RightHandIndex1":78,
-    "RightHandIndex2":79,
-    "RightHandIndex3":80,
-    "RightHandMiddle1":82,
-    "RightHandMiddle2":83,
-    "RightHandMiddle3":84,
-    "RightHandPinky1":90,
-    "RightHandPinky2":91,
-    "RightHandPinky3":92,
-    "RightHandRing1":86,
-    "RightHandRing2":87,
-    "RightHandRing3":88,
-    "RightHandThumb1":74,
-    "RightHandThumb2":75,
-    "RightHandThumb3":76,
-    "RightLeg":6,
-    "RightShoulder":19,
-    "RightToeBase":17,
-    "RightUpLeg":5,
-    "Spine":8,
-    "Spine1":23,
-    "Spine2":24,
-    "Spine3":25,
-}
 
 PREFIX = "MayaHIK_"
 
@@ -76,18 +20,6 @@ WORLD_PRESET =  {
     "inSecondaryType":0,
     "inSecondaryData":[0.0, 1.0, 0.0],
     "inSecondaryNegate":False
-}
-
-YUP_ZFRONT_PRESET = {
-    "inPrimary":1,
-    "inPrimaryType":2,
-    "inPrimaryData":[1.0, 0.0, 0.0],
-    "inPrimaryNegate":False,
-    "inPrimaryChild":"",
-    "inSecondary":2,
-    "inSecondaryType":0,
-    "inSecondaryData":[0.0, 0.0, 1.0],
-    "inSecondaryNegate":True
 }
 
 L_FINGER1_PRESET = {
@@ -162,412 +94,10 @@ R_FINGER3_PRESET = {
     "inSecondaryNegate":False
 }
 
-PRESETS = [
-    (PREFIX + "Neck", YUP_ZFRONT_PRESET),
-    (PREFIX + "Neck1", YUP_ZFRONT_PRESET),
-    (PREFIX + "Head", YUP_ZFRONT_PRESET),
-
-    #Lf Arm
-    (PREFIX + "LeftShoulder", {
-            "inPrimary":0,
-            "inPrimaryType":2,
-            "inPrimaryData":[0.0, 0.0, 1.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":1,
-            "inSecondaryType":0,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":False,
-        }),
-        
-    (PREFIX + "LeftArm", {
-            "inPrimary":0,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":2,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True,
-        }),
-        
-    (PREFIX + "LeftForeArm", {
-            "inPrimary":0,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":3,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True,
-        }),
-    
-    #Lf Hand
-    (PREFIX + "LeftHand", {
-            "inPrimaryType":5,
-            "inPrimaryData":[-90.0, 0.0, 0.0],
-            "inPrimaryChild":"Left_Hand",
-        }),
-
-    #Lf Thumb
-    (PREFIX + "LeftHandThumb1", {"inPrimaryType":5,  "inPrimaryData":[-90.0, 0.0, 0.0],    "inPrimaryChild":"Left_Thumb_1","inSecondaryNegate":True}),
-    (PREFIX + "LeftHandThumb2", {"inPrimaryType":5,  "inPrimaryData":[-90.0, 0.0, 0.0],    "inPrimaryChild":"Left_Thumb_2","inSecondaryNegate":True}),
-    (PREFIX + "LeftHandThumb3", {"inPrimaryType":5,  "inPrimaryData":[-90.0, 0.0, 0.0],    "inPrimaryChild":"Left_Thumb_3","inSecondaryNegate":True}),
-    (PREFIX + "LeftHandThumb4", {"inPrimaryType":5,  "inPrimaryData":[-90.0, 0.0, 0.0],    "inPrimaryChild":"Left_Thumb_3","inSecondaryNegate":True}),
-
-    #Lf Index
-    (PREFIX + "LeftHandIndex0", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Index_Mtc","inSecondary":1}),
-    (PREFIX + "LeftHandIndex1", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Index_1","inSecondary":1}),
-    (PREFIX + "LeftHandIndex2", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Index_2","inSecondary":1}),
-    (PREFIX + "LeftHandIndex3", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Index_3","inSecondary":1}),
-    (PREFIX + "LeftHandIndex4", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Index_3","inSecondary":1}),
-
-    #Lf Middle
-    (PREFIX + "LeftHandMiddle0", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Middle_Mtc","inSecondary":1}),
-    (PREFIX + "LeftHandMiddle1", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Middle_1","inSecondary":1}),
-    (PREFIX + "LeftHandMiddle2", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Middle_2","inSecondary":1}),
-    (PREFIX + "LeftHandMiddle3", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Middle_3","inSecondary":1}),
-    (PREFIX + "LeftHandMiddle4", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Middle_3","inSecondary":1}),
-
-    #Lf Ring
-    (PREFIX + "LeftHandRing0", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Ring_Mtc","inSecondary":1}),
-    (PREFIX + "LeftHandRing1", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Ring_1","inSecondary":1}),
-    (PREFIX + "LeftHandRing2", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Ring_2","inSecondary":1}),
-    (PREFIX + "LeftHandRing3", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Ring_3","inSecondary":1}),
-    (PREFIX + "LeftHandRing4", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Ring_3","inSecondary":1}),
-
-    #Lf Pinky
-    (PREFIX + "LeftHandPinky0", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Pinky_Mtc","inSecondary":1}),
-    (PREFIX + "LeftHandPinky1", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Pinky_1","inSecondary":1}),
-    (PREFIX + "LeftHandPinky2", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Pinky_2","inSecondary":1}),
-    (PREFIX + "LeftHandPinky3", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Pinky_3","inSecondary":1}),
-    (PREFIX + "LeftHandPinky4", {"inPrimaryType":5,  "inPrimaryData":[0.0, 0.0, 0.0],    "inPrimaryChild":"Left_Pinky_3","inSecondary":1}),
-
-    #Lf Leg
-    (PREFIX + "LeftUpLeg", {
-            "inPrimary":1,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":2,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True
-        }),
-        
-    (PREFIX + "LeftLeg", {
-            "inPrimary":1,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":3,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True
-        }),
-        
-    (PREFIX + "LeftFoot", {
-            "inPrimary":2,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":1,
-            "inSecondaryType":0,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":False
-        }),
-        
-    (PREFIX + "LeftToeBase", {
-            "inPrimary":2,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":1,
-            "inSecondaryType":0,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":False
-        }),
-
-
-    #Rt Arm
-    (PREFIX + "RightShoulder", {
-            "inPrimary":0,
-            "inPrimaryType":2,
-            "inPrimaryData":[0.0, 0.0, 1.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":0,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":False,
-        }),
-        
-    (PREFIX + "RightArm", {
-            "inPrimary":0,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":2,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True,
-        }),
-        
-    (PREFIX + "RightForeArm", {
-            "inPrimary":0,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":3,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True,
-        }),
-    
-    #Lf Hand
-    (PREFIX + "RightHand", {
-            "inPrimaryType":5,
-            "inPrimaryData":[90.0, 0.0, 180.0],
-            "inPrimaryChild":"Right_Hand",
-        }),
-
-    #Lf Thumb
-    (PREFIX + "RightHandThumb1", {"inPrimaryType":5,  "inPrimaryData":[90.0, 0.0, 180.0],    "inPrimaryChild":"Right_Thumb_1"}),
-    (PREFIX + "RightHandThumb2", {"inPrimaryType":5,  "inPrimaryData":[90.0, 0.0, 180.0],    "inPrimaryChild":"Right_Thumb_2"}),
-    (PREFIX + "RightHandThumb3", {"inPrimaryType":5,  "inPrimaryData":[90.0, 0.0, 180.0],    "inPrimaryChild":"Right_Thumb_3"}),
-    (PREFIX + "RightHandThumb4", {"inPrimaryType":5,  "inPrimaryData":[90.0, 0.0, 180.0],    "inPrimaryChild":"Right_Thumb_3"}),
-
-    #Lf Index
-    (PREFIX + "RightHandIndex0", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Index_Mtc","inSecondary":1}),
-    (PREFIX + "RightHandIndex1", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Index_1","inSecondary":1}),
-    (PREFIX + "RightHandIndex2", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Index_2","inSecondary":1}),
-    (PREFIX + "RightHandIndex3", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Index_3","inSecondary":1}),
-    (PREFIX + "RightHandIndex4", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Index_3","inSecondary":1}),
-
-    #Lf Middle
-    (PREFIX + "RightHandMiddle0", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Middle_Mtc","inSecondary":1}),
-    (PREFIX + "RightHandMiddle1", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Middle_1","inSecondary":1}),
-    (PREFIX + "RightHandMiddle2", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Middle_2","inSecondary":1}),
-    (PREFIX + "RightHandMiddle3", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Middle_3","inSecondary":1}),
-    (PREFIX + "RightHandMiddle4", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Middle_3","inSecondary":1}),
-
-    #Lf Ring
-    (PREFIX + "RightHandRing0", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Ring_Mtc","inSecondary":1}),
-    (PREFIX + "RightHandRing1", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Ring_1","inSecondary":1}),
-    (PREFIX + "RightHandRing2", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Ring_2","inSecondary":1}),
-    (PREFIX + "RightHandRing3", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Ring_3","inSecondary":1}),
-    (PREFIX + "RightHandRing4", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Ring_3","inSecondary":1}),
-
-    #Lf Pinky
-    (PREFIX + "RightHandPinky0", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Pinky_Mtc","inSecondary":1}),
-    (PREFIX + "RightHandPinky1", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Pinky_1","inSecondary":1}),
-    (PREFIX + "RightHandPinky2", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Pinky_2","inSecondary":1}),
-    (PREFIX + "RightHandPinky3", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Pinky_3","inSecondary":1}),
-    (PREFIX + "RightHandPinky4", {"inPrimaryType":5,  "inPrimaryData":[0.0, -180.0, 0.0],    "inPrimaryChild":"Right_Pinky_3","inSecondary":1}),
-
-    #Lf Leg
-    (PREFIX + "RightUpLeg", {
-            "inPrimary":1,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":2,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True
-        }),
-        
-    (PREFIX + "RightLeg", {
-            "inPrimary":1,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":True,
-            "inPrimaryChild":"",
-            "inSecondary":2,
-            "inSecondaryType":3,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":True
-        }),
-        
-    (PREFIX + "RightFoot", {
-            "inPrimary":2,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":1,
-            "inSecondaryType":0,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":False
-        }),
-        
-    (PREFIX + "RightToeBase", {
-            "inPrimary":2,
-            "inPrimaryType":2,
-            "inPrimaryData":[1.0, 0.0, 0.0],
-            "inPrimaryNegate":False,
-            "inPrimaryChild":"",
-            "inSecondary":1,
-            "inSecondaryType":0,
-            "inSecondaryData":[0.0, 1.0, 0.0],
-            "inSecondaryNegate":False
-        }),
-]
-
 DEFAULT_UNIT_CONVERSION = 100.0
 
 UNITSCALE = 0.01#To meters
 UNITSCALE = 1.0
-
-                #ControllerName:(mocapMarkerName, considerPosition, considerRotation, localOnly matchingFunction, realMocapMarkers)
-template = {    #Spine FK
-                "Hips":(PREFIX + "Hips", True, True),
-                "Spine_FK_2":(PREFIX + "Spine", True, True),
-                "Spine_FK_3":(PREFIX + "Spine1", True, True),#RIG TO ADD
-                "Spine_FK_4":(PREFIX + "Spine2", True, True),#RIG TO ADD
-                "Spine_FK_5":(PREFIX + "Spine3", False, True),
-                
-                #Spine IK
-                "Chest_IK":(PREFIX + "Spine3", True, True, False),
-                "Spine_IK_StartHandle":(PREFIX + "Spine", True, True, False),
-                "Spine_IK_Middle":(PREFIX + "Spine1", True, True, False),#RIG TO ADD
-                "Spine_IK_EndHandle":(PREFIX + "Spine2", True, True, False),#RIG TO ADD
-
-                #Neck FK
-                "Neck_FK_1":(PREFIX + "Neck", True, True),#RIG TO ADD
-                "Neck_FK_2":(PREFIX + "Neck1", True, True),#RIG TO ADD
-                "Head_FK":(PREFIX + "Head", True, True),
-
-                #Neck IK
-                "Head_IK":(PREFIX + "Head", True, True, False),
-                "Neck_IK_Start":(PREFIX + "Neck", True, True, False),#RIG TO ADD
-                "Neck_IK_Middle":(PREFIX + "Neck1", True, True, False),#RIG TO ADD
-
-                #Left Arm
-                "Left_Shoulder":(PREFIX + "LeftShoulder", False, True),
-
-                #Left Arm FK
-                "Left_Arm_FK_1":(PREFIX + "LeftArm", False, True),
-                "Left_Arm_FK_2":(PREFIX + "LeftForeArm", False, True),
-                "Left_Hand":(PREFIX + "LeftHand", False, True),
-                
-                #Left Arm IK
-                "Left_Arm_upV":(PREFIX + "LeftArmPoleVector", True, False, False, "poleMatcher", (PREFIX +"LeftArm", PREFIX +"LeftForeArm_poleHelper", PREFIX +"LeftHand")),
-                "Left_Arm_IK":(PREFIX + "LeftHand", True, True, False),
-                
-                #Left Fingers
-                "Left_Thumb_1":(PREFIX + "LeftHandThumb1", False, True),
-                "Left_Thumb_2":(PREFIX + "LeftHandThumb2", False, True),
-                "Left_Thumb_3":(PREFIX + "LeftHandThumb3", False, True),
-                "TK_Left_HandRig_Thumb_Eff_Output":(PREFIX + "LeftHandThumb4",),
-
-                "Left_Index_Mtc":(PREFIX + "LeftHandIndex0", False, True),
-                "Left_Index_1":(PREFIX + "LeftHandIndex1", False, True),
-                "Left_Index_2":(PREFIX + "LeftHandIndex2", False, True),
-                "Left_Index_3":(PREFIX + "LeftHandIndex3", False, True),
-                "TK_Left_HandRig_Index_Eff_Output":(PREFIX + "LeftHandIndex4",),
-                
-                "Left_Middle_Mtc":(PREFIX + "LeftHandMiddle0", False, True),
-                "Left_Middle_1":(PREFIX + "LeftHandMiddle1", False, True),
-                "Left_Middle_2":(PREFIX + "LeftHandMiddle2", False, True),
-                "Left_Middle_3":(PREFIX + "LeftHandMiddle3", False, True),
-                "TK_Left_HandRig_Middle_Eff_Output":(PREFIX + "LeftHandMiddle4",),
-                
-                "Left_Ring_Mtc":(PREFIX + "LeftHandRing0", False, True),
-                "Left_Ring_1":(PREFIX + "LeftHandRing1", False, True),
-                "Left_Ring_2":(PREFIX + "LeftHandRing2", False, True),
-                "Left_Ring_3":(PREFIX + "LeftHandRing3", False, True),
-                "TK_Left_HandRig_Ring_Eff_Output":(PREFIX + "LeftHandRing4",),
-                
-                "Left_Pinky_Mtc":(PREFIX + "LeftHandPinky0", False, True),
-                "Left_Pinky_1":(PREFIX + "LeftHandPinky1", False, True),
-                "Left_Pinky_2":(PREFIX + "LeftHandPinky2", False, True),
-                "Left_Pinky_3":(PREFIX + "LeftHandPinky3", False, True),
-                "TK_Left_HandRig_Pinky_Eff_Output":(PREFIX + "LeftHandPinky4",),
-                
-                #Left HandProp
-                #"Left_HandProp":(PREFIX + "Lf_HandProp_MCP_0_JNT", True, True, False),
-
-                #Left Leg IK
-                "Left_Leg_upV":(PREFIX + "LeftLegPoleVector", True, False, False, "poleMatcher", (PREFIX +"LeftUpLeg", PREFIX +"LeftLeg_poleHelper", PREFIX +"LeftFoot")),
-                "Left_Leg_IK":(PREFIX + "LeftFoot", True, True, False),
-                "Left_IK_Tip":(PREFIX + "LeftToeBase", True, True),
-                
-                #Left Leg FK
-                "Left_Leg_FK_1":(PREFIX + "LeftUpLeg", False, True),
-                "Left_Leg_FK_2":(PREFIX + "LeftLeg", False, True),
-                "Left_Foot_FK_1":(PREFIX + "LeftFoot", False, True),
-                "Left_Foot_FK_2":(PREFIX + "LeftToeBase", False, True),
-                
-                #"Left_Tip":(PREFIX + "Lf_Foot_MCP_2_JNT",),
-
-                #Right Arm
-                "Right_Shoulder":(PREFIX + "RightShoulder", False, True),
-
-                #Right Arm FK
-                "Right_Arm_FK_1":(PREFIX + "RightArm", False, True),
-                "Right_Arm_FK_2":(PREFIX + "RightForeArm", False, True),
-                "Right_Hand":(PREFIX + "RightHand", False, True),
-                
-                #Right Arm IK
-                "Right_Arm_upV":(PREFIX + "RightArmPoleVector", True, False, False, "poleMatcher", (PREFIX +"RightArm", PREFIX +"RightForeArm_poleHelper", PREFIX +"RightHand")),
-                "Right_Arm_IK":(PREFIX + "RightHand", True, True, False),
-                
-                #Right Fingers
-                "Right_Thumb_1":(PREFIX + "RightHandThumb1", False, True),
-                "Right_Thumb_2":(PREFIX + "RightHandThumb2", False, True),
-                "Right_Thumb_3":(PREFIX + "RightHandThumb3", False, True),
-                "TK_Right_HandRig_Thumb_Eff_Output":(PREFIX + "RightHandThumb4",),
-
-                "Right_Index_Mtc":(PREFIX + "RightHandIndex0", False, True),
-                "Right_Index_1":(PREFIX + "RightHandIndex1", False, True),
-                "Right_Index_2":(PREFIX + "RightHandIndex2", False, True),
-                "Right_Index_3":(PREFIX + "RightHandIndex3", False, True),
-                "TK_Right_HandRig_Index_Eff_Output":(PREFIX + "RightHandIndex4",),
-                
-                "Right_Middle_Mtc":(PREFIX + "RightHandMiddle0", False, True),
-                "Right_Middle_1":(PREFIX + "RightHandMiddle1", False, True),
-                "Right_Middle_2":(PREFIX + "RightHandMiddle2", False, True),
-                "Right_Middle_3":(PREFIX + "RightHandMiddle3", False, True),
-                "TK_Right_HandRig_Middle_Eff_Output":(PREFIX + "RightHandMiddle4",),
-                
-                "Right_Ring_Mtc":(PREFIX + "RightHandRing0", False, True),
-                "Right_Ring_1":(PREFIX + "RightHandRing1", False, True),
-                "Right_Ring_2":(PREFIX + "RightHandRing2", False, True),
-                "Right_Ring_3":(PREFIX + "RightHandRing3", False, True),
-                "TK_Right_HandRig_Ring_Eff_Output":(PREFIX + "RightHandRing4",),
-                
-                "Right_Pinky_Mtc":(PREFIX + "RightHandPinky0", False, True),
-                "Right_Pinky_1":(PREFIX + "RightHandPinky1", False, True),
-                "Right_Pinky_2":(PREFIX + "RightHandPinky2", False, True),
-                "Right_Pinky_3":(PREFIX + "RightHandPinky3", False, True),
-                "TK_Right_HandRig_Pinky_Eff_Output":(PREFIX + "RightHandPinky4",),
-                
-                #Right HandProp
-                #"Right_HandProp":(PREFIX + "Lf_HandProp_MCP_0_JNT", True, True, False),
-
-                #Right Leg IK
-                "Right_Leg_upV":(PREFIX + "RightLegPoleVector", True, False, False, "poleMatcher", (PREFIX +"RightUpLeg", PREFIX +"RightLeg_poleHelper", PREFIX +"RightFoot")),
-                "Right_Leg_IK":(PREFIX + "RightFoot", True, True, False),
-                "Right_IK_Tip":(PREFIX + "RightToeBase", True, True),
-                
-                #Right Leg FK
-                "Right_Leg_FK_1":(PREFIX + "RightUpLeg", False, True),
-                "Right_Leg_FK_2":(PREFIX + "RightLeg", False, True),
-                "Right_Foot_FK_1":(PREFIX + "RightFoot", False, True),
-                "Right_Foot_FK_2":(PREFIX + "RightToeBase", False, True),
-                
-                #"Right_Tip":(PREFIX + "Lf_Foot_MCP_2_JNT",),
-           }
 
 ###################### Axis Integration ###############################
 
@@ -1005,7 +535,7 @@ def checkHIKExists(inCreate=True):
         pc.mel.eval("ToggleCharacterControls")
         pc.refresh()
 
-def getCharacter(inJoint):
+def getCharacter(inJoint, inDefinition):
     ns = str(inJoint.namespace())
     
     chars = pc.listConnections(inJoint, source=True, destination=True, type="HIKCharacterNode")
@@ -1014,7 +544,7 @@ def getCharacter(inJoint):
     if char is None:
 
         valid=True
-        for key,value in DEFINITION.items():
+        for key,value in inDefinition.items():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
                 valid=False
@@ -1024,7 +554,7 @@ def getCharacter(inJoint):
 
             char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
             
-            for key,value in DEFINITION.items():
+            for key,value in inDefinition.items():
                 print ("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
                 pc.mel.eval("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
             
@@ -1103,7 +633,7 @@ def poleMatcher(*args):
 
     return target.name()
 
-def mocapPreBind(ns="", rigRoot = "local_STR"):
+def mocapPreBind(ns="", rigRoot = "Local_SRT"):
     if not cmds.objExists(rigRoot):
         rigRoots = cmds.ls("*:"+rigRoot)
         if len(rigRoots) > 0:
@@ -1117,9 +647,9 @@ def mocapPreBind(ns="", rigRoot = "local_STR"):
     hiddenObjs = []
 
     #Connect visibilities and add control tag
-    Visibilities = pc.PyNode(ns+"Visibilities")
+    Visibilities = pc.PyNode("::Visibilities")
     if not pc.attributeQuery( "SkeletalModel",node=Visibilities, exists=True):
-        tkc.addParameter(Visibilities, "SkeletalModel", inType="enum;False:True")
+        tkc.addParameter(Visibilities, "SkeletalModel", inType="enum;False:True", keyable=False)
 
     joints = [j for j in tkc.getChildren(MocapTemplate, True) if j.type() == "joint"]
 
@@ -1136,6 +666,7 @@ def mocapPreBind(ns="", rigRoot = "local_STR"):
     pc.select(clear=True)
 
     #Add objects used as helpers
+    # Move a bit the pole vector to compance hyper extantion to mocap bone
     refObj = PREFIX + "LeftLeg"
     transform = [0, 0, 1.5*UNITSCALE]
     obj = tkc.createRigObject(tkc.getNode(ns + refObj), name="$refObject_poleHelper", type="Group", mode="child", match=True)
@@ -1143,6 +674,7 @@ def mocapPreBind(ns="", rigRoot = "local_STR"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
+    pc.delete(obj)
 
     refObj = PREFIX + "RightLeg"
     transform = [0, 0, 1.5*UNITSCALE]
@@ -1151,6 +683,7 @@ def mocapPreBind(ns="", rigRoot = "local_STR"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
+    pc.delete(obj)
 
     refObj = PREFIX + "LeftForeArm"
     transform = [0, 0, -1.5*UNITSCALE]
@@ -1159,6 +692,7 @@ def mocapPreBind(ns="", rigRoot = "local_STR"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
+    pc.delete(obj)
 
     refObj = PREFIX + "RightForeArm"
     transform = [0, 0, -1.5*UNITSCALE]
@@ -1167,6 +701,7 @@ def mocapPreBind(ns="", rigRoot = "local_STR"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
+    pc.delete(obj)
 
 def injectControlLayer(inCLRootName, inRigRootName, inTemplate, inAttrHolder=None, inAttrName="mocap", inConstrain=False):
     CHANNELS = ["tx", "ty", "tz", "rx", "ry", "rz"]
@@ -1271,8 +806,7 @@ def ResetMocapControls(inRigRootName, inTemplate):
     for c in mocapControls:
         tkc.resetAll(c)
 
-# Can't find were it used
-def ConnectToMocap(inTargetObj, inSourceObj):
+def ConnectToMocap(inTargetObj, inSourceObj, inTemplate):
     sourceChar = getCharacter(inSourceObj)
 
     assert sourceChar is not None,"Cannot detect skeletal model template from '{}'".format(inSourceObj.name())
@@ -1311,9 +845,9 @@ def ConnectToMocap(inTargetObj, inSourceObj):
 
     tkRig.loadPoseInPlace(joints)
 
-    ResetMocapControls(rigRoot, template)
+    ResetMocapControls(rigRoot, inTemplate)
 
-    attrs = injectControlLayer(MocapTemplate, rigRoot, template, Global_SRT, inConstrain=True)
+    attrs = injectControlLayer(MocapTemplate, rigRoot, inTemplate, Global_SRT, inConstrain=True)
 
     setSource(targetNs+"MayaHIK", sourceChar.name())
 
@@ -1364,7 +898,7 @@ def bakeControls(inNS="", inStart=None, inEnd=None):
 
     tkRig.loadPoseInPlace(joints)
 
-def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WORLD_PRESET):
+def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WORLD_PRESET, presets=None):
 
     mocap_set = tkc.getNode(inMocapSet)
     cons = None
@@ -1372,7 +906,9 @@ def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WOR
     if not mocap_set is None:
         cons = tkc.getNodeConnections(tkc.getNode("Mocap_set"), "linearValues", "angularValues",inSource=False, inDestination=True, inDisconnect=True)
 
-    for preset in PRESETS:
+    for preset in presets:
+        tkLogger.warning(preset[0])
+        tkLogger.warning(preset[1])
         tkj.writePreset(pc.PyNode(preset[0]), **preset[1])
 
     tkj.orientJointPreset(pc.PyNode(prefix + "Hips"), world_Preset, inIdentity=True)
@@ -1380,15 +916,16 @@ def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WOR
     if not cons is None:
         tkc.setNodeConnections(cons, inSetBefore=True)
 
-def snapSkeletal(MocapTemplate=template, inRigNs="", inMocapNs="", inAdditionalMatchers=None, inIterations=12):
-
+def snapSkeletal(mocapTemplate, inRigNs="", inMocapNs="", inAdditionalMatchers=None, inIterations=12):
+    if inRigNs == "":
+        inRigNs = "::"
     inAdditionalMatchers = inAdditionalMatchers or {}
 
     matches = []
 
     tempObjs = []
 
-    for rigHook, mocapData in MocapTemplate.items():
+    for rigHook, mocapData in mocapTemplate.items():
         mocapHook = mocapData[0]
 
         rigHookNode = tkc.getNode(inRigNs + rigHook)
@@ -1477,3 +1014,35 @@ def updateCharacterization(inPrefix=PREFIX, inPosePreset= "posePreset"):
         characterize_asset(charName, unit_converstion=1.0, prefix=inPrefix, posePreset=inPosePreset)
     else:
         pc.warning("Can't find a 'HIKCharacterNode' ending with 'HIK' !")
+
+def integrateMocap(inMocapPath, inTemplate, inPresets):
+    imported_files = pc.importFile(inMocapPath, returnNewNodes=True)
+    topMocapNode = pc.ls(imported_files, assemblies=True)[0]
+    characterSet = pc.ls(imported_files, type="character")[0]
+
+    # We must unlock the character befor snapSkeletal to avoid issue with humain ik...
+    HIKNodes = pc.ls(type="HIKCharacterNode")
+    if len(HIKNodes) > 1:
+        print("You have multiple Human IK Character node in your scene !")
+        raise
+    # Unlock MayaHIK node and update UI
+    mel.eval('hikCharacterLock("{}", 0, 0)'.format(HIKNodes[0].name()))
+    mel.eval('hikUpdateDefinitionButtonState()')
+    mel.eval('hikUpdateSkeletonUI()')
+    mel.eval('hikUpdateCurrentSkeleton()')
+
+    snapSkeletal(inTemplate)
+    orientSkeletal(presets=inPresets)
+    updateCharacterization()
+    namespace = ":".join(tkc.getNode("::Visibilities").name().split(":")[:-1])
+    if namespace != "":
+        namespace += ":"
+    rigRoot = tkc.getNode("::rig_grp")
+    if rigRoot is None:
+        rigRoot = tkc.getNode(namespace + namespace[:-1])
+    pc.delete(topMocapNode.getShape())
+    pc.rename(topMocapNode, namespace + "mocapJOINT_GRP")
+    pc.parent(topMocapNode, rigRoot)
+    pc.delete(characterSet)
+
+    mocapPreBind()
