@@ -115,6 +115,7 @@ import shutil
 import math
 import random
 import os
+import traceback
 import subprocess
 import time
 import xml.dom.minidom as minidom
@@ -7337,9 +7338,7 @@ def evalAsFunction(code, local_vars = None, global_vars = None):
         exec (code, global_vars, context)
         retval = context['anon'](*(local_vars.values()))
     except:
-        print ("an error occurred in eval_as_function:")
-        print (str(sys.exc_info()) + "\n\n")
-        print ("in this code:\n\n" + code + "\n\n")
+        print (traceback.format_exc())
     return retval
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
