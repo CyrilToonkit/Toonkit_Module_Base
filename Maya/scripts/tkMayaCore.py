@@ -7330,15 +7330,12 @@ def evalAsFunction(code, local_vars = None, global_vars = None):
     if global_vars is None:
         global_vars = globals()
     retval = None
-    try:
-        context = {}
-        code = re.sub(r"(?m)^", "    ", code)
-        code = code.replace("\r\n", "\n")
-        code = "def anon(" + ','.join(local_vars.keys()) + "):\n" + code
-        exec (code, global_vars, context)
-        retval = context['anon'](*(local_vars.values()))
-    except:
-        print (traceback.format_exc())
+    context = {}
+    code = re.sub(r"(?m)^", "    ", code)
+    code = code.replace("\r\n", "\n")
+    code = "def anon(" + ','.join(local_vars.keys()) + "):\n" + code
+    exec (code, global_vars, context)
+    retval = context['anon'](*(local_vars.values()))
     return retval
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -7718,7 +7715,9 @@ def getKeySets(inCharacter=None):
 
 def getKeySetParent(inNamespace, inKeySet, inProp=None):
     if inProp is None:
-        prop = getProperty(char, CONST_KEYSETSTREEPROP)
+        chars = getCharacters([inNamespace])
+        assert len(chars)>0, "Can't find any character named {}".format(inNamespace)
+        prop = getProperty(chars[0], CONST_KEYSETSTREEPROP)
     else:
         prop = inProp
 
@@ -7730,7 +7729,9 @@ def getKeySetParent(inNamespace, inKeySet, inProp=None):
 
 def getKeySetParents(inNamespace, inKeySet, inProp=None):
     if inProp is None:
-        prop = getProperty(char, CONST_KEYSETSTREEPROP)
+        chars = getCharacters([inNamespace])
+        assert len(chars)>0, "Can't find any character named {}".format(inNamespace)
+        prop = getProperty(chars[0], CONST_KEYSETSTREEPROP)
     else:
         prop = inProp
 
@@ -7756,6 +7757,7 @@ def getKeySetsHierarchy(inCharacters=[]):
             ns += ":"
 
         prop = getProperty(char, CONST_KEYSETSTREEPROP)
+        assert prop != None, "Property {0} can't be found on char {1}, you must have at least two categories in your asset.".format(CONST_KEYSETSTREEPROP, char)
         keySets = getKeySets(char)
 
         keySetsHierachy = []
