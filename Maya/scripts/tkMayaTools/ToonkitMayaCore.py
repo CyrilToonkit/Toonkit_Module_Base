@@ -246,11 +246,12 @@ class ToonkitMayaCore(Tool):
         del savedOption
         self.options.path = self.getOptionsPath()
         
+        self.options.addSavedCallback(self.saved)
         if not self.options.isSaved():
             self.saveOptions()
 
         projectVEnv(self)
-        self.options.addCallback(self.optionChanged)
+        self.options.addChangedCallback(self.optionChanged)
         setLoggingLevel(self)
         setLoggingOptions(self)
 
@@ -260,6 +261,9 @@ class ToonkitMayaCore(Tool):
 
     def getToolsRepos(self):
         return ["Toonkit_Core.tkToolOptions", "tkMayaTools"]
+
+    def saved(self):
+        tc.getTool().options.save()
 
     def optionChanged(self, *args, **kwargs):
         self.logDebug("{0} changed ({1} => {2})".format(kwargs["option"].name, kwargs["old"], kwargs["new"]))
@@ -271,8 +275,19 @@ class ToonkitMayaCore(Tool):
             setLoggingLevel(self)
 
         elif kwargs["option"].name == "project":
-            tc.getTool().options["project"] = kwargs["new"]
-            tc.getTool().saveOptions()
+            # Try to create a projet with this new project Name
+            project = tc.setProject(dccName = "maya", inName=kwargs["new"]) # setProjec can faild and return None if it was never init.
+            if project:
+                tkLogger.debug("Requested project: {0}. Created project : {1}.".format(kwargs["new"], project.name))
+                tkLogger.debug("Do tkCore project are the same as tkMayaTool project : "+ str(project.name == kwargs["new"]))
+                if project.name != kwargs["new"]:
+                    self.options["project"] = project.name
+                    pc.evalDeferred(self.showPrefs)
+                else:
+                    # Set tkCoreTool to preserve sync with tkMayaCoreTool
+                    tc.getTool().options["project"] = kwargs["new"]
+            else:
+                pc.evalDeferred(self.showPrefs)
 
         elif kwargs["option"].name == "hidemenu":
             if kwargs["new"]:

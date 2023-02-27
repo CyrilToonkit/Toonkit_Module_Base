@@ -115,7 +115,6 @@ import shutil
 import math
 import random
 import os
-import traceback
 import subprocess
 import time
 import xml.dom.minidom as minidom
@@ -149,6 +148,7 @@ import TkApi.maya_api as tkApi
 import locationModule
 from Toonkit_Core.tkToolOptions.tkOptions import Options
 import Toonkit_Core.tkProjects.tkContext as ctx
+from Toonkit_Core import tkCore as tc
 import OscarZmqString as ozs
 import OscarZmqMayaString as ozms
 import PAlt as palt
@@ -350,6 +350,7 @@ def getTool():
     
     if not TOOL:
         TOOL = ToonkitMayaCore.ToonkitMayaCore()
+        tc.getProject(TOOL.options["project"])
 
     return TOOL
 
