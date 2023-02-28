@@ -24,7 +24,7 @@ class mayaGeter():
     def detect_template(self):
         project = tkCore.getProject("maya")
         inTemplatesSpecs = project.templatesSpecs
-        baseTemplate = {"char": ["Biped", "Quadriped", "Bird"], "vehicule":["Vehicule"], "props":["Props"]}
+        baseTemplate = project.assetTypeToSpec
         namespace = "::"
         weight = {}
         for key, value in inTemplatesSpecs.items():

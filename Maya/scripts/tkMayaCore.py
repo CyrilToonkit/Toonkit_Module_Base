@@ -350,7 +350,7 @@ def getTool():
     
     if not TOOL:
         TOOL = ToonkitMayaCore.ToonkitMayaCore()
-        tc.getProject(TOOL.options["project"])
+        tc.getProject("maya", TOOL.options["project"])
 
     return TOOL
 
