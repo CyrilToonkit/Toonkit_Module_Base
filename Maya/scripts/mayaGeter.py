@@ -72,6 +72,7 @@ class mayaGeter():
             sceneName = None
         return sceneName
 
+    @tkCore.verbosed
     def getNameSpace(self):
         sceneNodes = [x for x in cmds.ls(assemblies=True) if x != "" and ":" in x]
         if len(sceneNodes) > 0:
