@@ -535,7 +535,9 @@ def checkHIKExists(inCreate=True):
         pc.mel.eval("ToggleCharacterControls")
         pc.refresh()
 
-def getCharacter(inJoint, inDefinition):
+def getCharacter(inJoint, inDefinition=None):
+    inDefinition = inDefinition or {}
+
     ns = str(inJoint.namespace())
     
     chars = pc.listConnections(inJoint, source=True, destination=True, type="HIKCharacterNode")
@@ -806,8 +808,8 @@ def ResetMocapControls(inRigRootName, inTemplate):
     for c in mocapControls:
         tkc.resetAll(c)
 
-def ConnectToMocap(inTargetObj, inSourceObj, inTemplate):
-    sourceChar = getCharacter(inSourceObj)
+def ConnectToMocap(inTargetObj, inSourceObj, inTemplate, inDefinition):
+    sourceChar = getCharacter(inSourceObj, inDefinition)
 
     assert sourceChar is not None,"Cannot detect skeletal model template from '{}'".format(inSourceObj.name())
 
