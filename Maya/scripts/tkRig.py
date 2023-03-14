@@ -5257,7 +5257,7 @@ def saveSimplePose(inObjs=None):
         pose = {}
         for attr in attrs:
             pose[attr] = ctrl.attr(attr).get()
-        poses[ctrl.name()] = pose
+        poses[ctrl.stripNamespace()] = pose
     
     return poses
 

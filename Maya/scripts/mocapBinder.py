@@ -241,7 +241,7 @@ def initialize_hik():
 
     return True
 
-def align_arms_in_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
+def align_arms_in_tpose(inRigNamespace = "::", unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
     """Stuff
     """
 
@@ -258,8 +258,8 @@ def align_arms_in_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", pose
         0.0, 0.0, 1.0, 0.0,
     ]
 
-    for armElems, rot in    (((prefix+"LeftArm", prefix+"LeftForeArm", prefix+"LeftHand"), left_arm_rotation_matrix), 
-                            ((prefix+"RightArm", prefix+"RightForeArm", prefix+"RightHand"), right_arm_rotation_matrix)):
+    for armElems, rot in    (((inRigNamespace+prefix+"LeftArm", inRigNamespace+prefix+"LeftForeArm", inRigNamespace+prefix+"LeftHand"), left_arm_rotation_matrix), 
+                            ((inRigNamespace+prefix+"RightArm", inRigNamespace+prefix+"RightForeArm", inRigNamespace+prefix+"RightHand"), right_arm_rotation_matrix)):
         for armElem in armElems:
             translation = cmds.xform(armElem, query=True, translation=True, worldSpace=True)
 
@@ -271,7 +271,7 @@ def align_arms_in_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", pose
 
     return True
 
-def align_fingers_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
+def align_fingers_tpose(inRigNamespace = "::", unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
     """Stuff
     """
     left_finger_rotation_matrix = [
@@ -290,7 +290,7 @@ def align_fingers_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", pose
         for finger in "Index", "Middle", "Ring", "Pinky":
             # skip carpal
             for i in range(1, 4):
-                node = "{}{}Hand{}{}".format(prefix, side, finger, i)
+                node = "{}{}{}Hand{}{}".format(inRigNamespace, prefix, side, finger, i)
 
                 if not cmds.objExists(node):
                     print ("Finger joint not found, skipping align: {}".format(node))
@@ -304,7 +304,7 @@ def align_fingers_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", pose
                     worldSpace=True
                 )
 
-def align_thumbs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
+def align_thumbs_tpose(inRigNamespace="::", unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
     """Align thumbs to be perfectly straight but with a natural 30 degree angle
     """
     if posePreset == "crookedThumb":
@@ -342,7 +342,7 @@ def align_thumbs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", poseP
     for side, global_rotation in ("Left", left_thumb_global_rotation), ("Right", right_thumb_global_rotation):
         # redundant thumb index in case of extra thumb joints
         for i in range(1, 4):
-            node = "{}{}HandThumb{}".format(prefix,side, i)
+            node = "{}{}{}HandThumb{}".format(inRigNamespace,prefix,side, i)
 
             if not cmds.objExists(node):
                 print ("Thumb joint not found, skipping align: {}".format(node))
@@ -358,7 +358,7 @@ def align_thumbs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", poseP
 
     return True
 
-def align_legs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
+def align_legs_tpose(inRigNamespace="::", unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=None):
     left_leg_rotation_matrix = [
         1.0, 0.0, 0.0, 0.0,
         0.0, 1.0, 0.0, 0.0,
@@ -372,15 +372,15 @@ def align_legs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePre
     ]
 
     # determine foot rotation while keeping current "tilt"
-    mat = cmds.xform(prefix+"LeftFoot", query=True, matrix=True, worldSpace=True)
+    mat = cmds.xform(inRigNamespace+prefix+"LeftFoot", query=True, matrix=True, worldSpace=True)
     print (mat[0:4])
     print (mat[4:8])
     print (mat[8:12])
     print ("")
     print (mat[8:11])
 
-    left_foot_z_vector = cmds.xform(prefix+"LeftFoot", query=True, matrix=True, worldSpace=True)[8:11]
-    right_foot_z_vector = cmds.xform(prefix+"RightFoot", query=True, matrix=True, worldSpace=True)[8:11]
+    left_foot_z_vector = cmds.xform(inRigNamespace+prefix+"LeftFoot", query=True, matrix=True, worldSpace=True)[8:11]
+    right_foot_z_vector = cmds.xform(inRigNamespace+prefix+"RightFoot", query=True, matrix=True, worldSpace=True)[8:11]
 
     left_foot_z_vector[0] = 0.0
     right_foot_z_vector[0] = 0.0
@@ -408,8 +408,8 @@ def align_legs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePre
     right_foot_rotation_matrix += list(right_foot_z_vector) + [0.0]
 
     # align leg joints
-    for legElems, rot in    (((prefix+"LeftUpLeg", prefix+"LeftLeg"), left_leg_rotation_matrix), 
-                            ((prefix+"RightUpLeg", prefix+"RightLeg"), right_leg_rotation_matrix)):
+    for legElems, rot in    (((inRigNamespace+prefix+"LeftUpLeg", inRigNamespace+prefix+"LeftLeg"), left_leg_rotation_matrix), 
+                            ((inRigNamespace+prefix+"RightUpLeg", inRigNamespace+prefix+"RightLeg"), right_leg_rotation_matrix)):
         for legElem in legElems:
             translation = cmds.xform(legElem, query=True, translation=True, worldSpace=True)
 
@@ -420,8 +420,8 @@ def align_legs_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePre
             )
 
     # align foot joints
-    for footElems, rot in   (((prefix+"LeftFoot", prefix+"LeftToeBase"), left_foot_rotation_matrix), 
-                            ((prefix+"RightFoot", prefix+"RightToeBase"), right_foot_rotation_matrix)):
+    for footElems, rot in   (((inRigNamespace+prefix+"LeftFoot", inRigNamespace+prefix+"LeftToeBase"), left_foot_rotation_matrix), 
+                            ((inRigNamespace+prefix+"RightFoot", inRigNamespace+prefix+"RightToeBase"), right_foot_rotation_matrix)):
         for footElem in footElems:
 
             translation = cmds.xform(footElem, query=True, translation=True, worldSpace=True)
@@ -446,17 +446,17 @@ def align_tpose(unit_conversion=DEFAULT_UNIT_CONVERSION, prefix="", posePreset=N
 
     return True
 
-def apply_zero_pose(prefix="", posePreset=None):
+def apply_zero_pose(prefix="", posePreset=None, inRigNamespace="::"):
     """Apply zero rotations to all mocap joints
     """
-    if cmds.objExists("Mocap_set"):
-        for attr in cmds.character("Mocap_set", query=True):
+    if cmds.objExists(inRigNamespace + "Mocap_set"):
+        for attr in cmds.character(inRigNamespace + "Mocap_set", query=True):
             if "rotate" not in attr:
                 continue
 
             cmds.setAttr(attr, 0.0)
     else:
-        hips = prefix+"Hips"
+        hips = inRigNamespace+prefix+"Hips"
         if cmds.objExists(hips):
 
             joints = [hips] + cmds.listRelatives(hips, allDescendents=True)
@@ -506,7 +506,7 @@ def characterize_hik_node(hik_node, unit_converstion=DEFAULT_UNIT_CONVERSION, pr
 
     return True
 
-def characterize_asset(asset_name, unit_converstion=DEFAULT_UNIT_CONVERSION, anim=False, prefix="", posePreset=None):
+def characterize_asset(asset_name, unit_converstion=DEFAULT_UNIT_CONVERSION, anim=False, prefix="", posePreset=None, inRigNamespace="::"):
     """Complete HIK configuration to accept mocap.
 
     Notes:
@@ -674,7 +674,6 @@ def mocapPreBind(ns="", rigRoot = "Local_SRT"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
-    pc.delete(obj)
 
     refObj = PREFIX + "RightLeg"
     transform = [0, 0, 1.5*UNITSCALE]
@@ -683,7 +682,6 @@ def mocapPreBind(ns="", rigRoot = "Local_SRT"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
-    pc.delete(obj)
 
     refObj = PREFIX + "LeftForeArm"
     transform = [0, 0, -1.5*UNITSCALE]
@@ -692,7 +690,6 @@ def mocapPreBind(ns="", rigRoot = "Local_SRT"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
-    pc.delete(obj)
 
     refObj = PREFIX + "RightForeArm"
     transform = [0, 0, -1.5*UNITSCALE]
@@ -701,7 +698,6 @@ def mocapPreBind(ns="", rigRoot = "Local_SRT"):
     #lock
     for channel in tkc.CHANNELS:
         obj.attr(channel).setLocked(True)
-    pc.delete(obj)
 
 def injectControlLayer(inCLRootName, inRigRootName, inTemplate, inAttrHolder=None, inAttrName="mocap", inConstrain=False):
     CHANNELS = ["tx", "ty", "tz", "rx", "ry", "rz"]
@@ -806,8 +802,8 @@ def ResetMocapControls(inRigRootName, inTemplate):
     for c in mocapControls:
         tkc.resetAll(c)
 
-def ConnectToMocap(inTargetObj, inSourceObj, inTemplate):
-    sourceChar = getCharacter(inSourceObj)
+def ConnectToMocap(inTargetObj, inSourceObj, inTemplate, inDefinition):
+    sourceChar = getCharacter(inSourceObj, inDefinition)
 
     assert sourceChar is not None,"Cannot detect skeletal model template from '{}'".format(inSourceObj.name())
 
@@ -835,7 +831,7 @@ def ConnectToMocap(inTargetObj, inSourceObj, inTemplate):
     joints = [c for c in MocapTemplateNode.getChildren(allDescendents=True) if c.type() == "joint"]
 
     #set the source to None
-    char = getCharacter(joints[0])
+    char = getCharacter(joints[0], inDefinition)
     if getCurrentCharacter() != char.name():
         setCurrentCharacter(char.name())
 
@@ -898,20 +894,18 @@ def bakeControls(inNS="", inStart=None, inEnd=None):
 
     tkRig.loadPoseInPlace(joints)
 
-def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WORLD_PRESET, presets=None):
+def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WORLD_PRESET, presets=None, inRootJoint=None, inRigNs= "::"):
 
-    mocap_set = tkc.getNode(inMocapSet)
+    mocap_set = tkc.getNode(inRigNs+inMocapSet)
     cons = None
 
     if not mocap_set is None:
-        cons = tkc.getNodeConnections(tkc.getNode("Mocap_set"), "linearValues", "angularValues",inSource=False, inDestination=True, inDisconnect=True)
+        cons = tkc.getNodeConnections(mocap_set, "linearValues", "angularValues",inSource=False, inDestination=True, inDisconnect=True)
 
     for preset in presets:
-        tkLogger.warning(preset[0])
-        tkLogger.warning(preset[1])
-        tkj.writePreset(pc.PyNode(preset[0]), **preset[1])
+        tkj.writePreset(pc.PyNode(inRigNs+preset[0]), **preset[1])
 
-    tkj.orientJointPreset(pc.PyNode(prefix + "Hips"), world_Preset, inIdentity=True)
+    tkj.orientJointPreset(pc.PyNode(inRigNs+prefix + inRootJoint), world_Preset, inIdentity=True)
 
     if not cons is None:
         tkc.setNodeConnections(cons, inSetBefore=True)
@@ -1015,11 +1009,13 @@ def updateCharacterization(inPrefix=PREFIX, inPosePreset= "posePreset"):
     else:
         pc.warning("Can't find a 'HIKCharacterNode' ending with 'HIK' !")
 
-def integrateMocap(inMocapPath, inTemplate, inPresets):
+def integrateMocap(inMocapPath, inTemplate, inPresets, inAdditionalMatchers=None, inRootJoint="Hips"):
+    namespace = ":".join(tkc.getNode("::Visibilities").name().split(":")[:-1])
+    pc.namespace(set=namespace)
     imported_files = pc.importFile(inMocapPath, returnNewNodes=True)
+    pc.namespace(set=":")
     topMocapNode = pc.ls(imported_files, assemblies=True)[0]
     characterSet = pc.ls(imported_files, type="character")[0]
-
     # We must unlock the character befor snapSkeletal to avoid issue with humain ik...
     HIKNodes = pc.ls(type="HIKCharacterNode")
     if len(HIKNodes) > 1:
@@ -1031,15 +1027,17 @@ def integrateMocap(inMocapPath, inTemplate, inPresets):
     mel.eval('hikUpdateSkeletonUI()')
     mel.eval('hikUpdateCurrentSkeleton()')
 
-    snapSkeletal(inTemplate)
-    orientSkeletal(presets=inPresets)
+    snapSkeletal(inTemplate, inRigNs=namespace, inAdditionalMatchers=inAdditionalMatchers)
+    orientSkeletal(presets=inPresets, inRootJoint=inRootJoint)
     updateCharacterization()
+
     namespace = ":".join(tkc.getNode("::Visibilities").name().split(":")[:-1])
     if namespace != "":
         namespace += ":"
     rigRoot = tkc.getNode("::rig_grp")
     if rigRoot is None:
         rigRoot = tkc.getNode(namespace + namespace[:-1])
+
     pc.delete(topMocapNode.getShape())
     pc.rename(topMocapNode, namespace + "mocapJOINT_GRP")
     pc.parent(topMocapNode, rigRoot)
