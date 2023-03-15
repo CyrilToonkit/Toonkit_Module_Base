@@ -30,7 +30,7 @@ def conformPath(inPath):
 
 def resolvePath(inPath, inProdPath, inDebug=False,
                 inRootVar="$ROOT", inProjectPathVar="$PROJECTPATH",
-                inDebugPath="\\\\NHAMDS\\ToonKit\\ToonKit\\Rnd\\Picker\\Picker_Files", inAsset=None):
+                inDebugPath="Q:\\ToonKit\\Rnd\\Picker\\Picker_Files", inAsset=None):
     #Initialize
     replacements = []
 

@@ -59,7 +59,7 @@ PROJECTPATHVAR = "$PROJECTPATH"
 
 DEBUG=False
 
-DEBUGPATH = "\\\\NHAMDS\\ToonKit\\ToonKit\\Rnd\\Picker\\Picker_Files"
+DEBUGPATH = "Q:\\ToonKit\\Rnd\\Picker\\Picker_Files"
 PRODPATH = None
 
 PICKERFILESCHUNK = os.path.join("scripts", "anim_picker","Picker_Files")
