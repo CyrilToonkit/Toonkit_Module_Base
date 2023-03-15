@@ -535,7 +535,9 @@ def checkHIKExists(inCreate=True):
         pc.mel.eval("ToggleCharacterControls")
         pc.refresh()
 
-def getCharacter(inJoint, inDefinition):
+def getCharacter(inJoint, inDefinition=None):
+    inDefinition = inDefinition or {}
+
     ns = str(inJoint.namespace())
     
     chars = pc.listConnections(inJoint, source=True, destination=True, type="HIKCharacterNode")

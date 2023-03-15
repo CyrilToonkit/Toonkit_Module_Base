@@ -52,7 +52,7 @@ MENUFORMAT_REPLACE = {
 }
 
 #Todo : implement this at Oscar project level
-SERVER_PATH_SUBST = (["Z:\\Toonkit\\", "Z:\\ToonKit\\"],["\\\\NHAMDS\\Toonkit\\ToonKit\\", "\\\\NHAMDS\\Toonkit\\ToonKit\\"])
+SERVER_PATH_SUBST = (["Z:\\Toonkit\\", "Z:\\ToonKit\\"],["Q:\\ToonKit\\", "Q:\\ToonKit\\"])
 
 def getServerPath(inPath):
     localSubsts = SERVER_PATH_SUBST[0]
