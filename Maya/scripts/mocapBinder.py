@@ -535,32 +535,26 @@ def checkHIKExists(inCreate=True):
         pc.mel.eval("ToggleCharacterControls")
         pc.refresh()
 
-def getCharacter(inJoint, inDefinition):
+def getCharacter(inJoint, inDefinition=None):
+    inDefinition = inDefinition or {}
+
     ns = str(inJoint.namespace())
     
     chars = pc.listConnections(inJoint, source=True, destination=True, type="HIKCharacterNode")
     char = chars[0] if len(chars) > 0 else None
 
     if char is None:
-
-        valid=True
-        for key,value in inDefinition.items():
+        checkHIKExists()
+        
+        char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
+        
+        for key,value in DEFINITION.iteritems():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
-                valid=False
-                
-        if(valid):
-            checkHIKExists()
-
-            char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
-            
-            for key,value in inDefinition.items():
-                print ("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
+            else:
                 pc.mel.eval("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
-            
-            pc.mel.eval("hikToggleLockDefinition")
-        else:
-            pc.warning("Motion capture model is not valid !")
+        
+        pc.mel.eval("hikToggleLockDefinition")
         
     return char
 
@@ -806,8 +800,8 @@ def ResetMocapControls(inRigRootName, inTemplate):
     for c in mocapControls:
         tkc.resetAll(c)
 
-def ConnectToMocap(inTargetObj, inSourceObj, inTemplate):
-    sourceChar = getCharacter(inSourceObj)
+def ConnectToMocap(inTargetObj, inSourceObj, inTemplate, inDefinition):
+    sourceChar = getCharacter(inSourceObj, inDefinition)
 
     assert sourceChar is not None,"Cannot detect skeletal model template from '{}'".format(inSourceObj.name())
 
