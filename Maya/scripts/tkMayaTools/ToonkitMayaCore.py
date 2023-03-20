@@ -151,6 +151,7 @@ class ToonkitMayaCore(Tool):
         # OPTIONS : inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None
         #Configuration
         self.options.addOption("project", "demo", None, "Project name", False, "Configuration")
+        self.options.addOption("alternateProjectsPath", "", "Commat separated list of alternet project paths", "Alternete Projects Path", False, "Configuration")
         self.options.addOption("mayaroot", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin"), "Maya installation root directory", "Maya root", False, "Configuration")
         self.options.addOption("mayapath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "maya.exe"), "Maya executable path", "Maya path", False, "Configuration")
         self.options.addOption("mayabatchpath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "mayabatch.exe"), "Maya batch path", "Maya batch path", False, "Configuration")
@@ -288,6 +289,9 @@ class ToonkitMayaCore(Tool):
                     tc.getTool().options["project"] = kwargs["new"]
             else:
                 pc.evalDeferred(self.showPrefs)
+
+        elif kwargs["option"].name == "alternateProjectsPath":
+            tc.getTool().options["alternateProjectsPath"] = kwargs["new"]
 
         elif kwargs["option"].name == "hidemenu":
             if kwargs["new"]:
