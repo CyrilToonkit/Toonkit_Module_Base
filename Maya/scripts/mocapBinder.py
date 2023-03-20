@@ -548,7 +548,7 @@ def getCharacter(inJoint, inDefinition=None):
         
         char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
         
-        for key,value in DEFINITION.iteritems():
+        for key,value in inDefinition.iteritems():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
             else:
@@ -907,6 +907,12 @@ def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WOR
 def snapSkeletal(mocapTemplate, inRigNs="", inMocapNs="", inAdditionalMatchers=None, inIterations=12):
     if inRigNs == "":
         inRigNs = "::"
+    elif not inRigNs.endswith(":"):
+        inRigNs += ":"
+
+    if inMocapNs != "" and not inMocapNs.endswith(":"):
+        inMocapNs += ":"
+
     inAdditionalMatchers = inAdditionalMatchers or {}
 
     matches = []
@@ -1021,7 +1027,7 @@ def integrateMocap(inMocapPath, inTemplate, inPresets, inAdditionalMatchers=None
     mel.eval('hikUpdateSkeletonUI()')
     mel.eval('hikUpdateCurrentSkeleton()')
 
-    snapSkeletal(inTemplate, inRigNs=namespace, inAdditionalMatchers=inAdditionalMatchers)
+    snapSkeletal(inTemplate, inRigNs=namespace, inMocapNs=namespace, inAdditionalMatchers=inAdditionalMatchers)
     orientSkeletal(presets=inPresets, inRootJoint=inRootJoint)
     updateCharacterization()
 
