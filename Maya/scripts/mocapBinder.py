@@ -544,25 +544,17 @@ def getCharacter(inJoint, inDefinition=None):
     char = chars[0] if len(chars) > 0 else None
 
     if char is None:
-
-        valid=True
-        for key,value in inDefinition.items():
+        checkHIKExists()
+        
+        char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
+        
+        for key,value in inDefinition.iteritems():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
-                valid=False
-                
-        if(valid):
-            checkHIKExists()
-
-            char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
-            
-            for key,value in inDefinition.items():
-                print ("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
+            else:
                 pc.mel.eval("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
-            
-            pc.mel.eval("hikToggleLockDefinition")
-        else:
-            pc.warning("Motion capture model is not valid !")
+        
+        pc.mel.eval("hikToggleLockDefinition")
         
     return char
 
@@ -915,6 +907,12 @@ def orientSkeletal(inMocapSet = "Mocap_set", prefix = PREFIX, world_Preset = WOR
 def snapSkeletal(mocapTemplate, inRigNs="", inMocapNs="", inAdditionalMatchers=None, inIterations=12):
     if inRigNs == "":
         inRigNs = "::"
+    elif not inRigNs.endswith(":"):
+        inRigNs += ":"
+
+    if inMocapNs != "" and not inMocapNs.endswith(":"):
+        inMocapNs += ":"
+
     inAdditionalMatchers = inAdditionalMatchers or {}
 
     matches = []
@@ -1029,7 +1027,7 @@ def integrateMocap(inMocapPath, inTemplate, inPresets, inAdditionalMatchers=None
     mel.eval('hikUpdateSkeletonUI()')
     mel.eval('hikUpdateCurrentSkeleton()')
 
-    snapSkeletal(inTemplate, inRigNs=namespace, inAdditionalMatchers=inAdditionalMatchers)
+    snapSkeletal(inTemplate, inRigNs=namespace, inMocapNs=namespace, inAdditionalMatchers=inAdditionalMatchers)
     orientSkeletal(presets=inPresets, inRootJoint=inRootJoint)
     updateCharacterization()
 
