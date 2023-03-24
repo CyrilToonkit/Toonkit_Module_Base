@@ -548,7 +548,7 @@ def getCharacter(inJoint, inDefinition=None):
         
         char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
         
-        for key,value in inDefinition.iteritems():
+        for key,value in inDefinition.items():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
             else:

@@ -34,7 +34,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.78.7"
+VERSIONINFO = "1.5.79.14"
 
 MENU_NAME = "tkMainMenu"
 
@@ -151,7 +151,7 @@ class ToonkitMayaCore(Tool):
         # OPTIONS : inName, inValue, inDescription=DEFAULT_DESC, inNiceName=None, inOptional=False, inCategory=None
         #Configuration
         self.options.addOption("project", "demo", None, "Project name", False, "Configuration")
-        self.options.addOption("alternateProjectsPath", "", "Commat separated list of alternet project paths", "Alternete Projects Path", False, "Configuration")
+        self.options.addOption("alternateProjectsPath", "", "Commat separated list of alternate project paths", "Alternate Projects Path", False, "Configuration")
         self.options.addOption("mayaroot", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin"), "Maya installation root directory", "Maya root", False, "Configuration")
         self.options.addOption("mayapath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "maya.exe"), "Maya executable path", "Maya path", False, "Configuration")
         self.options.addOption("mayabatchpath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "mayabatch.exe"), "Maya batch path", "Maya batch path", False, "Configuration")
@@ -240,7 +240,7 @@ class ToonkitMayaCore(Tool):
         savedOption = Options(inPath=self.getOptionsPath())
         for key, value in savedOption.iteritems():
             if key in self.options.keys():
-                tkLogger.debug("The option '" +key+ "' allready exists, his value is set to " + str(value))
+                tkLogger.debug("The option '" +key+ "' already exists, his value is set to " + str(value))
                 self.options[key] = value
             elif not key in self.options.keys():
                 tkLogger.warning("The options'" + key + "' is not in base options !" )

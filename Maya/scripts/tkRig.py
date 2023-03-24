@@ -1977,8 +1977,8 @@ def transferRig(inGeos, outNamespace):
 
             if deform.type() == "blendShape":
                 aliases = pc.aliasAttr(deform, query=True)
-                weightAttrs = [aliases[i*2] for i in range(len(aliases)/2)]
-                consistentIndices = [int(aliases[i*2 + 1][7:-1]) for i in range(len(aliases)/2)]
+                weightAttrs = [aliases[i*2] for i in range(int(len(aliases)/2))]
+                consistentIndices = [int(aliases[i*2 + 1][7:-1]) for i in range(int(len(aliases)/2))]
                 weightValues = []
 
                 targets = []
