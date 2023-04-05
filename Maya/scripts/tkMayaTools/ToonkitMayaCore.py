@@ -431,7 +431,7 @@ def setLoggingOptions(tool):
                         "name":tool.options["logPath"]}
         path = "{path}\\{pid}_{name}.log".format(**formatDict)
         tkLogger.setLogsFiles(path)
-        tkLogger.info("TkLog is now bounth to file :%s" %path)
+        tkLogger.debug("TkLog is now bound to file :%s" %path)
     elif tool.options["logFile"] is False:
         tkLogger.removeHandlers()
-        tkLogger.info("TkLog is now unbounth to file")
+        tkLogger.debug("TkLog is now unbound to file")
