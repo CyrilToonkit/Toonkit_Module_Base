@@ -163,7 +163,7 @@ def generateDynamicItems(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
 
     elementName, elementExt = os.path.splitext(os.path.split(in_scriptPath)[-1])
     elementName = elementName.replace(SUFFIX_SUBMENU, "")
-    if pc.menuItem(elementName + "Menu", exists=True):
+    if pc.menuItem(elementName + "Menu", q=True, exists=True):
         pc.deleteUI(elementName + "Menu")
 
     tkSubMenu = pc.menuItem(elementName + "Menu", label=menuFormat(elementName, inLocal, inServer), parent=in_parentMenuItem, subMenu=True, tearOff=True)
@@ -204,7 +204,7 @@ def generateExternalMenu(in_parentMenuItem, in_scriptPath, inLocal=False, inServ
         pc.warning("External menu {0}, folder not found '{1}' !".format(in_scriptPath, folderPath))
         return
 
-    if pc.menuItem(elementName + "Menu", exists=True):
+    if pc.menuItem(elementName + "Menu", q=True, exists=True):
         pc.deleteUI(elementName + "Menu")
 
     tkSubMenu = pc.menuItem(elementName + "Menu", label=menuFormat(elementName, inLocal, inServer), parent=in_parentMenuItem, subMenu=True, tearOff=True)
@@ -289,9 +289,9 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True, inSearc
 
                     elementName = tool.name
 
-                    if pc.menuItem(elementName + SUFFIX_OPTIONBOX, exists=True):
+                    if pc.menuItem(elementName + SUFFIX_OPTIONBOX, q=True, exists=True):
                         pc.deleteUI(elementName + SUFFIX_OPTIONBOX)
-                    if pc.menuItem(elementName + "Item", exists=True):
+                    if pc.menuItem(elementName + "Item", q=True, exists=True):
                         pc.deleteUI(elementName + "Item")
 
                     if tool.hasUI:
@@ -309,7 +309,7 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True, inSearc
                 generateExternalMenu(in_parentMenuItem, fullpath, local, server)
 
             elif os.path.isdir(fullpath):#subMenu (Directory)
-                if pc.menuItem(elementName + "Menu", exists=True):
+                if pc.menuItem(elementName + "Menu", q=True, exists=True):
                     pc.deleteUI(elementName + "Menu")
 
                 folderName = menuFormat(element, local, server)
@@ -321,9 +321,9 @@ def generateMenu(in_parentMenuItem, in_scriptsPath, in_checkServer=True, inSearc
                 SEP=False
 
             else:#menuItem or optionBox (file)
-                if pc.menuItem(elementName + SUFFIX_OPTIONBOX, exists=True):
+                if pc.menuItem(elementName + SUFFIX_OPTIONBOX, q=True, exists=True):
                     pc.deleteUI(elementName + SUFFIX_OPTIONBOX)
-                if pc.menuItem(elementName + "Item", exists=True):
+                if pc.menuItem(elementName + "Item", q=True, exists=True):
                     pc.deleteUI(elementName + "Item")
 
                 #menuItem (file)
