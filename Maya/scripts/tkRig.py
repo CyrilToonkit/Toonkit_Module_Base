@@ -5919,6 +5919,7 @@ def connectProjections(inMeshes, inNamespace=None):
 
 
 def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
+    createdNode = {}
     inRef = tkc.getNode(inRef)
     inOnOffAttr = tkc.getNode(inOnOffAttr)
 
@@ -5932,18 +5933,21 @@ def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
         inMatrix = inRef.worldMatrix[0]
 
     delayedOnOff = tkn.keep(inOnOffAttr)
-
     reversedOnOff = tkn.reverse(inOnOffAttr)
 
     #Create keep system
     keepMat1 = tkn.keep(inMatrix, immediate=True, refresh=delayedOnOff)
-
+    keepMat1Con = tkc.storeConnections(keepMat1.node())
+    keepForBlend = pc.duplicate(keepMat1)[0]
+    tkc.loadConnections(keepMat1Con, keepForBlend)
+    pc.disconnectAttr(inMatrix, keepForBlend.node().inputMat)
+    
     keepMat2 = tkn.keep(keepMat1, immediate=True, refresh=reversedOnOff)
 
     #Blender
-    keepIter = tkn.keep(keepMat1.node().iterations, immediate=True, refresh=reversedOnOff)
+    keepIter = tkn.keep(keepForBlend.node().iterations, immediate=True, refresh=reversedOnOff)
 
-    deltaFrames = tkn.sub(keepMat1.node().iterations, keepIter)
+    deltaFrames = tkn.sub(keepForBlend.node().iterations, keepIter)
 
     insideBlenCond = tkn.condition(deltaFrames, inBlendFrames, inCriterion="<")
     reversedInsideBlenCond = tkn.sub(1, insideBlenCond)
@@ -5984,7 +5988,21 @@ def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
         decBlend2.outputTranslate >> inDestObj.t
         pairBlend2.outputRotate >> inDestObj.r
 
-    return blend2
+    
+    createdNode["delayedOnOff"] = delayedOnOff.node()
+    createdNode["reversedOnOff"] = reversedOnOff.node()
+    createdNode["keepMat1"] = keepMat1.node()
+    # createdNode["keepForBlend"] = keepForBlend.node()
+    createdNode["keepMat2"] = keepMat2.node()
+    createdNode["keepIter"] = keepIter.node()
+    createdNode["deltaFrames"] = deltaFrames.node()
+    createdNode["insideBlenCond"] = insideBlenCond.node()
+    createdNode["blendDivide"] = blendDivide.node()
+    createdNode["reversedDivide"] = reversedDivide.node()
+    createdNode["blend1"] = blend1.node()
+    createdNode["blend2"] = blend2.node()
+
+    return (blend2, createdNode)
 
 def groupAttrs(inRef, inNodes, inExclude=None):
     inRef = tkc.getNode(inRef)
@@ -6169,7 +6187,7 @@ def walkSystem(inName="WalkSystem", inParent=None):
 
     #Left
     ref = leftLayer.getParent()
-    mat = createFootFixer(ref, fixerSystem.Left_UpDown, fixerSystem.blend)
+    mat = createFootFixer(ref, fixerSystem.Left_UpDown, fixerSystem.blend)[0]
     #mat = tkn.composeMatrix(pairBlend.outTranslate, pairBlend.outRotate)
 
     mat = tkn.mul(mat, leftLayer.parentInverseMatrix[0])
@@ -6181,7 +6199,7 @@ def walkSystem(inName="WalkSystem", inParent=None):
 
     #Right
     ref = rightLayer.getParent()
-    mat = createFootFixer(ref, fixerSystem.Right_UpDown, fixerSystem.blend)
+    mat = createFootFixer(ref, fixerSystem.Right_UpDown, fixerSystem.blend)[0]
     #mat = tkn.composeMatrix(pairBlend.outTranslate, pairBlend.outRotate)
 
     mat = tkn.mul(mat, rightLayer.parentInverseMatrix[0])

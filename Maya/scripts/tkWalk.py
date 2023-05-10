@@ -26,6 +26,8 @@ import pymel.core as pc
 
 import tkMayaCore as tkc
 import tkRig
+try:basestring
+except:basestring = str
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
