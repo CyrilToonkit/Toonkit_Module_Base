@@ -15,9 +15,7 @@ def createWindControl():
         #Create root
         windRoot = pc.group(name=WINDCTRL_ROOT, empty=True, world=True)
 
-        pc.setAttr(windRoot.t, lock=True, keyable=False, channelBox=False)
-        pc.setAttr(windRoot.r, lock=True, keyable=False, channelBox=False)
-        pc.setAttr(windRoot.s, lock=True, keyable=False, channelBox=False)
+        pc.setAttr(windRoot.r, keyable=False, lock=True)
         
         #Create control
         points=[(0, 0, 0)]
@@ -50,11 +48,12 @@ def createWindControl():
         tkc.constrain(windSensor, windControl)
         
         #Controller params
-        tkc.addParameter(windControl, name="categ", inType="enum;WIND", default=1, min=0, max = 100, nicename="-------------------- ", expose=True, readOnly=True, keyable=False)
+        tkc.addParameter(windControl, name="categ", inType="enum;WIND", default=0, min=0, max = 100, nicename="-------------------- ", expose=True, readOnly=True, keyable=False)
         
         tkc.addParameter(windControl, name="Amplitude", inType="double", default=1, min=0, max = 100)
         tkc.addParameter(windControl, name="Turbulence_Amplitude", inType="double", default=1, min=0, max = 100)
         tkc.addParameter(windControl, name="Turbulence_Frequency", inType="double", default=1, min=0, max = 100)
+        tkc.addParameter(windControl, name="Turbulence_Scale", inType="double", default=1, min=0, max = 100)
         
         #Results params
         tkc.addParameter(windRoot, name="Wind_X", inType="double", default=0)
@@ -87,6 +86,10 @@ def createWindControl():
         if realAttr != None and realAttr != windControl.Turbulence_Frequency.name():
             pc.connectAttr(windControl.Turbulence_Frequency, realAttr)
         
+        realAttr = tkc.getRealAttr("{0}.{1}".format(wind, "Wind_Global_Params_Turbulence_Scale"))
+        if realAttr != None and realAttr != windControl.Turbulence_Scale.name():
+            pc.connectAttr(windControl.Turbulence_Scale, realAttr)
+
         realAttr = tkc.getRealAttr("{0}.{1}".format(wind, "Wind_Global_Params_Wind_X"))
         if realAttr != None and realAttr != windRoot.Wind_X.name() and not "constraintTranslate" in realAttr:
             pc.connectAttr(windRoot.Wind_X, realAttr)

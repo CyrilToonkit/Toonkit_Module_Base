@@ -104,8 +104,8 @@ def initializeSpring(inSpring, startFrame=None, endFrame=None):
     if endFrame == None:
         endFrame = pc.playbackOptions(query=True, animationEndTime=True)
 
-    pc.setAttr(inSpring + ".startFrame", startFrame)
-    pc.setAttr(inSpring + ".endFrame", endFrame)
+    tkc.setRealAttr(inSpring + ".startFrame", startFrame)
+    tkc.setRealAttr(inSpring + ".endFrame", endFrame)
 
 def activate(value=True, initialize=False):
     springs = collect(pc.ls(sl=True))
