@@ -1962,6 +1962,12 @@ def removeNeutralPose(inTarget, globalScalingFix=True, inSuffix=None):
             pc.delete(matchers[i])
             '''
 
+def getTopNeutralPose(inTarget, inSuffix=None):
+    return getNeutralPoses(inTarget, inSuffix=inSuffix)[-1]
+
+def getAllAutomatedCtrls(ctrls, inSuffix=None):
+    return [x for x in ctrls if len(getNeutralPoses(x, inSuffix=inSuffix)) > 1]
+
 def freezeTransform(inObj):
     objParent = inObj.getParent()
     if objParent != None:
@@ -5873,6 +5879,7 @@ def getRealAttr(inAttr, inSkipCurves=True):
 
     conAttr = ""
     conAttrs = pc.listConnections(inAttr, destination=False, plugs=True)
+
     if len(conAttrs) > 0:
         for conAttrCandidate in conAttrs:
             candidate = conAttrCandidate
@@ -5952,7 +5959,7 @@ def disconnect(inParam):
 
     return True
 
-def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=None, inVerbose=False):
+def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=None, inVerbose=False, inSkipConversions=True):
     inExcludeTypes = inExcludeTypes or []
 
     cons = []
@@ -5961,14 +5968,14 @@ def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=
         #for connnn in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True):
         #    print (connnn[1].node().type())
         
-        tempCons = [ c for c in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
+        tempCons = [ c for c in inAttr.listConnections(source=True, destination=False, plugs=True, connections=True, skipConversionNodes=inSkipConversions) if not c[1].node().type() in inExcludeTypes]
         for i in range(len(tempCons)):
             tempCons[i] = (tempCons[i][1], tempCons[i][0])
         cons.extend(tempCons)
 
     if inDestination:
         #print "inDestination",inAttr.listConnections(source=False, destination=True, plugs=True, connections=True)
-        cons.extend([ c for c in inAttr.listConnections(source=False, destination=True, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes])
+        cons.extend([ c for c in inAttr.listConnections(source=False, destination=True, plugs=True, connections=True, skipConversionNodes=inSkipConversions) if not c[1].node().type() in inExcludeTypes])
 
     if len(cons) == 0 and inAttr.isCompound():
         childAttrs = inAttr.children()
@@ -5976,14 +5983,14 @@ def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=
 
             if inSource:
                 #print "inSource",childAttr.listConnections(source=True, destination=False, plugs=True, connections=True)
-                tempCons = [ c for c in childAttr.listConnections(source=True, destination=False, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes]
+                tempCons = [ c for c in childAttr.listConnections(source=True, destination=False, plugs=True, connections=True, skipConversionNodes=inSkipConversions) if not c[1].node().type() in inExcludeTypes]
                 for i in range(len(tempCons)):
                     tempCons[i] = (tempCons[i][1], tempCons[i][0])
                 cons.extend(tempCons)
 
             if inDestination:
                 #print "childAttr",inAttr.listConnections(source=False, destination=True, plugs=True, connections=True)
-                cons.extend([ c for c in childAttr.listConnections(source=False, destination=True, plugs=True, connections=True) if not c[1].node().type() in inExcludeTypes])
+                cons.extend([ c for c in childAttr.listConnections(source=False, destination=True, plugs=True, connections=True, skipConversionNodes=inSkipConversions) if not c[1].node().type() in inExcludeTypes])
 
     if inVerbose:
         for con in cons:
