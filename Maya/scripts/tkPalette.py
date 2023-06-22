@@ -638,7 +638,7 @@ def showUI():
         mc.deleteUI('tkPaletteUI')
 
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = mc.loadUI(uiFile=dirname + "\\UI\\tkPalette.ui")
+    ui = mc.loadUI(uiFile=os.path.join(dirname, "UI", "tkPalette.ui"))
 
     mc.showWindow(ui)
 

@@ -833,7 +833,7 @@ def showUI(*inArgs):
     dockName = pc.dockControl(UINAME+"DockControl", allowedArea='all', area='top', floating=False, content=dockLayout, label="Dev' Mate", vcc=UIVisChanged)
  
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = pc.loadUI(uiFile=dirname + "\\UI\\tkJointOrient.ui")
+    ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "tkJointOrient.ui"))
     pc.showWindow(ui)
 
     pc.control(ui, e=True, parent=dockLayout)

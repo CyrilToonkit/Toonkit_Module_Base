@@ -1000,7 +1000,7 @@ def showUI():
         pc.deleteUI('tkSymUI')
 
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = pc.loadUI(uiFile=dirname + "\\UI\\tkSym.ui")
+    ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "tkSym.ui"))
     pc.showWindow(ui)
 
     UIJOBID = pc.scriptJob(uid=["tkSymUI", uiDeleted])

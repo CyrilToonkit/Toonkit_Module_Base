@@ -242,7 +242,7 @@ def devMateUI(*inArgs):
     dockName = pc.dockControl("devMateDockControl", allowedArea='all', area='top', floating=False, content=dockLayout, label="Dev' Mate", vcc=UIVisChanged)
  
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = pc.loadUI(uiFile=dirname + "\\UI\\tkDevMate.ui")
+    ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "tkDevMate.ui"))
     pc.showWindow(ui)
 
     pc.control(ui, e=True, parent=dockLayout)

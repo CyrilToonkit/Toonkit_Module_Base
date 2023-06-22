@@ -545,7 +545,7 @@ def showUI(inPath=None):
         mc.deleteUI('tkBatcherUI')
 
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = mc.loadUI(uiFile=dirname + "\\UI\\tkNodesBatcher.ui")
+    ui = mc.loadUI(uiFile=os.path.join(dirname, "UI", "tkNodesBatcher.ui"))
     mc.showWindow(ui)
 
     connectControls()

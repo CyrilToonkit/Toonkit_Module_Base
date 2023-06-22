@@ -284,7 +284,7 @@ def removeFromSelSet():
 
 def createUI():
 	dirname, filename = os.path.split(os.path.abspath(__file__))
-	ui = pc.loadUI(uiFile=dirname + "/UI/TkMayaSIBar.ui")
+	ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "TkMayaSIBar.ui"))
 
 	return ui
 

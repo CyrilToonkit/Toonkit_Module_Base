@@ -841,7 +841,7 @@ def showUI(*args):
         mc.deleteUI('tkSkinnerUI')
 
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = mc.loadUI(uiFile=dirname + "\\UI\\tkSkinner.ui")
+    ui = mc.loadUI(uiFile=os.path.join(dirname, "UI", "tkSkinner.ui"))
 
     pc.showWindow(ui)
 
