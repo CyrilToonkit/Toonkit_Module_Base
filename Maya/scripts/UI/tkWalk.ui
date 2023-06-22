@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>431</width>
-    <height>405</height>
+    <height>425</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -55,6 +55,27 @@
        </property>
        <property name="checked">
         <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="walkFromSelBT">
+       <property name="text">
+        <string>From selection</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="walkSelectBT">
+       <property name="text">
+        <string>Select</string>
        </property>
       </widget>
      </item>
@@ -163,13 +184,6 @@
          <widget class="QPushButton" name="walkBakeBT">
           <property name="text">
            <string>Bake</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="walkUnbakeBT">
-          <property name="text">
-           <string>Unbake</string>
           </property>
          </widget>
         </item>

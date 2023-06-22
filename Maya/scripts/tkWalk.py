@@ -132,6 +132,7 @@ def bake(inStart, inEnd, inNamespace=None, inUnbake=True):
     for bakeAttr in bakeAttrs:
         pc.setAttr(bakeAttr, 1)
 
+"""DEPRECATED
 def unbake(inNamespace=None):
     bakeables = getBakeables(inNamespace=inNamespace)
 
@@ -154,7 +155,7 @@ def unbake(inNamespace=None):
 
     for bakeAttr in bakeAttrs:
         pc.setAttr(bakeAttr, 0)
-
+"""
 #################################################################################
 #   UI
 #################################################################################
@@ -164,10 +165,12 @@ def UIVisChanged(args):
     pc.evalDeferred(cleanIfHidden)
 
 def cleanIfHidden(*args):
-   if not pc.control("walkDockControl", query=True, visible=True):
-        if pc.window('walkUI', q=True, exists=True):
-            pc.deleteUI('walkUI')
-        pc.deleteUI('walkDockControl')
+    if pc.window('walkDockControl', query=True, exists=True):
+        if not pc.control("walkDockControl", query=True, visible=True):
+            if pc.window('walkUI', query=True, exists=True):
+                pc.deleteUI('walkUI')
+            if pc.window('walkDockControl', query=True, exists=True):
+                pc.deleteUI('walkDockControl')
 
 def getNamespaces():
     return None if pc.checkBox("walkAllCB", query=True, value=True) else [ns for ns in pc.textField("walkNsLE", query=True, text=True).replace(",", ";").split(";") if ns]
@@ -205,11 +208,33 @@ def refreshAll():
 ###########################################################################
 
 def walkAllChanged(*args):
-    pc.textField("walkNsLE", edit=True, enable=not pc.checkBox("walkAllCB", query=True, value=True))
+    if pc.checkBox("walkAllCB", query=True, value=True):
+        pc.textField("walkNsLE", edit=True, text=";".join([str(n.namespace()) for n in tkc.getAssets()]))
+        pc.textField("walkNsLE", edit=True, enable=False)
+    else:
+        pc.textField("walkNsLE", edit=True, enable=True)
+    
     refreshGrounds()
 
 def walkNsChanged(*args):
     refreshGrounds()
+
+def walkFromSelClick(*args):
+    nss = list(set([str(n.namespace()) for n in pc.selected()]))
+    if len(nss) == 0:
+        pc.warning("Please select any object from your assets")
+        return
+
+    pc.checkBox("walkAllCB", edit=True, value=False)
+    pc.textField("walkNsLE", edit=True, text=";".join(nss))
+    walkAllChanged()
+
+def walkSelectClick(*args):
+    nss = getNamespaces()
+    if nss is None:
+        nss = [str(n.namespace()) for n in tkc.getAssets()]
+
+    pc.select([ns + "Global_SRT" for ns in nss])
 
 def walkGroundAddClick(*args):
     sel = pc.selected()
@@ -260,14 +285,24 @@ def walkBakeClick(*args):
     start = float(pc.textField("walkStartFrameLE", query=True, text=True))
     end = float(pc.textField("walkEndFrameLE", query=True, text=True))
 
-    bake(start, end, getNamespaces())
+    PostSetAttrs = {"Autowalk_ParamHolder.Autowalk":0}
+    skipControls = ["Left_Leg_01_IK_Parent","Left_Leg_02_IK_Parent", "Left_Leg_03_IK_Parent", "Left_Leg_04_IK_Parent", "Right_Leg_01_IK_Parent","Right_Leg_02_IK_Parent", "Right_Leg_03_IK_Parent", "Right_Leg_04_IK_Parent"]
 
+    nss = getNamespaces()
+    if nss is None:
+        nss = [str(n.namespace()) for n in tkc.getAssets()]
+
+    tkRig.bakeAutomatedCtrls([ns.rstrip(":") for ns in nss], inStart=start, inEnd=end, inPostSetAttrs=PostSetAttrs, inSkipControls=skipControls)
+
+
+"""DEPRECATED
 def walkUnbakeClick(*args):
     unbake(getNamespaces())
+"""
 
 def walkGetFromSceneClick(*args):
-    start = pc.playbackOptions(query=True, animationStartTime=True)
-    end = pc.playbackOptions(query=True, animationEndTime=True)
+    start = pc.playbackOptions(query=True, minTime=True)
+    end = pc.playbackOptions(query=True, maxTime=True)
 
     pc.textField("walkStartFrameLE", edit=True, text=str(start))
     pc.textField("walkEndFrameLE", edit=True, text=str(end))
@@ -279,12 +314,16 @@ def connectControls():
     pc.checkBox("walkAllCB", edit=True, cc=walkAllChanged)
     pc.textField("walkNsLE", edit=True, cc=walkNsChanged)
 
+    pc.button("walkFromSelBT", edit=True, c=walkFromSelClick)
+    pc.button("walkSelectBT", edit=True, c=walkSelectClick)
+
     pc.button("walkGroundAddBT", edit=True, c=walkGroundAddClick)
     pc.button("walkGroundRemBT", edit=True, c=walkGroundRemClick)
     pc.button("walkGroundClearBT", edit=True, c=walkGroundClearClick)
     pc.button("walkGetFromSceneBT", edit=True, c=walkGetFromSceneClick)
     pc.button("walkBakeBT", edit=True, c=walkBakeClick)
-    pc.button("walkUnbakeBT", edit=True, c=walkUnbakeClick)
+    
+    #pc.button("walkUnbakeBT", edit=True, c=walkUnbakeClick)
 
 def showUI(*inArgs):
     if (pc.window('walkUI', q=True, exists=True)):
@@ -292,10 +331,12 @@ def showUI(*inArgs):
 
     mainWindow = pc.mel.eval("$tmp = $gMainPane")
     dockLayout = pc.paneLayout(configuration='single', parent=mainWindow)
+    if pc.window('walkDockControl', query=True, exists=True):
+        pc.deleteUI('walkDockControl')
     dockName = pc.dockControl("walkDockControl", allowedArea='all', area='right', floating=True, content=dockLayout, label="Autowalk", vcc=UIVisChanged)
  
     dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = pc.loadUI(uiFile=dirname + "\\UI\\tkWalk.ui")
+    ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "tkWalk.ui"))
     pc.showWindow(ui)
 
     pc.control(ui, e=True, parent=dockLayout)
@@ -305,5 +346,6 @@ def showUI(*inArgs):
     refreshAll()
 
     walkGetFromSceneClick()
+    walkAllChanged()
 
     pc.control("walkProgressBar", edit=True, visible=False)
