@@ -1457,36 +1457,47 @@ def accu(inAttr, inName=None, **kwargs):
 
 
 @profiled
-def velocity(inObj, **kwargs):
-    nodeName = reduceName(VELOCITY_FORMAT.format(inObj.name()))
+def velocity(inObj, inRefObj=None, **kwargs):
+    ref = inRefObj.name() if not inRefObj is None else ""
+    nodeName = reduceName(VELOCITY_FORMAT.format(inObj.name()) + ref)
     if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output3D
 
-    keptMat = keep(inObj.worldMatrix[0])
+    velMatrix = inObj.worldMatrix[0]
+
+    if not inRefObj is None:
+        velMatrix = mul(velMatrix, inRefObj.worldInverseMatrix[0])
+
+    keptMat = keep(velMatrix)
     keptMatDec = decomposeMatrix(keptMat)
-    objMatDec = decomposeMatrix(inObj.worldMatrix[0])
+    objMatDec = decomposeMatrix(velMatrix)
 
     vel = sub(objMatDec.outputTranslate, keptMatDec.outputTranslate, nodeName)
 
     return vel
 
 @profiled
-def angularVelocity(inObj, **kwargs):
-    nodeName = reduceName(ANGVELOCITY_FORMAT.format(inObj.name()))
+def angularVelocity(inObj, inRefObj=None, **kwargs):
+    ref = inRefObj.name() if not inRefObj is None else ""
+    nodeName = reduceName(ANGVELOCITY_FORMAT.format(inObj.name()) + ref)
     if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
         return pc.PyNode(nodeName).output3D
 
-    keptMat = keep(inObj.worldMatrix[0])
+    velMatrix = inObj.worldMatrix[0]
+    if not inRefObj is None:
+        velMatrix = mul(velMatrix, inRefObj.worldInverseMatrix[0])
+
+    keptMat = keep(velMatrix)
     keptMatDec = decomposeMatrix(keptMat)
-    objMatDec = decomposeMatrix(inObj.worldMatrix[0])
+    objMatDec = decomposeMatrix(velMatrix)
 
     vel = sub(objMatDec.outputRotate, keptMatDec.outputRotate, nodeName)
 
     return vel
 
 @profiled
-def createAccumulatedVelocity(inObj, **kwargs):
-    vel = velocity(inObj)
+def createAccumulatedVelocity(inObj, inRefObj=None, **kwargs):
+    vel = velocity(inObj, inRefObj=inRefObj)
     mag = vectorMag(vel)
     acc = accu(mag)
 

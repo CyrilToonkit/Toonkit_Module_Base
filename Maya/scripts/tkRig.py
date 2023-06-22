@@ -3557,6 +3557,75 @@ def plotRig(deleteTheRest=True):
     pc.undoInfo(closeChunk=True)
     return root
 
+
+BAKED_ATTRS = ["translateX", "translateY", "translateZ", "rotateX", "rotateY", "rotateZ"]
+def bakeCtrls(inCtrls, inStart=None, inEnd=None, inSkipControls=None, attributesList = BAKED_ATTRS):
+    inStart = inStart or pc.playbackOptions(query=True, animationStartTime=True)
+    inEnd = inEnd or pc.playbackOptions(query=True, animationEndTime=True)
+    frameRange = (inStart, inEnd)
+
+    ctrlSkipRelation={}
+    if inSkipControls:
+        for ctrl in inSkipControls:
+            if ctrl in inCtrls:
+                inCtrls.remove(ctrl)
+            ctrlSkipRelation[ctrl] = getChildCtrl(ctrl)
+    ctrlsPlacer = []
+    constraints = []
+    for ctrl in inCtrls:
+        ctrlPlacer = pc.createNode("transform", n="{}_bakingPlacer".format(ctrl.name()))
+        if ctrl in ctrlSkipRelation.values():
+            pc.parent(ctrlPlacer, tkc.getNeutralPoses(tkc.getTopNeutralPose(ctrl).getParent())[-1])
+        else:
+            pc.parent(ctrlPlacer, tkc.getTopNeutralPose(ctrl))
+        tkc.matchTRS(ctrlPlacer, ctrl)
+        constraints.append(pc.parentConstraint(ctrl, ctrlPlacer, maintainOffset=False))
+        ctrlsPlacer.append(ctrlPlacer)
+    pc.bakeResults(ctrlsPlacer, at=attributesList, t=frameRange, simulation=True)
+    for x, ctrl in enumerate(inCtrls):
+        animNodes = pc.listConnections(ctrlsPlacer[x])
+        for nb, attrs in enumerate(attributesList):
+            pc.connectAttr(animNodes[nb].output, ctrl.name() + "." + attrs)
+    pc.delete(ctrlsPlacer)
+
+"""
+PostSetAttrs = {"Autowalk_ParamHolder.Autowalk":0,"Autowalk_ParamHolder.FootFixing":0,"Autowalk_ParamHolder.Project":0}
+skipControls = ["Left_Leg_01_IK_Parent","Left_Leg_02_IK_Parent", "Left_Leg_03_IK_Parent", "Left_Leg_04_IK_Parent", "Right_Leg_01_IK_Parent","Right_Leg_02_IK_Parent", "Right_Leg_03_IK_Parent", "Right_Leg_04_IK_Parent"]
+
+assets = tkc.getAssets()
+tkc.getKeyables(inCharacters = [a.namespace().rstrip(":") for a in assets])
+bakeAutomatedCtrls([a.namespace().rstrip(":") for a in assets], inStart=None, inEnd=30, inPostSetAttrs=PostSetAttrs, inSkipControls=skipControls)
+"""
+
+def bakeAutomatedCtrls(inCharacters, inStart=None, inEnd=None, inPostSetAttrs=None, inSkipControls=None):
+    ctrls = tkc.getAllAutomatedCtrls(tkc.getNodes(tkc.getKeyables(inCharacters = inCharacters)))
+
+    if len(ctrls) == 0:
+        pc.warning("Can't find any 'Automated' controls among {}".format(inCharacters))
+        return 
+
+    inStart = inStart or pc.playbackOptions(query=True, animationStartTime=True)
+    inEnd = inEnd or pc.playbackOptions(query=True, animationEndTime=True)
+    inPostSetAttrs = inPostSetAttrs or {}
+    
+    if inSkipControls:
+        skipControlsNode = [tkc.getNode(x +":"+ y) for x in inCharacters for y in inSkipControls]
+    bakeCtrls(ctrls, inStart=inStart, inEnd=inEnd, inSkipControls=skipControlsNode)
+
+    for character in inCharacters:
+        for postSetAttr, postSetValue in inPostSetAttrs.items():
+            if pc.objExists(character + ":" + postSetAttr):
+                possibleCurves = pc.listConnections(character + ":" + postSetAttr, plugs=True, destination=False)
+                if len(possibleCurves) == 0:#static value
+                   pc.setAttr(character + ":" + postSetAttr, postSetValue)
+                else:
+                    pc.setKeyframe(character + ":" + postSetAttr, t=inStart-1)
+                    pc.setKeyframe(character + ":" + postSetAttr, t=inEnd+1)
+                    pc.cutKey(character + ":" + postSetAttr, time=(inStart,inEnd))
+                    pc.setKeyframe(character + ":" + postSetAttr, v=postSetValue, t=inStart, ott="flat")
+                    pc.setKeyframe(character + ":" + postSetAttr, v=postSetValue, t=inEnd, itt="flat")
+
+
 def byPassNode(inObj, ancestor=None, removeNode=True, affect=True):
     newDef = None
     #Get Root
@@ -4401,6 +4470,13 @@ def hammerCenter(inObj, inThreshold=10.0):
 def isControl(inObj):
     prop = tkc.getProperty(inObj, "OSCAR_Attributes")
     return prop != None and (hasattr(prop,"RefObject") or hasattr(prop,"inversed_Axes"))
+
+def getChildCtrl(inObj):
+    allChildren = tkc.getChildren(inObj,True)
+    for child in allChildren:
+        if isControl(child):
+            return child
+    return None
 
 #Locators as groups
 def simplifyTransforms(locators=True, nurbsCurves=False):
@@ -5561,13 +5637,22 @@ def loadPoseInPlace(inObjects=None, inNs=None):
 
         loadSimplePose(pose, inNamespace=inNs)
 
+POSEATTRS = {
+    "frame":"TKPoseFrame",
+    "multiplier":"TKPoseMultiplier",
+    "start":"TKPoseStart",
+    "end":"TKPoseEnd",
+    "duration":"TKPoseDuration",
+    }
+
 def createPose(inCurves, inName="newPose"):
     poseGroup = pc.group(empty=True, name=inName)
 
     start = 100000
     end = -start
 
-    poseGroup.addAttr("frame", dv=0.0)
+    poseGroup.addAttr(POSEATTRS["frame"], dv=0.0)
+    poseGroup.addAttr(POSEATTRS["multiplier"], dv=1.0)
 
     for curve in inCurves:
         #.scaleX
@@ -5575,12 +5660,12 @@ def createPose(inCurves, inName="newPose"):
         nodeName, attrName = curve.tkConnection.get().split(".")
 
         #TODO Scaling is skipped right now !!
-        if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
+        if attrName in ["sx", "sy", "sz", "scale", "scaleX", "scaleY", "scaleZ"]:#Scaling
             continue
 
         poseGroup.addAttr(curve.name())
-        curve.output >> poseGroup.attr(curve.name())
-        poseGroup.attr("frame") >> curve.input
+        tkn.mul(curve.output, poseGroup.attr(POSEATTRS["multiplier"])) >> poseGroup.attr(curve.name())
+        poseGroup.attr(POSEATTRS["frame"]) >> curve.input
 
         nKeys = curve.numKeys()
         if start > curve.getTime(0):
@@ -5588,9 +5673,9 @@ def createPose(inCurves, inName="newPose"):
         if end < curve.getTime(nKeys-1):
             end = curve.getTime(nKeys-1)
 
-    poseGroup.addAttr("start", at="long", dv=start)
-    poseGroup.addAttr("end", at="long", dv=end)
-    poseGroup.addAttr("duration", at="long", dv=end-start+1)
+    poseGroup.addAttr(POSEATTRS["start"], at="long", dv=start)
+    poseGroup.addAttr(POSEATTRS["end"], at="long", dv=end)
+    poseGroup.addAttr(POSEATTRS["duration"], at="long", dv=end-start+1)
 
     return poseGroup
 
@@ -5599,7 +5684,7 @@ def mulPose(inPose, inMultiplier, inName=None):
 
     poseGroup = pc.group(empty=True, name=poseName)
 
-    channels = [attr for attr in inPose.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+    channels = [attr for attr in inPose.listAttr(userDefined=True) if not attr.longName() in POSEATTRS.values()]
 
     for channel in channels:
         #print "channel", channel
@@ -5609,8 +5694,9 @@ def mulPose(inPose, inMultiplier, inName=None):
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
         nodeName, attrName = node.tkConnection.get().split(".")
 
-        if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
-            print ("Mul Scaling ! (remove 1, mul, then add one)", attrName)
+        if attrName in ["sx", "sy", "sz", "scale", "scaleX", "scaleY", "scaleZ"]:#Scaling
+            pass
+            #print ("Mul Scaling ! (remove 1, mul, then add one)", attrName)
         else:
             #print "Classic", attrName
             tkn.mul(channel, inMultiplier) >> poseGroup.attr(channel.longName())
@@ -5624,8 +5710,9 @@ def addPose(inPose1, inPose2, inName=None):
 
     channelsDic = {}
 
-    channels1 = [attr for attr in inPose1.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+    channels1 = [attr for attr in inPose1.listAttr(userDefined=True) if not attr.longName() in POSEATTRS.values()]
     for channel in channels1:
+        #print "channel", channel
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
         channelName = node.tkConnection.get()
 
@@ -5634,8 +5721,9 @@ def addPose(inPose1, inPose2, inName=None):
         else:
             channelsDic[channelName] = [channel]
 
-    channels2 = [attr for attr in inPose2.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+    channels2 = [attr for attr in inPose2.listAttr(userDefined=True) if not attr.longName() in POSEATTRS.values()]
     for channel in channels2:
+        #print "channel", channel
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
         channelName = node.tkConnection.get()
 
@@ -5652,7 +5740,7 @@ def addPose(inPose1, inPose2, inName=None):
         if len(attrs) == 1:
             attrs[0] >> poseGroup.attr(attrs[0].longName())
         else:
-            if attrName in ["sx", "sy", "sz", "scaleX", "scaleY", "scaleZ"]:#Scaling
+            if attrName in ["sx", "sy", "sz", "scale", "scaleX", "scaleY", "scaleZ"]:#Scaling
                 print ("Add Scaling ! (mul)", attrName)
             else:
                 #print "Classic", attrName
@@ -5663,29 +5751,38 @@ def addPose(inPose1, inPose2, inName=None):
 def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inRedirect=None, inActivationAttrName="autoWalk"):
     poseGroup = tkc.getNode(inPose)
 
-    channels = [attr for attr in poseGroup.listAttr(userDefined=True) if not attr.longName() in ["start", "end", "duration", "frame"]]
+    channels = [attr for attr in poseGroup.listAttr(userDefined=True) if not attr.longName() in POSEATTRS.values()]
 
     connections = {}
 
     connectedAttrs = []
 
     for channel in channels:
-        #print "channel", channel
         #print "getRealAttr", channel.name(), "=", tkc.getRealAttr(channel.name(), inSkipCurves=False)
         node = pc.PyNode(tkc.getRealAttr(channel.name(), inSkipCurves=False)).node()
 
         nodeName, attrName = node.tkConnection.get().split(".")
-
+        #print nodeName, attrName
         if nodeName in connections:
             connections[nodeName][attrName] = channel
         else:
-            connections[nodeName] = {attrName:channel}
+            if pc.objExists(nodeName):
+                connections[nodeName] = {attrName:channel}
+            else:
+                nodePattern = "::" + nodeName.split(":")[-1]
+                candidates = mc.ls(nodePattern)
+                if len(candidates) > 0:
+                    nodeName = candidates[0]
+
+                    if nodeName in connections:
+                        connections[nodeName][attrName] = channel
+                    else:
+                        connections[nodeName] = {attrName:channel}
+                else:
+                    pc.warning("{0} can't be found !".format(nodeName))
 
     for nodeName, attrs in connections.items():
-        if not pc.objExists(nodeName):
-            pc.warning("{0} can't be found !".format(nodeName))
-            continue
-
+        #print nodeName, str(attrs)
         node = pc.PyNode(nodeName)
 
         if( not inInclude is None and not node in inInclude or 
@@ -5693,11 +5790,11 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
             continue
 
         if not inRedirect is None:
-            for key, value in inRedirect.items():
-                if node.stripNamespace() == key and pc.objExists(value):
-                    nodeName = pc.PyNode(value)
-                    node = pc.PyNode(nodeName)
-                    break
+            remapped = inRedirect.get(node.stripNamespace())
+            #print "remapped",remapped,node.stripNamespace()
+            if not remapped is None and pc.objExists(remapped):
+                nodeName = remapped
+                node = pc.PyNode(nodeName)
 
         layer = getLayer(node)
 
@@ -5708,8 +5805,10 @@ def injectPose(inPose, inSiblingSuffix=None, inInclude=None, inExclude=None, inR
                 layer.rename(siblingName)
 
         for attr, channel in attrs.items():
+            #print channel, ">>", layer, attr, "(",node,")"
             if pc.attributeQuery(attr, node=layer, exists=True):
                 if not pc.attributeQuery(inActivationAttrName, node=node, exists=True):
+                    #print node, "addAttr", inActivationAttrName
                     node.addAttr(inActivationAttrName, minValue=0.0, maxValue=1.0, defaultValue=1.0, keyable=True)
 
                 channelMul = tkn.mul(channel, node.attr(inActivationAttrName))
@@ -5918,7 +6017,7 @@ def connectProjections(inMeshes, inNamespace=None):
             freeIndex += 1
 
 
-def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
+def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inWorld=None):
     createdNode = {}
     inRef = tkc.getNode(inRef)
     inOnOffAttr = tkc.getNode(inOnOffAttr)
@@ -5942,6 +6041,20 @@ def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
     tkc.loadConnections(keepMat1Con, keepForBlend)
     pc.disconnectAttr(inMatrix, keepForBlend.node().inputMat)
     
+    if not inWorld is None:
+        #When "kept", add any live offset from "inWorld" to keepMat1
+        keepInvWorld = tkn.keep(inWorld.worldInverseMatrix[0], immediate=True, refresh=delayedOnOff, inName=inRef.name() + "_keepInvWorld")
+        movedFixer = tkn.mul(tkn.mul(inWorld.worldMatrix[0], keepInvWorld), keepMat1)
+
+        keepMat1 = movedFixer
+        """
+        delayedDelayedOnOff = tkn.keep(delayedOnOff, inName=inRef.name() + "_delayedDelayedOnOff")
+        reversedDelayedDelayedOnOffOnOff = tkn.reverse(delayedDelayedOnOff)
+
+        keepMat1 = tkn.add(movedFixer, keepMat1)
+        delayedDelayedOnOff >> keepMat1.node().wtMatrix[0].weightIn
+        reversedDelayedDelayedOnOffOnOff >> keepMat1.node().wtMatrix[1].weightIn
+        """
     keepMat2 = tkn.keep(keepMat1, immediate=True, refresh=reversedOnOff)
 
     #Blender
@@ -5955,39 +6068,14 @@ def createFootFixer(inRef, inOnOffAttr, inBlendFrames=4, inDestObj=None):
     blendDivide = tkn.div(deltaFrames, inBlendFrames)
     reversedDivide = tkn.sub(1, blendDivide)
     
-    #blend1 = tkn.add(keepMat1, keepMat2)
     blend1 = tkn.add(inMatrix, keepMat2)
 
     blendDivide >> blend1.node().wtMatrix[0].weightIn
     reversedDivide >> blend1.node().wtMatrix[1].weightIn
 
     blend2 = tkn.add(blend1, keepMat1)
-    #blend2 = tkn.add(blend1, inMatrix)
     reversedInsideBlenCond >> blend2.node().wtMatrix[0].weightIn
     insideBlenCond >> blend2.node().wtMatrix[1].weightIn
-
-    """
-    #Pair blends
-    deckeepMat1 = tkn.decomposeMatrix(keepMat1)
-    deckeepMat2 = tkn.decomposeMatrix(keepMat2)
-
-    pairBlend1 = tkn.pairBlend(deckeepMat2.outputTranslate, deckeepMat2.outputRotate,
-                                deckeepMat1.outputTranslate, deckeepMat1.outputRotate, blendDivide, inName=inRef+"_blendPose1")
-
-    pairBlend2 = tkn.pairBlend(pairBlend1.outTranslate, pairBlend1.outRotate,
-                                deckeepMat1.outputTranslate, deckeepMat1.outputRotate, insideBlenCond, inName=inRef+"_blendPose2")
-
-    """
-
-    if not inDestObj is None:
-        inDestObj = tkc.getNode(inDestObj)
-
-        decBlend2 = tkn.decomposeMatrix(blend2)
-
-        #todo localize the output
-        decBlend2.outputTranslate >> inDestObj.t
-        pairBlend2.outputRotate >> inDestObj.r
-
     
     createdNode["delayedOnOff"] = delayedOnOff.node()
     createdNode["reversedOnOff"] = reversedOnOff.node()
