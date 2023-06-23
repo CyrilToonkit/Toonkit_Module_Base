@@ -166,11 +166,9 @@ def UIVisChanged(args):
 
 def cleanIfHidden(*args):
     if pc.window('walkDockControl', query=True, exists=True):
-        if not pc.control("walkDockControl", query=True, visible=True):
-            if pc.window('walkUI', query=True, exists=True):
-                pc.deleteUI('walkUI')
-            if pc.window('walkDockControl', query=True, exists=True):
-                pc.deleteUI('walkDockControl')
+        if not pc.window('walkDockControl', query=True, visible=True):
+            pc.deleteUI('walkDockControl')
+
 
 def getNamespaces():
     return None if pc.checkBox("walkAllCB", query=True, value=True) else [ns for ns in pc.textField("walkNsLE", query=True, text=True).replace(",", ";").split(";") if ns]
@@ -326,20 +324,24 @@ def connectControls():
     #pc.button("walkUnbakeBT", edit=True, c=walkUnbakeClick)
 
 def showUI(*inArgs):
-    if (pc.window('walkUI', q=True, exists=True)):
-        pc.deleteUI('walkUI')
+    walkUIMayaWindow = "tkWalkWindow"
+    walkUIDockLayout = "tkWalkLayout"
+    walkUIDockWindow = "walkDockControl"
 
+    if not pc.window(walkUIMayaWindow, q=True, exists=True):
+        mayaWindow = pc.window(walkUIMayaWindow, title = "TK Sym")
+        dirname, filename = os.path.split(os.path.abspath(__file__))
+        walkUIWindow = pc.loadUI(uiFile=os.path.join(dirname, "UI", "tkWalk.ui"))
+        pc.control(walkUIWindow, e=True, parent=mayaWindow)
+        
     mainWindow = pc.mel.eval("$tmp = $gMainPane")
-    dockLayout = pc.paneLayout(configuration='single', parent=mainWindow)
-    if pc.window('walkDockControl', query=True, exists=True):
-        pc.deleteUI('walkDockControl')
-    dockName = pc.dockControl("walkDockControl", allowedArea='all', area='right', floating=True, content=dockLayout, label="Autowalk", vcc=UIVisChanged)
- 
-    dirname, filename = os.path.split(os.path.abspath(__file__))
-    ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "tkWalk.ui"))
-    pc.showWindow(ui)
-
-    pc.control(ui, e=True, parent=dockLayout)
+    if not pc.paneLayout(walkUIDockLayout, q=True, exists=True):
+        pc.paneLayout(walkUIDockLayout, configuration='single', parent=mainWindow)
+    if not pc.dockControl(walkUIDockWindow, q=True, exists=True):
+        pc.dockControl(walkUIDockWindow, allowedArea='all', area='right', floating=False, content=walkUIDockLayout, label='TK Sym', vcc=UIVisChanged)
+        pc.control(mayaWindow, e=True, parent= walkUIDockLayout)
+    if not pc.dockControl(walkUIDockWindow, q=True, visible=True):
+        pc.dockControl(walkUIDockWindow,e=True, visible=True)
 
     connectControls()
 

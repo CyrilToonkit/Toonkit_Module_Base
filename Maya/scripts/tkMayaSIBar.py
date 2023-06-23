@@ -17,6 +17,7 @@
 
     You should have received a copy of the GNU Lesser General Public License
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
+    along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
 
@@ -284,7 +285,7 @@ def removeFromSelSet():
 
 def createUI():
 	dirname, filename = os.path.split(os.path.abspath(__file__))
-	ui = pc.loadUI(uiFile=os.path.join(dirname, "UI", "TkMayaSIBar.ui"))
+	ui = pc.loadUI(uiFile=dirname + "/UI/TkMayaSIBar.ui")
 
 	return ui
 
@@ -320,21 +321,31 @@ def toggleUI():
 def showUI():
 	global G_QTNAME 
 	cleanUI()
+	mayaWindow = "tkSiBarWindow"
+	dockLayout = "tkSiBarLayout"
+	dockWindow = "tkSiBarControl"
 
+	if not pc.window(mayaWindow, q=True, exists=True):
+		pc.window(mayaWindow, title="TK SIToolBar")
+		siBarWindow = createUI()
+		pc.control(siBarWindow, e=True, parent=mayaWindow)
+	
 	mainWindow = pc.mel.eval("$tmp = $gMainPane")
-	dockLayout = pc.paneLayout(configuration='single', parent=mainWindow)
-	dockName = pc.dockControl(allowedArea='all', area='right', floating=False, content=dockLayout, label='TK SI ToolBar', vcc=UIVisChanged)
+	if not pc.paneLayout(dockLayout, q=True, exists=True):
+		pc.paneLayout(dockLayout, configuration='single', parent=mainWindow)
+	if not pc.dockControl(dockWindow, q=True, exists=True):
+		pc.dockControl(dockWindow, allowedArea='all', area='right', floating=False, content=dockLayout, label='TK SI ToolBar', vcc=UIVisChanged)
+		pc.control(mayaWindow, e=True, parent= dockLayout)
+	if not pc.dockControl(dockWindow, q=True, visible=True):
+		pc.dockControl(dockWindow,e=True, visible=True)
 
-	G_QTNAME = createUI()
-	pc.showWindow(G_QTNAME)
+	G_QTNAME = siBarWindow
 
 	#Initialization
 	showHide("Selection", True)
 	updateSelectionSets()
 
-	pc.control(G_QTNAME, e=True, parent=dockLayout)
-
-	pc.optionVar(stringValue=(G_OPT_DOCK, dockName)) 
+	pc.optionVar(stringValue=(G_OPT_DOCK, dockWindow))
 
 	tkc.helpLog("SIBar " + VERSIONINFO + " loaded")
 
@@ -511,7 +522,7 @@ def evaluate(attrName, attrValue, attrType):
 
 	tkc.loadSelection()
 
-	return 	str(tkc.parseValue(attrValue, attrType, strCurValue))
+	return	 str(tkc.parseValue(attrValue, attrType, strCurValue))
 
 def evaluateClick():
 	attrName = pc.textField("tksiSelectionAttrNameLE", query=True, text=True)
