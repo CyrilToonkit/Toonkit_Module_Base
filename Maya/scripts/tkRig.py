@@ -587,12 +587,12 @@ def buildAttr(inObject, inAttrDict, **kwargs):
             addParamDict["softmax"] = softMaxValue
 
         tkc.addParameter(inobject=inObject, **addParamDict)
-        LOGGER.debug("{0} attribute created ({1})".format("{0}.{1}".format(inObject.name(), name), value))
+        tkLogger.debug("{0} attribute created ({1})".format("{0}.{1}".format(inObject.name(), name), value))
 
         if not lock is None:
             inObject.attr(name).setLocked(lock)
     else:
-        LOGGER.debug("{0} attribute modified ({1} => {2})".format("{0}.{1}".format(name, name), inObject.attr(name).get(), value))
+        tkLogger.debug("{0} attribute modified ({1} => {2})".format("{0}.{1}".format(name, name), inObject.attr(name).get(), value))
         
         lock = inObject.attr(name).isLocked()
 
@@ -611,7 +611,7 @@ def buildAttr(inObject, inAttrDict, **kwargs):
     return inObject.attr(name)
 
 
-def buildObject(inObjDict, **kwargs):
+def buildObject(inObjDict, inNamespace = None, **kwargs):
     """
     Create or modify an object
 
@@ -637,6 +637,11 @@ def buildObject(inObjDict, **kwargs):
             ],
         }
     """
+    if not inNamespace is None :
+        if not inNamespace.endswith(":"):
+            inNamespace = inNamespace + ":"
+        tkc.addNamespace(inNamespace[0:-1])
+
     node = None
     name = tc.getFromDefaults(inObjDict, "name", "object1", kwargs)
     patterns = tc.getFromDefaults(inObjDict, "patterns", [], kwargs)
@@ -647,38 +652,50 @@ def buildObject(inObjDict, **kwargs):
     attrs = tc.getFromDefaults(inObjDict, "attrs", [], kwargs)
 
     if pc.objExists(name):
-        LOGGER.debug("{0} already exists".format(name))
+        tkLogger.debug("{0} already exists".format(name))
         node = pc.PyNode(name)
+    elif inNamespace and pc.objExists(inNamespace + name):
+        node = pc.PyNode(inNamespace + name)
+        tkLogger.debug("{0} already exists".format(inNamespace + name))
+    elif pc.objExists("::" + name):
+        node = pc.PyNode("::" + name)
+        tkLogger.debug("{0} already exists with a unknown namespace".format(node))
     elif len(patterns) > 0:
         node = tkc.find(patterns)
-
         if node is None:
-            LOGGER.debug("{0} not found from patterns ({1}) !".format(name, patterns))
+            node = tkc.find([inNamespace + x for x in patterns])
+            if node is None:
+                tkLogger.debug("{0} not found from patterns ({1}) !".format(name, patterns))
     else:
-        LOGGER.debug("{0} not found".format(name))
+        tkLogger.debug("{0} not found".format(name))
 
     if node != None:
         #Rename the node
-        if node.name() != name and rename:
+        if not(node.name() == name or node.stripNamespace() == name) and rename:
             #Add namespace if it does not exist
             if ":" in name:
                 ns = ":".join(name.split(":")[0:-1])
                 tkc.addNamespace(ns)
 
-            LOGGER.debug("{0} renamed from {1}".format(name, node.name()))
-            node.rename(name)
-
+            
+            if not inNamespace:
+                tkLogger.debug("{0} renamed from {1}".format(name, node.name()))
+                node.rename(name)
+            else:
+                tkLogger.debug("{0} renamed from {1}".format(inNamespace + name, node.name()))
+                node.rename(inNamespace + name)
     else:
         #Add namespace if it does not exist
         if ":" in name:
             ns = ":".join(name.split(":")[0:-1])
             tkc.addNamespace(ns)
-
+        if not inNamespace is None:
+            name = inNamespace + name
         #Create the node
         node = pc.createNode(objType, name=name)
-        LOGGER.debug("{0} created".format(name))
-
-        if node.type() != "transform":
+        tkLogger.debug("{0} created".format(name))
+        
+        if node.type() != "transform" and node.type() != "objectSet":
             objShape = node
             node = objShape.getParent()
             objShape.rename(name + "Shape")
@@ -687,7 +704,7 @@ def buildObject(inObjDict, **kwargs):
     #sets
     for group in groups:
         addToGroup(group, node)
-        LOGGER.debug("{0} added in group {1}".format(name, group))
+        tkLogger.debug("{0} added in group {1}".format(name, group))
 
     #Attrs
     for attr in attrs:
@@ -695,13 +712,27 @@ def buildObject(inObjDict, **kwargs):
 
     #Reparent the node
     if not parent is None:
+        parentNode = tkc.getNode(parent)
+        if parentNode is None and inNamespace:
+            parentNode = tkc.getNode(inNamespace+parent)
+        if parentNode is None:
+            tkLogger.warning("Parent Node {0} not found, even with namespace {1}".format(parent, inNamespace))
         nodeParent = node.getParent()
-        nodeParentName = nodeParent.name() if not nodeParent is None else None
-        if nodeParentName != parent:
-            LOGGER.debug("{0} parented to {1}".format(name, parent))
-            pc.parent(node, parent)
+        
+        if nodeParent != parentNode and not parentNode is None :
+            tkLogger.debug("{0} parented to {1}".format(name, parentNode.name()))
+            pc.parent(node, parentNode)
+        elif not parentNode is None:
+            tkLogger.debug("{0} is already a child of {1}".format(name, parentNode.name()))
         else:
-            LOGGER.debug("{0} is already a child of {1}".format(name, parent))
+            tkLogger.debug("The given parent {0} doesn't exist!".format(parent))
+
+        nodeParentName = nodeParent.name() if not nodeParent is None else None
+        # if nodeParentName != parent:
+        #     tkLogger.debug("{0} parented to {1}".format(name, parent))
+        #     pc.parent(node, parent)
+        # else:
+        #     tkLogger.debug("{0} is already a child of {1}".format(name, parent))
 
     return node
 
@@ -720,6 +751,22 @@ HI_UNLOCKTRANS_ATTRS =  [
     {"name":"sz", "type":"float", "value":None, "lock":False},
 
     {"name":"visibility", "type":"bool", "value":None, "lock":False},
+]
+
+HI_LOCKTRANS_ATTRS = [
+            {"name":"tx", "type":"float", "value":None, "keyable":False, "lock":True},
+            {"name":"ty", "type":"float", "value":None, "keyable":False, "lock":True},
+            {"name":"tz", "type":"float", "value":None, "keyable":False, "lock":True},
+
+            {"name":"rx", "type":"float", "value":None, "keyable":False, "lock":True},
+            {"name":"ry", "type":"float", "value":None, "keyable":False, "lock":True},
+            {"name":"rz", "type":"float", "value":None, "keyable":False, "lock":True},
+
+            {"name":"sx", "type":"float", "value":None, "keyable":False, "lock":True},
+            {"name":"sy", "type":"float", "value":None, "keyable":False, "lock":True},
+            {"name":"sz", "type":"float", "value":None, "keyable":False, "lock":True},
+
+            {"name":"visibility", "type":"bool", "value":None, "lock":True},
 ]
 
 HI_INPUT_ATTRS =  [
@@ -748,7 +795,7 @@ HI_INPUT_ATTRS =  [
     {"name":"tk_guideParent", "type":"string", "value":"", "keyable":True}
                 ]
 
-def buildHierarchy(inHierarchy, **kwargs):
+def buildHierarchy(inHierarchy, inNamespace = None, **kwargs):
     """
     Build a hierarchy from a list of dictionaries
 
@@ -763,7 +810,7 @@ def buildHierarchy(inHierarchy, **kwargs):
     objsDict = {}
 
     for obj in inHierarchy:
-        node = buildObject(obj, **kwargs)
+        node = buildObject(obj, inNamespace=inNamespace, **kwargs)
         obj["node"] = node
         objsDict[obj["name"]] = obj
 
@@ -4747,7 +4794,8 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
     #Reorient
     if len(inOrientations) > 0:
         for preset in inOrientations:
-            tkj.writePreset(tkc.getNode(inNs + inPrefix + preset[0]), **preset[1])
+            if not tkc.getNode(inNs + inPrefix + preset[0]) is None:
+                tkj.writePreset(tkc.getNode(inNs + inPrefix + preset[0]), **preset[1])
 
         root = tkc.getNode(inNs + inName)
         jointRoot = root.getChildren()[0]
