@@ -4897,6 +4897,38 @@ def addWeights(inObj, inInfluences, inWeights):
     #Finally set weights
     setWeights(inObj, [n.name() for n in newInfs], newWeights)
 
+def smartMirrorSkin(inTarget, inSource=None, inSides=["Left_", "Right_"]):
+    """Maya mirror skin but add usefull deformers by label side, usable on unique object or side object to oposit side (left/right) if inSource used"""
+    if not inSource == None:
+        sourceDeformers = getDeformers([inSource])
+    else:
+        sourceDeformers = getDeformers([inTarget])
+
+    mirrorDeformers = []  
+    for sourceDfm in sourceDeformers:
+        sideDfm = sourceDfm.side.get()
+        if sideDfm == 1:
+            mirrorDfm = getNode("::{}{}".format(inSides[sideDfm], sourceDfm.otherType.get()))
+            mirrorDeformers.append(mirrorDfm)
+        elif sideDfm == 2:
+            mirrorDfm = getNode("::{}{}".format(inSides[sideDfm-2], sourceDfm.otherType.get()))
+            mirrorDeformers.append(mirrorDfm)
+        else:
+            mirrorDeformers.append(sourceDfm)
+
+    targetSkinNode = getSkinCluster(inTarget)
+    if not inSource is None:
+        if targetSkinNode != None:
+            pc.skinCluster(targetSkinNode, edit=True, unbind=True)
+        skinCluster = pc.skinCluster(inTarget, mirrorDeformers, name=inTarget.name() + "_skinCluster", toSelectedBones=True)
+        pc.copySkinWeights(ss=getSkinCluster(inSource), ds=skinCluster, mirrorMode='YZ', ia="label", sa="closestPoint")
+    else:
+        mirrorDeformers = [x for x in mirrorDeformers if x not in sourceDeformers]
+        pc.skinCluster(targetSkinNode, e=True, lw=True, wt=0, ai=mirrorDeformers)
+        for dfm in mirrorDeformers:
+            dfm.liw.set(0)
+        pc.copySkinWeights(ss=getSkinCluster(inTarget), ds=targetSkinNode, mirrorMode='YZ', ia="label", sa="closestPoint")
+
 def getPointInfluences(inSkin, inInfluences, inPointIndex):
     NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
 
@@ -5578,12 +5610,13 @@ def removeUnusedInfs(inSkin, inInfs=None):
     return removedInfluences
 
 type_priority = {
-    "blendShape":10,
-    "skinCluster":20,
-    "shrinkWrap":25,
-    "nonLinear":27,
-    "ffd":30
-}
+        "blendShape":10,
+        "cluster":15,
+        "skinCluster":20,
+        "shrinkWrap":25,
+        "nonLinear":27,
+        "ffd":30
+        }
 
 def getSelectedIndices(node=None):
     vertSel = pc.ls(orderedSelection=True)
