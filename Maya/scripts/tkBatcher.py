@@ -164,7 +164,7 @@ def getLogPath(inPattern, filePath, fileName, pathVariables):
 def batcherSimClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)
     nodes = collectNodes()
-    code = mc.textField("batcherCodeLE", query=True, text=True)
+    code = mc.scrollField("batcherCodeLE", query=True, text=True)
     force = not mc.checkBox("batcherSkipCB", query=True, value=True)
     savefile = mc.checkBox("batcherSaveByDefaultCB", query=True, value=True)
     
@@ -193,7 +193,7 @@ def batcherSimClick(*args):
 def batcherDoBatchClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)
     nodes = collectNodes()
-    code = mc.textField("batcherCodeLE", query=True, text=True)
+    code = mc.scrollField("batcherCodeLE", query=True, text=True)
     force = not mc.checkBox("batcherSkipCB", query=True, value=True)
     savefile = mc.checkBox("batcherSaveByDefaultCB", query=True, value=True)
     savePath = mc.textField("batcherSavepathLE", query=True, text=True)
@@ -205,7 +205,7 @@ def batcherDoBatchClick(*args):
 def batcherDoMayaBatchClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)
     nodes = collectNodes()
-    code = mc.textField("batcherCodeLE", query=True, text=True)
+    code = mc.scrollField("batcherCodeLE", query=True, text=True)
     force = not mc.checkBox("batcherSkipCB", query=True, value=True)
     savefile = mc.checkBox("batcherSaveByDefaultCB", query=True, value=True)
     savePath = mc.textField("batcherSavepathLE", query=True, text=True)
@@ -308,7 +308,7 @@ def batcherSaveClick(*args):
         return
 
     with open(pyFilePath[0], "w") as pyFile:
-        pyFile.write(mc.textField("batcherCodeLE", query=True, text=True))
+        pyFile.write(mc.scrollField("batcherCodeLE", query=True, text=True))
     
     dirname, filename = os.path.split(pyFilePath[0])
 
@@ -337,7 +337,7 @@ def batcherInit(inPath):
     dirname, filename = os.path.split(os.path.abspath(inPath))
 
     mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
-    mc.textField("batcherCodeInputLE", edit=True, text=content)
+    mc.scrollField("batcherCodeLE", edit=True, text=content)
     mc.textField("batcherFilePathLE", edit=True, text=inPath)
 
     optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
@@ -546,14 +546,15 @@ def showUI(inPath=None):
 
     dirname, filename = os.path.split(os.path.abspath(__file__))
     ui = mc.loadUI(uiFile=os.path.join(dirname, "UI", "tkNodesBatcher.ui"))
-    mc.showWindow(ui)
 
     connectControls()
 
     initUI()
-
-    mc.textField("batcherCodeLE", edit=True, visible=False)
+    batcherCodeLayout = mc.control("batcherSelectNoneBT", q=True, p=True)
+    mc.scrollField("batcherCodeLE", editable=True, wordWrap=True, text='', p=batcherCodeLayout)
+    
     mc.control("batcherProgressBar", edit=True, visible=False)
 
+    mc.showWindow(ui)
     if not inPath is None:
         batcherInit(inPath)
