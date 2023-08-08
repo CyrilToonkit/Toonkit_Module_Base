@@ -608,6 +608,8 @@ def buildAttr(inObject, inAttrDict, **kwargs):
         elif lock:
             inObject.attr(name).setLocked(lock)
 
+    if not pc.attributeQuery(name, node=inObject, exists=True):
+        return tkc.getNode(name)
     return inObject.attr(name)
 
 
@@ -640,7 +642,7 @@ def buildObject(inObjDict, inNamespace = None, **kwargs):
     if not inNamespace is None :
         if not inNamespace.endswith(":"):
             inNamespace = inNamespace + ":"
-        tkc.addNamespace(inNamespace[0:-1])
+        tkc.addNamespace(inNamespace[:-1])
 
     node = None
     name = tc.getFromDefaults(inObjDict, "name", "object1", kwargs)
@@ -695,7 +697,7 @@ def buildObject(inObjDict, inNamespace = None, **kwargs):
         node = pc.createNode(objType, name=name)
         tkLogger.debug("{0} created".format(name))
         
-        if node.type() != "transform" and node.type() != "objectSet":
+        if node.type() != "transform" and node.type() != "objectSet" and node.type() != "character":
             objShape = node
             node = objShape.getParent()
             objShape.rename(name + "Shape")

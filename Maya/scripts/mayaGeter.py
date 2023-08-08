@@ -1,8 +1,13 @@
-from Toonkit_Core import tkLogger
-from Toonkit_Core import tkCore
+from Toonkit_Core import tkLogger, tkCore
 from Toonkit_Core.tkProjects import tkContext
 import tkMayaCore as tkc
 from maya import cmds
+try:
+    import winsound
+except:
+    winsound=None
+    tkLogger.debug("Unable to import winsound library.")
+import tkOscar
 
 try:basestring
 except:basestring = str
@@ -77,8 +82,29 @@ class mayaGeter():
         sceneNodes = [x for x in cmds.ls(assemblies=True) if x != "" and ":" in x]
         if len(sceneNodes) > 0:
             rootNode = sceneNodes[0]
-            if "_RAW" in rootNode:
-                return rootNode.split(":")[-1][:-4]
-            else:
-                return rootNode.split(":")[-1]
+            # if "_RAW" in rootNode:
+
+            return rootNode.split(":")[-1]
         return None
+
+    def syncDCCProject(self):
+        tkc.TOOL.options["project"] = tkCore.PROJECT.name
+        if cmds.control(tkc.TOOL.getWindowName(), q=True, exists=True):
+            tkc.TOOL.setOptionItem(tkc.TOOL.options.getOption("project"))
+    
+    def checkSyncProject(self):
+        oscarProjectName = tkOscar.getOscarProject()
+        mayaProjectName = tkCore.PROJECT.name
+        project = tkCore.PROJECT
+        if not oscarProjectName == mayaProjectName:
+            if not winsound is None:
+                winsound.PlaySound("SystemExist", winsound.SND_ASYNC | winsound.SND_ALIAS)
+            message = "The OSCAR and Maya projects are different :\n - OSCAR Project   :   {}\n - Maya Project      :   {}\nWhat do you want to do ?".format(oscarProjectName, mayaProjectName)
+            anser = cmds.confirmDialog( title='Project Mismatch', message=message, button=['Continue','Change Maya Project','Cancel'], defaultButton='Contiune', cancelButton='Cancel', dismissString='Cancel' )
+            if anser == "Cancel":
+                raise Exception("Conform cancelled by user (project mismatch)")
+            elif anser == "Change Maya Project":
+                project = tkCore.setProject("maya", oscarProjectName)
+            elif anser == "Contrinue":
+                project = tkCore.PROJECT
+        return project

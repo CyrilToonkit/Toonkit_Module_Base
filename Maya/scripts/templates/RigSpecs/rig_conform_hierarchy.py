@@ -1,21 +1,26 @@
 [
     {
     "name": "{name}_GRP", # "name": "{name}:{name}"_GRP"  <= allGrp
-    "attrs": "{attrs}",
-    "patterns":["{name}"],
+    "attrs": self.hiLockedTransformAttrs,
     "type":"transform"
+    },
+    {
+    "name":"{name}",
+    "attrs": self.hiLockedTransformAttrs,
+    "type":"transform",
+    "parent":"{name}:{name}_GRP"
     },
     {
     "name": "{geometris}", # ns+"geometry_GRP" <= geoGrp
     "patterns": ["{name}:Geometries"],
-    "attrs": "{attrs}",
+    "attrs": self.hiLockedTransformAttrs,
     "parent": "{name}:{name}_GRP",
     "type":"transform"
     },
     {
     "name": "TKRig", # ns + ns[:-1] <= rigGrp
-    "attrs": "{attrs}",
-    "parent": "{name}:{name}_GRP",
+    "attrs": self.hiLockedTransformAttrs,
+    "parent": "{name}:{name}",
     "type":"transform"
     },
     {
@@ -23,13 +28,14 @@
     "type": "objectSet",
     },
     {
-    "name": "{name}:{geoSetName}",
+    "name": "{geoSetName}",
     "type": "objectSet",
     "groups":["{name}:setRoot"]
     },
     {
-    "name": "{name}:{ctrlSetName}",
+    "name": "{ctrlSetName}",
     "type": "objectSet",
-    "groups":["{name}:setRoot"]
+    "groups":["{name}:setRoot"],
+    "patterns":["{name}:ctrls_set"]
     }
 ]

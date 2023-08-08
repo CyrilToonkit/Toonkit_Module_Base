@@ -328,7 +328,7 @@ def batcherSaveClick(*args):
     mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
     mc.textField("batcherFilePathLE", edit=True, text=pyFilePath[0])
 
-def batcherInit(inPath):
+def batcherInit(inPath = "", inData = None):
     content = ""
 
     with open(inPath) as pyFile:
@@ -340,9 +340,14 @@ def batcherInit(inPath):
     mc.scrollField("batcherCodeLE", edit=True, text=content)
     mc.textField("batcherFilePathLE", edit=True, text=inPath)
 
+    
     optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
-    if os.path.isfile(optionsPath):
-        options = Options(inPath=optionsPath)
+    
+    if os.path.isfile(optionsPath) or not inData is None :
+        if os.path.isfile(optionsPath):
+            options = Options(inPath=optionsPath)
+        elif not inData is None:
+            options = Options(inData=inData)
         mc.textField("batcherPathLE", edit=True, text=options["path"])
         mc.checkBox("batcherSelectionCB", edit=True, value=options["selection"])
         mc.checkBox("batcherSaveByDefaultCB", edit=True, value=options["saveByDefault"])
@@ -540,7 +545,7 @@ def initUI(*args):
         RESULTS[fullPath] = result[1]
         pc.textScrollList("batcherNodesLB", edit=True, append="{0} ({1})".format(fileName, fullPath))
 
-def showUI(inPath=None):
+def showUI(inPath=None, inData=None):
     if (mc.window('tkBatcherUI', q=True, exists=True)):
         mc.deleteUI('tkBatcherUI')
 
@@ -556,5 +561,5 @@ def showUI(inPath=None):
     mc.control("batcherProgressBar", edit=True, visible=False)
 
     mc.showWindow(ui)
-    if not inPath is None:
-        batcherInit(inPath)
+    if not inPath is None or not inData is None :
+        batcherInit(inPath, inData)

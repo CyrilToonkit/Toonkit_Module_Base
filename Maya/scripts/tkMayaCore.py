@@ -4904,30 +4904,43 @@ def smartMirrorSkin(inTarget, inSource=None, inSides=["Left_", "Right_"]):
     else:
         sourceDeformers = getDeformers([inTarget])
 
-    mirrorDeformers = []  
+    mirrorDeformers = []
+    notFoundDfm = []
+    continueWithLostDfm = "Yes"
     for sourceDfm in sourceDeformers:
         sideDfm = sourceDfm.side.get()
         if sideDfm == 1:
             mirrorDfm = getNode("::{}{}".format(inSides[sideDfm], sourceDfm.otherType.get()))
+            if mirrorDfm is None:
+                notFoundDfm.append("{}{}".format(inSides[sideDfm], sourceDfm.otherType.get()))
+                continue
             mirrorDeformers.append(mirrorDfm)
         elif sideDfm == 2:
             mirrorDfm = getNode("::{}{}".format(inSides[sideDfm-2], sourceDfm.otherType.get()))
+            if mirrorDfm is None:
+                notFoundDfm.append("{}{}".format(inSides[sideDfm-2], sourceDfm.otherType.get()))
+                continue
             mirrorDeformers.append(mirrorDfm)
         else:
             mirrorDeformers.append(sourceDfm)
-
     targetSkinNode = getSkinCluster(inTarget)
-    if not inSource is None:
-        if targetSkinNode != None:
-            pc.skinCluster(targetSkinNode, edit=True, unbind=True)
-        skinCluster = pc.skinCluster(inTarget, mirrorDeformers, name=inTarget.name() + "_skinCluster", toSelectedBones=True)
-        pc.copySkinWeights(ss=getSkinCluster(inSource), ds=skinCluster, mirrorMode='YZ', ia="label", sa="closestPoint")
-    else:
-        mirrorDeformers = [x for x in mirrorDeformers if x not in sourceDeformers]
-        pc.skinCluster(targetSkinNode, e=True, lw=True, wt=0, ai=mirrorDeformers)
-        for dfm in mirrorDeformers:
-            dfm.liw.set(0)
-        pc.copySkinWeights(ss=getSkinCluster(inTarget), ds=targetSkinNode, mirrorMode='YZ', ia="label", sa="closestPoint")
+
+    if len(notFoundDfm) != 0:
+        lostDfmStr = '\n - ' + '\n - '.join(notFoundDfm)
+        continueWithLostDfm = cmds.confirmDialog( title='Mirror Dfm Not Found !', message='Somme deformers not found : ' + lostDfmStr + "\n Do you realy want to mirror skin ?", button=['Yes','No'], defaultButton='Yes', cancelButton='No', dismissString='No' )
+    
+    if continueWithLostDfm == "Yes":
+        if not inSource is None:
+            if targetSkinNode != None:
+                pc.skinCluster(targetSkinNode, edit=True, unbind=True)
+            skinCluster = pc.skinCluster(inTarget, mirrorDeformers, name=inTarget.name() + "_skinCluster", toSelectedBones=True)
+            pc.copySkinWeights(ss=getSkinCluster(inSource), ds=skinCluster, mirrorMode='YZ', ia="label", sa="closestPoint")
+        else:
+            mirrorDeformers = [x for x in mirrorDeformers if x not in sourceDeformers]
+            pc.skinCluster(targetSkinNode, e=True, lw=True, wt=0, ai=mirrorDeformers)
+            for dfm in mirrorDeformers:
+                dfm.liw.set(0)
+            pc.copySkinWeights(ss=getSkinCluster(inTarget), ds=targetSkinNode, mirrorMode='YZ', ia="label", sa="closestPoint")
 
 def getPointInfluences(inSkin, inInfluences, inPointIndex):
     NInfs = inInfluences if not isinstance(inInfluences, (list, tuple)) else len(inInfluences)
@@ -6362,6 +6375,9 @@ def addParameter(inobject=None, name="NewParam", inType="double", default=None, 
     else:
         objectName = inobject.name()
 
+    if pc.objectType(getNode(objectName)) == "character" and "." in name:
+        pc.character(name, addElement = getNode(objectName))
+        return objectName + "." + name
     if containerName != "":
         realContainerName = objectName + "_" + containerName
 

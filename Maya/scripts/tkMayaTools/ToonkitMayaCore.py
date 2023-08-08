@@ -40,6 +40,7 @@ MENU_NAME = "tkMainMenu"
 
 COMMAND_FORMAT = "tk{0}_C"
 TK_PROJECT_NAME = "TK_PROJECT_NAME"
+INVALID_PROJECT_NAME = ["base"]
 
 HOTKEYS =   {
                 #SI Style
@@ -277,6 +278,10 @@ class ToonkitMayaCore(Tool):
 
         elif kwargs["option"].name == "project":
             # Try to create a projet with this new project Name
+            if kwargs["new"] in INVALID_PROJECT_NAME:
+                self.options["project"] = tc.getTool().options["project"]
+                pc.evalDeferred(self.showPrefs)
+                raise ValueError ("Bad project value, you must not use '{0}' as project !".format(kwargs["new"]))
             project = tc.setProject(dccName = "maya", inName=kwargs["new"]) # setProjec can faild and return None if it was never init.
             if project:
                 tkLogger.debug("Requested project: {0}. Created project : {1}.".format(kwargs["new"], project.name))

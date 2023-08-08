@@ -1,4 +1,9 @@
 [
+    "Visibilities.timecode_hour",
+    "Visibilities.timecode_minute",
+    "Visibilities.timecode_second",
+    "Visibilities.timecode_frame",
+    "Visibilities.mocap_clip_id",
     "Spine_IK_EndHandle.translateX",
     "Spine_IK_EndHandle.translateY",
     "Spine_IK_EndHandle.translateZ",
