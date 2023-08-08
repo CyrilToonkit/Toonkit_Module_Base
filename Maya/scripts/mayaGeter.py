@@ -7,7 +7,7 @@ try:
 except:
     winsound=None
     tkLogger.debug("Unable to import winsound library.")
-import tkOscar
+
 
 try:basestring
 except:basestring = str
@@ -93,18 +93,24 @@ class mayaGeter():
             tkc.TOOL.setOptionItem(tkc.TOOL.options.getOption("project"))
     
     def checkSyncProject(self):
-        oscarProjectName = tkOscar.getOscarProject()
-        mayaProjectName = tkCore.PROJECT.name
         project = tkCore.PROJECT
-        if not oscarProjectName == mayaProjectName:
-            if not winsound is None:
-                winsound.PlaySound("SystemExist", winsound.SND_ASYNC | winsound.SND_ALIAS)
-            message = "The OSCAR and Maya projects are different :\n - OSCAR Project   :   {}\n - Maya Project      :   {}\nWhat do you want to do ?".format(oscarProjectName, mayaProjectName)
-            anser = cmds.confirmDialog( title='Project Mismatch', message=message, button=['Continue','Change Maya Project','Cancel'], defaultButton='Contiune', cancelButton='Cancel', dismissString='Cancel' )
-            if anser == "Cancel":
-                raise Exception("Conform cancelled by user (project mismatch)")
-            elif anser == "Change Maya Project":
-                project = tkCore.setProject("maya", oscarProjectName)
-            elif anser == "Contrinue":
-                project = tkCore.PROJECT
-        return project
+        try:
+            import tkOscar
+            oscarProjectName = tkOscar.getOscarProject()
+            mayaProjectName = tkCore.PROJECT.name
+            
+            if not oscarProjectName == mayaProjectName:
+                if not winsound is None:
+                    winsound.PlaySound("SystemExist", winsound.SND_ASYNC | winsound.SND_ALIAS)
+                message = "The OSCAR and Maya projects are different :\n - OSCAR Project   :   {}\n - Maya Project      :   {}\nWhat do you want to do ?".format(oscarProjectName, mayaProjectName)
+                anser = cmds.confirmDialog( title='Project Mismatch', message=message, button=['Continue','Change Maya Project','Cancel'], defaultButton='Contiune', cancelButton='Cancel', dismissString='Cancel' )
+                if anser == "Cancel":
+                    raise Exception("Conform cancelled by user (project mismatch)")
+                elif anser == "Change Maya Project":
+                    project = tkCore.setProject("maya", oscarProjectName)
+                elif anser == "Contrinue":
+                    project = tkCore.PROJECT
+            return project
+        except:
+            tkLogger.warning("Can't find anything to sync your project with.")
+            return project
