@@ -63,7 +63,7 @@ class ImportSkinnings(Tool):
             mode = 1
 
         inPath = None
-        inPath = pc.fileDialog2(caption="Load your envelopes", fileFilter="Text file (*.txt)(*.txt)", dialogStyle=2, fileMode=1)
+        inPath = pc.fileDialog2(caption="Load your envelopes", fileFilter="Text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
 
         if inPath != None and len(inPath) > 0:
             inPath = inPath[0]

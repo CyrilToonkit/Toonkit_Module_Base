@@ -11,7 +11,7 @@ sel = pc.selected()
 if len(sel) == 0:
     pc.warning("Please select an object !")
 else:
-    path = pc.fileDialog2(caption="Load your connections file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=2, fileMode=1)
+    path = pc.fileDialog2(caption="Load your connections file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
 
     if path != None and len(path) > 0:
         path = path[0]

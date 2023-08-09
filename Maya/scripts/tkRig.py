@@ -4993,7 +4993,7 @@ def exportToUnreal(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="s
 
             additionnalArgs["startingDirectory"] = os.path.join(dirPath, "{0}_{1}.fbx".format(filePath, inNs.rstrip(":")))
 
-        inPath = pc.fileDialog2(caption="Save your fbx export", fileFilter="Fbx file (*.fbx)(*.fbx)", dialogStyle=2, fileMode=0, **additionnalArgs)
+        inPath = pc.fileDialog2(caption="Save your fbx export", fileFilter="Fbx file (*.fbx)(*.fbx)", dialogStyle=1, fileMode=0, **additionnalArgs)
 
         if inPath != None and len(inPath) > 0:
             inPath = inPath[0]

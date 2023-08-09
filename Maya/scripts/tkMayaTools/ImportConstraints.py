@@ -45,7 +45,7 @@ class ImportConstraints(Tool):
     def execute(self, *args, **kwargs):
         super(ImportConstraints, self).execute(*args, **kwargs)
 
-        path = mc.fileDialog2(caption="Load your constraints file", fileFilter="cns file (*.cns)(*.cns)", dialogStyle=2, fileMode=1)
+        path = mc.fileDialog2(caption="Load your constraints file", fileFilter="cns file (*.cns)(*.cns)", dialogStyle=1, fileMode=1)
 
         if path != None and len(path) > 0:
             path = path[0]

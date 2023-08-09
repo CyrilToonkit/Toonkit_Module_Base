@@ -11,7 +11,7 @@ sel = pc.selected()
 if len(sel) == 0:
     pc.warning("Please select an object !")
 else:
-    path = mc.fileDialog2(caption="Save your connections file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=2, fileMode=0)
+    path = mc.fileDialog2(caption="Save your connections file", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=0)
 
     if path != None and len(path) > 0:
         path = path[0]

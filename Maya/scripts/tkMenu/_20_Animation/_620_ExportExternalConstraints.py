@@ -10,7 +10,7 @@ sel = pc.selected()
 if len(sel) == 0:
     pc.warning("Please select root objects !")
 else:
-    path = mc.fileDialog2(caption="Save your constraints file", fileFilter="cns file (*.cns)(*.cns)", dialogStyle=2, fileMode=0)
+    path = mc.fileDialog2(caption="Save your constraints file", fileFilter="cns file (*.cns)(*.cns)", dialogStyle=1, fileMode=0)
 
     if path != None and len(path) > 0:
         path = path[0]
