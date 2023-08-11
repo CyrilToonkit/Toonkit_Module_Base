@@ -82,8 +82,6 @@ class mayaGeter():
         sceneNodes = [x for x in cmds.ls(assemblies=True) if x != "" and ":" in x]
         if len(sceneNodes) > 0:
             rootNode = sceneNodes[0]
-            # if "_RAW" in rootNode:
-
             return rootNode.split(":")[-1]
         return None
 
