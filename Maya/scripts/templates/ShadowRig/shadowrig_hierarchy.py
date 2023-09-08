@@ -191,6 +191,7 @@
     {'name': 'Left_Arm_Eff_Deform',  'type': 'Deform',  'parent': 'Left_Arm_Twist_Dwn_End_Deform'},
 
     {'name': 'Left_HandRig_Hand_Deform',  'type': 'Deform',  'parent': 'Left_Arm_Eff_Deform'},
+    {'name': 'Left_Forearm_0_Deform',  'type': 'Deform',  'parent': 'Left_HandRig_Hand_Deform'},
     {'name': 'Left_HandProp_Main_Deform',  'type': 'Deform',  'parent': 'Left_HandRig_Hand_Deform'}, # Added for Light
     {'name': 'Left_HandRig_Hand_Semi_Deform',  'type': 'Deform',  'parent': 'Left_HandRig_Hand_Deform'},
     {'name': 'Left_HandRig_Thumb_02_Deform',  'type': 'Deform',  'parent': 'Left_HandRig_Hand_Deform'},
@@ -367,6 +368,7 @@
     {'name': 'Right_Arm_Eff_Deform',  'type': 'Deform',  'parent': 'Right_Arm_Twist_Dwn_End_Deform'},
 
     {'name': 'Right_HandRig_Hand_Deform',  'type': 'Deform',  'parent': 'Right_Arm_Eff_Deform'},
+    {'name': 'Right_Forearm_0_Deform',  'type': 'Deform',  'parent': 'Right_HandRig_Hand_Deform'},
     {'name': 'Right_HandProp_Main_Deform',  'type': 'Deform',  'parent': 'Right_HandRig_Hand_Deform'}, # Added for Light
     {'name': 'Right_HandRig_Hand_Semi_Deform',  'type': 'Deform',  'parent': 'Right_HandRig_Hand_Deform'},
     {'name': 'Right_HandRig_Thumb_02_Deform',  'type': 'Deform',  'parent': 'Right_HandRig_Hand_Deform'},
