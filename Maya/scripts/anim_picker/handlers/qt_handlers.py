@@ -19,16 +19,18 @@ except:
 try:
     import sip
 except:
+    pass
+
+try:
+    import shiboken
+except:
     try:
-        import shiboken
+        from PySide import shiboken
     except:
         try:
-            from PySide import shiboken
+            import shiboken2 as shiboken
         except:
-            try:
-                import shiboken2 as shiboken
-            except:
-                raise Exception('Failed to import sip or shiboken')
+            raise Exception('Failed to import sip or shiboken')
         
     
 # Instance handling
@@ -36,17 +38,31 @@ def wrap_instance(ptr, base):
     '''Return QtGui object instance based on pointer address
     '''
     if 'sip' in globals():
-        return sip.wrapinstance(long(ptr), QtCore.QObject)
-    elif 'shiboken' in globals():
+        try:
+            uiObj = sip.wrapinstance(long(ptr), QtCore.QObject)
+            if not uiObj is None:
+                return uiObj
+        except:
+            pass
+
+    if 'shiboken' in globals():
         return shiboken.wrapInstance(long(ptr), base)
     
 def unwrap_instance(qt_object):
     '''Return pointer address for qt class instance
     '''
     if 'sip' in globals():
-        return long(sip.unwrapinstance(qt_object))
-    elif 'shiboken' in globals():
+        try:
+            ptr = sip.unwrapinstance(qt_object)
+            if not ptr is None:
+                return long(ptr)
+        except:
+            pass
+
+    if 'shiboken' in globals():
         return long(shiboken.getCppPointer(qt_object)[0])
+
+    return None
     
     
 def get_maya_window():
