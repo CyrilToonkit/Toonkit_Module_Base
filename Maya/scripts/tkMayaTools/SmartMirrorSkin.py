@@ -33,7 +33,7 @@ SIDES = ["Left_", "Right_"]
 
 class SmartMirrorSkin(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        super(SmartMirrorSkin, self).__init__(inName="Smarte Mirror Skin", inDescription="Maya mirror skin but add usefull deformers by label side, usable on unique object or side object to oposit side (left/right) if inSource used",
+        super(SmartMirrorSkin, self).__init__(inName="Smart Mirror Skin", inDescription="Maya mirror skin but add useful deformers by label side, usable on unique object or side object to oposite side (left/right) if inSource used",
             inUsage="Select one or two object that you need to smart mirror skin", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())
@@ -45,9 +45,12 @@ class SmartMirrorSkin(Tool):
     def execute(self, *args, **kwargs):
         super(SmartMirrorSkin, self).execute(*args, **kwargs)
         sel = pc.selected()
+
+        sides = self.arguments[0].split(",")
+        
         if len(sel) == 0:
             pc.warning(self.usage)
         elif len(sel) == 1:
-            tkc.smartMirrorSkin(sel[0], inSides=self.arguments[0])
+            tkc.smartMirrorSkin(sel[0], inSides=sides)
         else:
-            tkc.smartMirrorSkin(sel[0], sel[1], inSides=self.arguments[0])
+            tkc.smartMirrorSkin(sel[0], sel[1], inSides=sides)
