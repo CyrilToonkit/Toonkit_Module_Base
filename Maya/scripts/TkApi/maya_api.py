@@ -56,7 +56,7 @@ def get_weights_data(inTransformNode = None, inSkinCluster=None, inInfluence = N
                 for shape in cmds.listRelatives(inTransformNode, shapes=True):
                     if cmds.getAttr(shape + ".intermediateObject"):
                         continue
-                    skins = [x for x in cmds.listHistory(shape) if cmds.objectType(x) == "skinCluster"]
+                    skins = [x for x in cmds.listHistory(shape) if cmds.objectType(x) == "skinCluster" and shape in cmds.skinCluster(x, q=True, g=True)]
                     if len(skins) > 0:
                         inSkinCluster = skins[0]
                         break

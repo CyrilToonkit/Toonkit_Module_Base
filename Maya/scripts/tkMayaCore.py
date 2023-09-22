@@ -1150,8 +1150,6 @@ def loadCollection(inName=OPT_SEL, clean=True, presetHolderName=OPT_SELSETS, swa
                     obj = getNode(longName)
                     if not obj is None:
                         actualObjects.append(obj)
-                    else:
-                        pc.warning(longName + " cannot be found?")
         else:
             if swapNamespace != "" and ":" in objectLongNames:
                 ns = objectLongNames.split(":")[0]
@@ -1159,8 +1157,7 @@ def loadCollection(inName=OPT_SEL, clean=True, presetHolderName=OPT_SELSETS, swa
             obj = getNode(objectLongNames)
             if not obj is None:
                 actualObjects.append(obj)
-            else:
-                pc.warning(objectLongNames + " cannot be found?")
+
     except Exception as e:
         pc.error("Cannot get objects." + str(e))
 
