@@ -99,6 +99,220 @@ DEFAULT_UNIT_CONVERSION = 100.0
 UNITSCALE = 0.01#To meters
 UNITSCALE = 1.0
 
+MAYA_SKELETON = ["Reference", "Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot", "Spine", "LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand", "Head", "LeftToeBase", "RightToeBase", "LeftShoulder", "RightShoulder", "Neck", "LeftFingerBase", "RightFingerBase", "Spine1", "Spine2", "Spine3", "Spine4", "Spine5", "Spine6", "Spine7", "Spine8", "Spine9", "Neck1", "Neck2", "Neck3", "Neck4", "Neck5", "Neck6", "Neck7", "Neck8", "Neck9", "LeftUpLegRoll", "LeftLegRoll", "RightUpLegRoll", "RightLegRoll", "LeftArmRoll", "LeftForeArmRoll", "RightArmRoll", "RightForeArmRoll", "HipsTranslation", "LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb3", "LeftHandThumb4", "LeftHandIndex1", "LeftHandIndex2", "LeftHandIndex3", "LeftHandIndex4", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandMiddle3", "LeftHandMiddle4", "LeftHandRing1", "LeftHandRing2", "LeftHandRing3", "LeftHandRing4", "LeftHandPinky1", "LeftHandPinky2", "LeftHandPinky3", "LeftHandPinky4", "LeftHandExtraFinger1", "LeftHandExtraFinger2", "LeftHandExtraFinger3", "LeftHandExtraFinger4", "RightHandThumb1", "RightHandThumb2", "RightHandThumb3", "RightHandThumb4", "RightHandIndex1", "RightHandIndex2", "RightHandIndex3", "RightHandIndex4", "RightHandMiddle1", "RightHandMiddle2", "RightHandMiddle3", "RightHandMiddle4", "RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandRing4", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3", "RightHandPinky4", "RightHandExtraFinger1", "RightHandExtraFinger2", "RightHandExtraFinger3", "RightHandExtraFinger4", "LeftFootThumb1", "LeftFootThumb2", "LeftFootThumb3", "LeftFootThumb4", "LeftFootIndex1", "LeftFootIndex2", "LeftFootIndex3", "LeftFootIndex4", "LeftFootMiddle1", "LeftFootMiddle2", "LeftFootMiddle3", "LeftFootMiddle4", "LeftFootRing1", "LeftFootRing2", "LeftFootRing3", "LeftFootRing4", "LeftFootPinky1", "LeftFootPinky2", "LeftFootPinky3", "LeftFootPinky4", "LeftFootExtraFinger1", "LeftFootExtraFinger2", "LeftFootExtraFinger3", "LeftFootExtraFinger4", "RightFootThumb1", "RightFootThumb2", "RightFootThumb3", "RightFootThumb4", "RightFootIndex1", "RightFootIndex2", "RightFootIndex3", "RightFootIndex4", "RightFootMiddle1", "RightFootMiddle2", "RightFootMiddle3", "RightFootMiddle4", "RightFootRing1", "RightFootRing2", "RightFootRing3", "RightFootRing4", "RightFootPinky1", "RightFootPinky2", "RightFootPinky3", "RightFootPinky4", "RightFootExtraFinger1", "RightFootExtraFinger2", "RightFootExtraFinger3", "RightFootExtraFinger4", "LeftInHandThumb", "LeftInHandIndex", "LeftInHandMiddle", "LeftInHandRing", "LeftInHandPinky", "LeftInHandExtraFinger", "RightInHandThumb", "RightInHandIndex", "RightInHandMiddle", "RightInHandRing", "RightInHandPinky", "RightInHandExtraFinger", "LeftInFootThumb", "LeftInFootIndex", "LeftInFootMiddle", "LeftInFootRing", "LeftInFootPinky", "LeftInFootExtraFinger", "RightInFootThumb", "RightInFootIndex", "RightInFootMiddle", "RightInFootRing", "RightInFootPinky", "RightInFootExtraFinger", "LeftShoulderExtra", "RightShoulderExtra", "LeafLeftUpLegRoll1", "LeafLeftLegRoll1", "LeafRightUpLegRoll1", "LeafRightLegRoll1", "LeafLeftArmRoll1", "LeafLeftForeArmRoll1", "LeafRightArmRoll1", "LeafRightForeArmRoll1", "LeafLeftUpLegRoll2", "LeafLeftLegRoll2", "LeafRightUpLegRoll2", "LeafRightLegRoll2", "LeafLeftArmRoll2", "LeafLeftForeArmRoll2", "LeafRightArmRoll2", "LeafRightForeArmRoll2", "LeafLeftUpLegRoll3", "LeafLeftLegRoll3", "LeafRightUpLegRoll3", "LeafRightLegRoll3", "LeafLeftArmRoll3", "LeafLeftForeArmRoll3", "LeafRightArmRoll3", "LeafRightForeArmRoll3", "LeafLeftUpLegRoll4", "LeafLeftLegRoll4", "LeafRightUpLegRoll4", "LeafRightLegRoll4", "LeafLeftArmRoll4", "LeafLeftForeArmRoll4", "LeafRightArmRoll4", "LeafRightForeArmRoll4", "LeafLeftUpLegRoll5", "LeafLeftLegRoll5", "LeafRightUpLegRoll5", "LeafRightLegRoll5", "LeafLeftArmRoll5", "LeafLeftForeArmRoll5", "LeafRightArmRoll5", "LeafRightForeArmRoll5"]
+
+DEFINITIONS = {
+    "Bandai":
+        {   "def":
+                {
+                "joint_Root":"Reference",
+                "Hips":"Hips",
+                "UpperLeg_L":"LeftUpLeg",
+                "LowerLeg_L":"LeftLeg",
+                "Foot_L":"LeftFoot",
+                "UpperLeg_R":"RightUpLeg",
+                "LowerLeg_R":"RightLeg",
+                "Foot_R":"RightFoot",
+                "Spine":"Spine",
+                "UpperArm_L":"LeftArm",
+                "LowerArm_L":"LeftForeArm",
+                "Hand_L":"LeftHand",
+                "UpperArm_R":"RightArm",
+                "LowerArm_R":"RightForeArm",
+                "Hand_R":"RightHand",
+                "Head":"Head",
+                "Toes_L":"LeftToeBase",
+                "Toes_R":"RightToeBase",
+                "Shoulder_L":"LeftShoulder",
+                "Shoulder_R":"RightShoulder",
+                "Neck":"Neck",
+                "Chest":"Spine1",
+                },
+            "pose":
+                {
+                'Hips': {'rx': 0.0,'ry': 0.0,'rz': 90.0,'tx': 0.0,'tz': 0.0},
+                'Chest': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'Foot_L': {'rx': 0.0,'ry': -60,'rz': 0.0},
+                'Foot_R': {'rx': 0.0,'ry': -60,'rz': 0.0},
+                'Hand_L': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'Hand_R': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'Head': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'LowerArm_L': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'LowerArm_R': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'LowerLeg_L': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'LowerLeg_R': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'Neck': {'rx': 0.0,'ry': 0.0,'rz': 0.0},
+                'Shoulder_L': {'rx': 5.0,'ry': -90.0,'rz': -90.0},
+                'Shoulder_R': {'rx': 5.0,'ry': -90.0,'rz': 90.0},
+                'Spine': {'rx': 90.0,'ry': -90.0,'rz': 90.0},
+                'Toes_L': {'rx': 0.0,'ry': -22.0,'rz': 0.0},
+                'Toes_R': {'rx': 0.0,'ry': -22.0,'rz': 0.0},
+                'UpperArm_L': {'rx': 0.0,'ry': 0.0,'rz': 5.0},
+                'UpperArm_R': {'rx': 0.0,'ry': 0.0,'rz': 5.0},
+                'UpperLeg_L': {'rx': 0.0,'ry': 0.0,'rz': -180.0},
+                'UpperLeg_R': {'rx': 0.0,'ry': 180.0,'rz': 180.0},
+                'joint_Root': {'rx': 0.0,'ry': -0.0,'rz': 0.0}
+                }
+        },
+    "RokokoNewton":
+        {   "def":
+                {
+                "Root":"Reference",
+                "Hips":"Hips",
+                "LeftThigh":"LeftUpLeg",
+                "LeftShin":"LeftLeg",
+                "LeftFoot":"LeftFoot",
+                "RightThigh":"RightUpLeg",
+                "RightShin":"RightLeg",
+                "RightFoot":"RightFoot",
+                "Spine1":"Spine",
+                "LeftArm":"LeftArm",
+                "LeftForeArm":"LeftForeArm",
+                "LeftHand":"LeftHand",
+                "RightArm":"RightArm",
+                "RightForeArm":"RightForeArm",
+                "RightHand":"RightHand",
+                "Head":"Head",
+                "LeftToe":"LeftToeBase",
+                "RightToe":"RightToeBase",
+                "LeftShoulder":"LeftShoulder",
+                "RightShoulder":"RightShoulder",
+                "Neck":"Neck",
+                "Spine2":"Spine1",
+                "Spine3":"Spine2",
+                "Spine4":"Spine3",
+                "LeftFinger1Metacarpal":"LeftHandThumb1",
+                "LeftFinger1Proximal":"LeftHandThumb2",
+                "LeftFinger1Distal":"LeftHandThumb3",
+                "LeftFinger2Proximal":"LeftHandIndex1",
+                "LeftFinger2Medial":"LeftHandIndex2",
+                "LeftFinger2Distal":"LeftHandIndex3",
+                "LeftFinger3Proximal":"LeftHandMiddle1",
+                "LeftFinger3Medial":"LeftHandMiddle2",
+                "LeftFinger3Distal":"LeftHandMiddle3",
+                "LeftFinger4Proximal":"LeftHandRing1",
+                "LeftFinger4Medial":"LeftHandRing2",
+                "LeftFinger4Distal":"LeftHandRing3",
+                "LeftFinger5Proximal":"LeftHandPinky1",
+                "LeftFinger5Medial":"LeftHandPinky2",
+                "LeftFinger5Distal":"LeftHandPinky3",
+                "RightFinger1Metacarpal":"RightHandThumb1",
+                "RightFinger1Proximal":"RightHandThumb2",
+                "RightFinger1Distal":"RightHandThumb3",
+                "RightFinger2Proximal":"RightHandIndex1",
+                "RightFinger2Medial":"RightHandIndex2",
+                "RightFinger2Distal":"RightHandIndex3",
+                "RightFinger3Proximal":"RightHandMiddle1",
+                "RightFinger3Medial":"RightHandMiddle2",
+                "RightFinger3Distal":"RightHandMiddle3",
+                "RightFinger4Proximal":"RightHandRing1",
+                "RightFinger4Medial":"RightHandRing2",
+                "RightFinger4Distal":"RightHandRing3",
+                "RightFinger5Proximal":"RightHandPinky1",
+                "RightFinger5Medial":"RightHandPinky2",
+                "RightFinger5Distal":"RightHandPinky3",
+                "LeftFinger2Metacarpal":"LeftInHandIndex",
+                "LeftFinger3Metacarpal":"LeftInHandMiddle",
+                "LeftFinger4Metacarpal":"LeftInHandRing",
+                "LeftFinger5Metacarpal":"LeftInHandPinky",
+                "RightFinger2Metacarpal":"RightInHandIndex",
+                "RightFinger3Metacarpal":"RightInHandMiddle",
+                "RightFinger4Metacarpal":"RightInHandRing",
+                "RightFinger5Metacarpal":"RightInHandPinky",
+                },
+            "pose":
+                {
+                'Hips': {'rx': -0,'ry': -0.0,'rz': -0.0,'tx': 0.0,'tz': 0.0},
+                'Head': {'rx': 0.0,'ry': 0.0,'rz': -0.0},
+                'HeadTip': {'rx': 0.0,'ry': 0,'rz': -0.0},
+                'LeftArm': {'rx': -0.0,'ry': -90,'rz': 0.0},
+                'LeftFinger1Distal': {'rx': -0,'ry': 0,'rz': -0},
+                'LeftFinger1Metacarpal': {'rx': -50, 'ry': -60.0, 'rz': 70.0},
+                'LeftFinger1Proximal': {'rx': -0.0,  'ry': -0.0,  'rz': -0.0},
+                'LeftFinger1Tip': {'rx': 0.0, 'ry': -0, 'rz': 0},
+                'LeftFinger2Distal': {'rx': 0,'ry': -0,'rz': -0},
+                'LeftFinger2Medial': {'rx': 0,'ry': 0,'rz': 0},
+                'LeftFinger2Metacarpal': {'rx': -0, 'ry': -0, 'rz': 10.0},
+                'LeftFinger2Proximal': {'rx': 0,  'ry': -0.0,  'rz': -10.0},
+                'LeftFinger2Tip': {'rx': 0, 'ry': 0.0, 'rz': 0},
+                'LeftFinger3Distal': {'rx': 0,'ry': 0,'rz': 0},
+                'LeftFinger3Medial': {'rx': 0,'ry': -0,'rz': 0},
+                'LeftFinger3Metacarpal': {'rx': -0, 'ry': -0, 'rz': 0},
+                'LeftFinger3Proximal': {'rx': 0,  'ry': 0,  'rz': -0},
+                'LeftFinger3Tip': {'rx': 0, 'ry': -0, 'rz': -0},
+                'LeftFinger4Distal': {'rx': 0,'ry': 0,'rz': -0},
+                'LeftFinger4Medial': {'rx': 0,'ry': -0,'rz': -0},
+                'LeftFinger4Metacarpal': {'rx': -0, 'ry': 0, 'rz': -10.0},
+                'LeftFinger4Proximal': {'rx': 0,  'ry': -0.0,  'rz': 10},
+                'LeftFinger4Tip': {'rx': 0, 'ry': -0, 'rz': 0},
+                'LeftFinger5Distal': {'rx': 0,'ry': 0,'rz': 0},
+                'LeftFinger5Medial': {'rx': 0,'ry': -0.0,'rz': -0},
+                'LeftFinger5Metacarpal': {'rx': -0.0, 'ry': 0, 'rz': -20.0},
+                'LeftFinger5Proximal': {'rx': 0.0,  'ry': -0,  'rz': 20.0},
+                'LeftFinger5Tip': {'rx': -0, 'ry': 0, 'rz': 0},
+                'LeftFoot': {'rx': 90.0, 'ry': -90.0, 'rz': -0.0},
+                'LeftForeArm': {'rx': -0, 'ry': 0, 'rz': 0},
+                'LeftHand': {'rx': -0, 'ry': -0, 'rz': -0},
+                'LeftShin': {'rx': -0.0, 'ry': 0, 'rz': 0},
+                'LeftShoulder': {'rx': 0,  'ry': 0,  'rz': -90.0},
+                'LeftThigh': {'rx': 0,  'ry': -90.0,  'rz': -0.0},
+                'LeftToe': {'rx': -0,'ry': 0,'rz': -0},
+                'LeftToeTip': {'rx': 0,'ry': -0,'rz': -0},
+                'Neck': {'rx': 0.0,'ry': 0.0,'rz': -0.0},
+                'RightArm': {'rx': 0, 'ry': 90.0, 'rz': -0.0},
+                'RightFinger1Distal': {'rx': 0, 'ry': -0, 'rz': -0},
+                'RightFinger1Metacarpal': {'rx': -50,  'ry': 60.0,  'rz': -70.0},
+                'RightFinger1Proximal': {'rx': -0.0,'ry': 0.0,'rz': 0.0},
+                'RightFinger1Tip': {'rx': 0.0,  'ry': 0,  'rz': 0},
+                'RightFinger2Distal': {'rx': 0, 'ry': -0, 'rz': -0},
+                'RightFinger2Medial': {'rx': 0, 'ry': 0, 'rz': 0},
+                'RightFinger2Metacarpal': {'rx': -0.0,  'ry': 0,  'rz': -10.0},
+                'RightFinger2Proximal': {'rx': 0,'ry': -0.0,'rz': 10.0},
+                'RightFinger2Tip': {'rx': 0,  'ry': -0,  'rz': 0},
+                'RightFinger3Distal': {'rx': 0, 'ry': -0, 'rz': 0},
+                'RightFinger3Medial': {'rx': 0, 'ry': -0, 'rz': 0},
+                'RightFinger3Metacarpal': {'rx': -0.0,  'ry': -0,  'rz': -0},
+                'RightFinger3Proximal': {'rx': 0,'ry': -0,'rz': 0},
+                'RightFinger3Tip': {'rx': 0,  'ry': 0,  'rz': 0},
+                'RightFinger4Distal': {'rx': 0, 'ry': 0, 'rz': -0},
+                'RightFinger4Medial': {'rx': 0, 'ry': -0, 'rz': 0},
+                'RightFinger4Metacarpal': {'rx': -0.0,  'ry': 0,  'rz': 10.0},
+                'RightFinger4Proximal': {'rx': 0,'ry': -0,'rz': -10.0},
+                'RightFinger4Tip': {'rx': 0,  'ry': -0,  'rz': -0},
+                'RightFinger5Distal': {'rx': 0, 'ry': -0, 'rz': 0},
+                'RightFinger5Medial': {'rx': 0, 'ry': -0, 'rz': 0},
+                'RightFinger5Metacarpal': {'rx': -0.0,  'ry': -0,  'rz': 20.0},
+                'RightFinger5Proximal': {'rx': 0.0,'ry': -0,'rz': -20.0},
+                'RightFinger5Tip': {'rx': -0,  'ry': 0,  'rz': -0},
+                'RightFoot': {'rx': 90.0,  'ry': 90.0,  'rz': -0.0},
+                'RightForeArm': {'rx': -0,  'ry': -0,  'rz': 0},
+                'RightHand': {'rx': -0,  'ry': -0,  'rz': 0},
+                'RightShin': {'rx': 0,  'ry': -0,  'rz': 0},
+                'RightShoulder': {'rx': 0,'ry': 0,'rz': 90.0},
+                'RightThigh': {'rx': 0,'ry': 90.0,'rz': -0.0},
+                'RightToe': {'rx': -0, 'ry': -0, 'rz': -0},
+                'RightToeTip': {'rx': -0, 'ry': 0, 'rz': 0},
+                'Spine1': {'rx': -0,  'ry': 0,  'rz': 180.0},
+                'Spine2': {'rx': 0.0,  'ry': 0.0,  'rz': -0.0},
+                'Spine3': {'rx': 0.0,  'ry': 0.0,  'rz': -0.0},
+                'Spine4': {'rx': 0.0,  'ry': 0.0,  'rz': -0.0},
+                }
+        },
+}
+
+#Rebuild definitions
+for templateKey in DEFINITIONS:
+    for defKey in DEFINITIONS[templateKey]["def"]:
+        DEFINITIONS[templateKey]["def"][defKey] = MAYA_SKELETON.index(DEFINITIONS[templateKey]["def"][defKey])
+    
+#Add the default def.
+skeleton = {node:i for i, node in enumerate(MAYA_SKELETON)}
+neutralPose = {node:{'rx': 0.0,'ry': 0.0,'rz': 0.0} for node in MAYA_SKELETON}
+neutralPose["Hips"]["tx"] = 0.0
+neutralPose["Hips"]["tz"] = 0.0
+
+DEFINITIONS["default"] = {"def":skeleton, "pose":neutralPose}
+
 ###################### Axis Integration ###############################
 
 # create the HumanIK in the mocap skeleton.
@@ -529,14 +743,52 @@ def characterize_asset(asset_name, unit_converstion=DEFAULT_UNIT_CONVERSION, ani
 
 ###################### End of Axis Integration ###############################
 
+def detectDefinition(inJoint, inDefintions=None):
+    inDefintions = inDefintions or DEFINITIONS
+
+    #Get joints list
+    inNs = inJoint.namespace()
+    root = None
+    candidates = [inJoint] + inJoint.getAllParents()
+    candidates.reverse()
+    for jointParent in candidates:
+        if jointParent.type() == "joint":
+            root = jointParent
+            break
+    joints = [str(n.stripNamespace()) for n in tkc.getChildren(root, True)]
+    
+    #Detect definition
+    winner = None
+    winnerScore = 0
+    for templateKey in inDefintions:
+        score = 0
+        for joint in joints:
+            if joint in inDefintions[templateKey]["def"]:
+                score += 1
+            else:
+                tkLogger.debug(joint + " not found in " + templateKey)
+        score = score / len(joints)
+        if score > winnerScore:
+            winnerScore = score
+            winner = templateKey
+
+    tkLogger.debug("Template detected : {} (from '{}' with score {}%)".format(winner, inJoint, winnerScore*100.0))
+    return winner
+
 def checkHIKExists(inCreate=True):
     exists = pc.control("hikCharacterControlsDock", query=True, exists=True) and pc.control("hikCharacterControlsDock", query=True, visible=True)
     if inCreate and not exists:
         pc.mel.eval("ToggleCharacterControls")
         pc.refresh()
 
-def getCharacter(inJoint, inDefinition=None):
-    inDefinition = inDefinition or {}
+def getCharacter(inJoint, inDefinition=None, inReset=True):
+    defKey = None
+    if inDefinition is None:
+        defKey = detectDefinition(inJoint)
+        if not defKey is None:
+            inDefinition = DEFINITIONS[defKey]["def"]
+        else:
+            inDefinition = {}
 
     ns = str(inJoint.namespace())
     
@@ -548,6 +800,33 @@ def getCharacter(inJoint, inDefinition=None):
         
         char = tkc.getNode(pc.mel.eval("hikCreateCharacter \""+ns+"SourceMocap"+"\""))
         
+        if inReset and not defKey is None:
+            oldAutoKeyState = pc.autoKeyframe(state=True, query=True)
+            if oldAutoKeyState:
+                pc.autoKeyframe(state=False)
+
+            tkRig.loadSimplePose(DEFINITIONS[defKey]["pose"], inNamespace=ns)
+            #Adjust heigth
+            #Find foot
+            hipsNode = None
+            hipsIndex = MAYA_SKELETON.index("Hips")
+            footNode = None
+            footIndex = MAYA_SKELETON.index("LeftToeBase")
+            for key in DEFINITIONS[defKey]["def"]:
+                curIndex = DEFINITIONS[defKey]["def"][key]
+                if curIndex == footIndex:
+                    footNode = tkc.getNode(ns + key)
+                elif curIndex == hipsIndex:
+                    hipsNode = tkc.getNode(ns + key)
+                
+            if not footNode is None and not hipsNode is None:
+                hipsNode.ty.set(hipsNode.ty.get() - footNode.getTranslation(space="world")[1] + 4)
+            else:
+                tkLogger.waring("Can't find Hips or Foot !")
+
+            if oldAutoKeyState:
+                pc.autoKeyframe(state=True)
+
         for key,value in inDefinition.items():
             if not pc.objExists(ns + key):
                 pc.warning("Can't find mocap hook '{}'".format(ns + key))
@@ -555,7 +834,7 @@ def getCharacter(inJoint, inDefinition=None):
                 pc.mel.eval("setCharacterObject(\""+ ns + key +"\",\""+char.name()+"\","+str(value)+",0);")
         
         pc.mel.eval("hikToggleLockDefinition")
-        
+
     return char
 
 def getCharacters():
@@ -796,7 +1075,7 @@ def ResetMocapControls(inRigRootName, inTemplate):
     for c in mocapControls:
         tkc.resetAll(c)
 
-def ConnectToMocap(inTargetObj, inSourceObj, inTemplate, inDefinition):
+def ConnectToMocap(inTargetObj, inSourceObj, inTemplate, inDefinition=None):
     sourceChar = getCharacter(inSourceObj, inDefinition)
 
     assert sourceChar is not None,"Cannot detect skeletal model template from '{}'".format(inSourceObj.name())
@@ -1022,6 +1301,8 @@ def integrateMocap(inMocapPath, inTemplate, inPresets, inAdditionalMatchers=None
         print("You have multiple Human IK Character node in your scene !")
         raise
     # Unlock MayaHIK node and update UI
+    checkHIKExists()
+
     mel.eval('hikCharacterLock("{}", 0, 0)'.format(HIKNodes[0].name()))
     mel.eval('hikUpdateDefinitionButtonState()')
     mel.eval('hikUpdateSkeletonUI()')

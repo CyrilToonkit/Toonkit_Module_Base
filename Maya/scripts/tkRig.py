@@ -4834,10 +4834,12 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
 
     return
 
-def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True):
+def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True, inCharName="charGroup", inGeoTopNode=None, inAddedTransforms=None, inCacheBS=True):
     inRoot = tkc.getNode(inRoot)
     allObjs = [inRoot] if inRoot.type() == "joint" else []
     allObjs.extend(tkc.getChildren(inRoot, True, False, False))
+
+    inAddedTransforms = inAddedTransforms or []
 
     inStart = inStart or pc.playbackOptions(query=True, animationStartTime=True)
     inEnd = inEnd or pc.playbackOptions(query=True, animationEndTime=True)
@@ -4873,12 +4875,22 @@ def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True)
     #Bake blendShapes as well
     blendShapeNodes = pc.ls(type="blendShape")
 
-    pc.bakeResults(skeleton + blendShapeNodes, simulation=True, t=(inStart, inEnd), sampleBy=1, oversamplingRate=1, disableImplicitControl=True, preserveOutsideKeys=False, sparseAnimCurveBake=False,
+    addedTransforms = tkc.getNodes(inAddedTransforms)
+
+    pc.bakeResults(skeleton + (blendShapeNodes if inCacheBS else []) + addedTransforms, simulation=True, t=(inStart, inEnd), sampleBy=1, oversamplingRate=1, disableImplicitControl=True, preserveOutsideKeys=False, sparseAnimCurveBake=False,
         removeBakedAttributeFromLayer=False, removeBakedAnimFromLayer=False, bakeOnOverrideLayer=False, minimizeRotation=False, controlPoints=False, shape=False)
 
     pc.cycleCheck(e=1)
 
     if inClean:
+        geoTopNode = None
+        if not inGeoTopNode is None:
+            if not inGeoTopNode.startswith(":"):
+                inGeoTopNode = "::" + inGeoTopNode
+            geoTopNodes = pc.ls(inGeoTopNode)
+            if len(geoTopNodes) > 0:
+                geoTopNode = geoTopNodes[0]
+
         for skeletonObj in skeleton:
             tkc.removeAllCns(skeletonObj)
 
@@ -4894,19 +4906,37 @@ def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True)
 
         ns = str(inRoot.namespace())
         if len(ns) < 2:
-            ns = "charGroup"
+            ns = inCharName
 
         assemblies = pc.ls(assemblies=True)
 
         if inRoot in assemblies:
             assemblies.remove(inRoot)
 
-        root = pc.group(empty=True, name=ns + "_root")
-        geo = pc.group(empty=True, name=ns + "_geo")
-        skeletonGrp = pc.group(empty=True, name=ns + "_skeleton")
+        oldTopNode = tkc.getNode(ns + "_RIG")
+        if not oldTopNode is None:
+            oldTopNode.rename(oldTopNode.name() + "_OLD")
+
+        root = pc.group(empty=True, name=ns + "_RIG")
+        geo = pc.group(empty=True, name="geometry_GRP")
+        skeletonGrp = pc.group(empty=True, name="skeleton")
 
         root.addChild(geo)
         root.addChild(skeletonGrp)
+
+        for addedTransform in addedTransforms:
+            lockedChannels = []
+            channels = ["tx","ty","tz","rx","ry","rz","sx","sy","sz"]
+            for channel in channels:
+                if addedTransform.attr(channel).isLocked():
+                    addedTransform.attr(channel).unlock()
+                    lockedChannels.append(channel)
+
+            print("About to reparent transform " + addedTransform.name())
+            inRoot.addChild(addedTransform)
+
+            for channel in lockedChannels:
+                addedTransform.attr(channel).lock()
 
         skeletonGrp.addChild(inRoot)
 
@@ -4928,12 +4958,16 @@ def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True)
                     mesh.attr(channel).unlock()
                     lockedChannels.append(channel)
 
-            print("About to reparent " + mesh.name())
+            print("About to reparent mesh " + mesh.name())
 
-            geo.addChild(mesh)
+            if geoTopNode is None:
+                geo.addChild(mesh)
 
             for channel in lockedChannels:
                 mesh.attr(channel).lock()
+
+        if not geoTopNode is None:
+            geo.addChild(geoTopNode)
 
         for assembly in assemblies:
             try:
@@ -4943,7 +4977,7 @@ def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True)
 
         skeleton.insert(0, root)
 
-    return skeleton
+    return root
 
 #EXPORT
 #-------------------------------------------------------------------------------
@@ -4961,7 +4995,8 @@ def exportUnrealFbx(inRoot, inPath):
     pc.mel.FBXExportLights(v=False)
     pc.mel.FBXExportSmoothingGroups(v=True)
     pc.mel.FBXExportSmoothMesh(v=False)
-    pc.mel.FBXExportTriangulate(v=True)
+    pc.mel.FBXExportTriangulate(v=False)
+    pc.mel.eval("FBXProperty \"Export|IncludeGrp|Geometry|SelectionSet\" -v true")
     pc.mel.FBXExportFileVersion(v='FBX201800')
 
     pc.select(inRoot)
@@ -4980,7 +5015,7 @@ def getPathTrunk(inPath, inSuffix="_Backup"):
 
     return path
 
-def exportToUnreal(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="shadowrig"):
+def exportToUnreal(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="shadowrig", inCharName="charGroup", inGeoTopNode=None, inAddedTransforms=None, inCacheBS=False):
     if inPath is None:
         
         additionnalArgs = {}
@@ -5026,12 +5061,12 @@ def exportToUnreal(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="s
 
     #Go to first frame
     start = pc.playbackOptions(query=True, animationStartTime=True)
-    skeleton = bakeShadowRig(inNs + inRootName, inStart=inStart, inEnd=inEnd, inClean=True)
+    skeleton = bakeShadowRig(inNs + inRootName, inStart=inStart, inEnd=inEnd, inClean=True, inCharName=inCharName, inGeoTopNode=inGeoTopNode, inAddedTransforms=inAddedTransforms, inCacheBS=inCacheBS)
 
     if len(inNs) > 0:
         pc.namespace(removeNamespace=inNs, mergeNamespaceWithParent=True)
 
-    exportUnrealFbx(skeleton[0], inPath)
+    exportUnrealFbx([skeleton] + pc.ls(inNs + "*", type="objectSet"), inPath)
 
     if not mode is None:
         pc.evaluationManager(mode=mode[0])
@@ -5039,6 +5074,14 @@ def exportToUnreal(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="s
     message = "Unreal fbx exported to : {0}".format(inPath)
     print(message)
     pc.confirmDialog(title='Unreal fbx', message=message, button=['OK'], defaultButton='OK')
+
+def exportToUnrealAutoDetect(inNs="", inPath=None, inStart=None, inEnd=None, inRootName="shadowrig"):
+    geometry_GRP = tkc.getNode(inNs + "geometry_GRP")
+    assert not geometry_GRP is None,"Can't autodetect rig ('" + inNs + "geometry_GRP' not found)"
+    topNode = geometry_GRP.getParent()
+    geoNode = geometry_GRP.getChildren()[0]
+
+    exportToUnreal(inNs=inNs, inPath=inPath, inStart=inStart, inEnd=inEnd, inRootName=inRootName,inCharName=topNode.name()[:-4], inGeoTopNode=geoNode.name(), inAddedTransforms=None, inCacheBS=False)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                       ____                     
