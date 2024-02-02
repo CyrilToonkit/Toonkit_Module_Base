@@ -21,12 +21,14 @@
 """
 import os
 import sys
+import types
 
 import maya.cmds as cmds
 import pymel.core as pc
 import pymel.core.system as pmsys
 import maya.mel as mel
 
+import Toonkit_Core.tkCore as tc
 import locationModule
 
 __author__ = "Cyril GIBAUD - Toonkit, Stephane Bonnot - Parallel Dev"
@@ -45,9 +47,25 @@ if os.path.isdir(commonPythonPath):
     sys.path.append(commonPythonPath)
 
 #Core python libraries
+def addVerboseDecorator(*modules):
+    for module in modules:
+        for name in dir(module):
+            obj = getattr(module, name)
+            if isinstance(obj, types.FunctionType):
+                setattr(module, name, tc.verbosed(obj))
+
 import tkMayaCore as tkc
-import tkMayaSIBar as tksi
+import tkRig as tkRig
+import tkExpressions as tke
+import tkNodeling as tkn
+import tkOptimize as tko
+import tkMath
+import tkWeightMaps as tkwm
 import tkSIGroups
+
+addVerboseDecorator(tkc,tkRig,tke,tkn,tko,tkMath,tkwm, tkSIGroups)
+
+import tkMayaSIBar as tksi
 import tkDevHelpers
 
 #Import specific scripts/menus
