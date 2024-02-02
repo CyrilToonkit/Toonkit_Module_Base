@@ -21,6 +21,7 @@
 """
 
 import math
+import sys
 
 __author__ = "Cyril GIBAUD - Toonkit"
 

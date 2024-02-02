@@ -45,9 +45,23 @@ class Gator(Tool):
     def execute(self, *args, **kwargs):
         super(Gator, self).execute(*args, **kwargs)
 
-        sel = pc.ls(sl=True)
-        if len(sel) > 1:
-            tkc.gator(sel[:-1], sel[-1], *self.arguments)
+        richSelNodes = []
+        richSel = tkc.getSoftSelections()
+
+        wms = []
+        for richSelObj, richSelComps in richSel:
+            richSelNode = tkc.getNode(richSelObj)
+
+            if richSelNode.type() != "transform":
+                richSelNode = richSelNode.getParent()
+
+            richSelNodes.append(richSelNode)
+
+            wms.append(richSelComps)
+
+        if len(richSelNodes) > 1:
+            args = self.arguments + [wms]
+            tkc.gator(richSelNodes[:-1], richSelNodes[-1], *args)
         else:
             message = "Please select at least two objects (any number of meshes to receive weights, then a \"Reference\" mesh) !"
             if self.options["Reversed"]:

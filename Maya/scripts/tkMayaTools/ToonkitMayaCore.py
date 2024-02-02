@@ -34,7 +34,7 @@ import tkMenus
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
-VERSIONINFO = "1.5.88.1"
+VERSIONINFO = "1.5.89.17"
 
 MENU_NAME = "tkMainMenu"
 
@@ -157,7 +157,7 @@ class ToonkitMayaCore(Tool):
         self.options.addOption("mayabatchpath", os.path.join("C:\\", "Program Files", "Autodesk", "Maya2013", "bin", "mayabatch.exe"), "Maya batch path", "Maya batch path", False, "Configuration")
         self.options.addOption("hidemenu", False, "Hide Toonkit menu", "Hide menu", False, "Configuration")
         self.options.addOption("hookmayabatch", True, "Intercep a mayabatch call to execute a python script given as argument", "Hook mayabatch", False, "Configuration")
-        self.options.addOption("logLevel", 2, "Set the logging value","Log Level :", False, "Logs.Level", inValues=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR"])
+        self.options.addOption("logLevel", 2, "Set the logging value","Log Level :", False, "Logs.Level", inValues=["VERBOSE", "DEBUG", "INFO", "WARNING", "ERROR"])
         self.options.addOption("logFile", False, None, " ", False, "Logs.File")
         self.options.addOption("logPath", "ToonKit", None, "Log to File :", False, "Logs.File")
 
@@ -422,7 +422,10 @@ def projectVEnv(inTool):
 
 def setLoggingLevel(tool):
     if not tool.options["logLevel"] is None:
-        tkLogger.setLevel(tool.options["logLevel"] * 10)
+        level = tool.options["logLevel"]
+        if level == 0:
+            level = -1
+        tkLogger.setLevel(level * 10)
 
 def setLoggingOptions(tool):
     if tool.options["logFile"] == True:

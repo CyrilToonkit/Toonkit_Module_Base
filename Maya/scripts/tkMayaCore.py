@@ -15,7 +15,7 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public License
+    You should have received a copy of <the GNU Lesser General Public License
     along with Toonkit Module Lite.  If not, see <http://www.gnu.org/licenses/>
 -------------------------------------------------------------------------------
 """
@@ -143,6 +143,7 @@ import pymel.core.datatypes as dt
 from pymel import versions
 
 import maya.api.OpenMaya as om
+import maya.OpenMaya as OpenMaya
 import TkApi.maya_api as tkApi
 
 import locationModule
@@ -155,6 +156,7 @@ import PAlt as palt
 import tkMayaTools.ToonkitMayaCore as ToonkitMayaCore
 import tkNodeling as tkn
 
+from Toonkit_Core import tkLogger
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -438,14 +440,14 @@ def log(inText="", inSeverity=0, inHelpLine=False, inHelpLineOnly=False, inBlock
         fullText = CONST_HELPLINESUFFIXES[inSeverity] + inText
 
     if inSeverity == 1 or  inSeverity == 3:
-        pc.warning(inText)
+        tkLogger.warning(inText)
     elif inSeverity == 2:
         if inBlockingErrors:
             pc.error(inText)
         else:
-            pc.warning(fullText)
+            tkLogger.warning(fullText)
     else:
-        print (fullText)
+        tkLogger.info(fullText)
 
     controlExists = pc.control(CTRL_SIHELPLINE, exists=True)
 
@@ -470,7 +472,7 @@ def benchIt(infunc, *inArgs):
     rslt = infunc(*inArgs)
     end = time.time()
     duration = end - start
-    print ("> %s took %f seconds" % (infunc.__name__, duration))
+    tkLogger.info("> {0} took {1:.4f} s".format(infunc.__name__, duration))
     
     return (duration, rslt)
 
@@ -503,7 +505,7 @@ def stopTimer(inName, inLog=False, inReset=False):
         elapsed = TIMERS[inName]["elapsed"]
 
     if inLog:
-        print ("{0} took {1:.4f} s".format(inName, elapsed))
+        tkLogger.info("{0} took {1:.4f} s".format(inName, elapsed))
 
     if inReset:
         TIMERS[inName] = {"elapsed":0.0,"runs":False}
@@ -797,10 +799,10 @@ def getDuplicates(inPyNodes=None, inLog=False):
             dupes.append(dag)
 
     if inLog:
-        print ("{0} duplicates among {1} objects".format(len(dupes), len(inPyNodes)))
-        print ("----------------------------------")
+        tkLogger.info("{0} duplicates among {1} objects".format(len(dupes), len(inPyNodes)))
+        tkLogger.info("----------------------------------")
         for uniqueName in names:
-            print ("{0} *{1}({2})".format(uniqueName, len(names[uniqueName]),[n.name() for n in names[uniqueName]]))
+            tkLogger.info("{0} *{1}({2})".format(uniqueName, len(names[uniqueName]),[n.name() for n in names[uniqueName]]))
             
     return names
 
@@ -828,10 +830,10 @@ def getInstances(inPyNodes=None, inLog=False):
             instanciations.extend(parents)
 
     if inLog:
-        print ("{0} instances on {1} transforms".format(len(instances), len(instanciations)))
-        print ("----------------------------------")
+        tkLogger.info("{0} instances on {1} transforms".format(len(instances), len(instanciations)))
+        tkLogger.info("----------------------------------")
         for shapeName, curInstances in instances.items():
-            print ("{0} *{1}({2})".format(shapeName, len(curInstances),[n.name() for n in curInstances]))
+            tkLogger.info("{0} *{1}({2})".format(shapeName, len(curInstances),[n.name() for n in curInstances]))
 
     return instances
 
@@ -900,7 +902,7 @@ def renameDuplicates(inPyNodes=None, inLog=False, inRememberOldName=True):
                     
                     newName = "{0}__{1}".format(parentName, currentName)
                     if inLog:
-                        print (" -renaming {0} in {1}".format(dupNode.name(), newName))
+                        tkLogger.info(" -renaming {0} in {1}".format(dupNode.name(), newName))
                     renameRemember(dupNode, newName, inRememberOldName=inRememberOldName)
                     if firstPass:
                         currentRenamedNodes.append(dupNode)
@@ -911,7 +913,7 @@ def renameDuplicates(inPyNodes=None, inLog=False, inRememberOldName=True):
             firstPass = False
 
     if inLog:
-        print ("{0} nodes were renamed ({1})".format(len(renamedNodes), [n.name() for n in renamedNodes]))
+        tkLogger.info("{0} nodes were renamed ({1})".format(len(renamedNodes), [n.name() for n in renamedNodes]), inRaw=True)
 
     return renamedNodes
 
@@ -1178,13 +1180,13 @@ def removeUnknownNodes():
     unknowns = pc.ls(type="unknown")
 
     if(len(unknowns) > 0):
-        print ("Removing 'unknown' nodes : " + ",".join([n.name() for n in unknowns]))
+        tkLogger.debug("Removing 'unknown' nodes : " + ",".join([n.name() for n in unknowns]), inRaw=True)
         for unknown in unknowns:
             if pc.objExists(unknown):
                 pc.lockNode(unknown, lock=False)
                 pc.delete(unknown)
     else:
-        print ("No 'unknown' nodes found")
+        tkLogger.debug("No 'unknown' nodes found")
 
 def deleteUnusedNodes(inSafeAddDoubles=False):
     tkn.deleteUnusedNodes(inSafeAddDoubles=inSafeAddDoubles)
@@ -1255,6 +1257,60 @@ def isSimpleObjectSet(name):
 
     # Whew ... we can finally show it
     return True
+
+def getSoftSelections(opacityMult=1.0, inMergePerDag=True):
+    opacities = []
+    opacitiesDags = []
+
+    # if soft select isn't on, return
+    softSelect = cmds.softSelect(q=True, sse=True)
+        
+    richSel = OpenMaya.MRichSelection()
+    try:
+        # get currently active soft selection
+        OpenMaya.MGlobal.getRichSelection(richSel)
+    except:
+        raise Exception('Error getting rich selection.')
+
+    richSelList = OpenMaya.MSelectionList()
+    richSel.getSelection(richSelList)
+    selCount = richSelList.length()
+
+    for x in xrange(selCount):
+        shapeDag = OpenMaya.MDagPath()
+        shapeComp = OpenMaya.MObject()
+        try:
+            richSelList.getDagPath(x, shapeDag, shapeComp)
+        except RuntimeError:
+            # nodes like multiplyDivides will error
+            continue
+
+        compOpacities = {}
+
+        if(shapeComp.hasFn(OpenMaya.MFn.kSingleIndexedComponent)):
+            compFn = OpenMaya.MFnSingleIndexedComponent(shapeComp)
+            try:
+                # get the secret hidden opacity value for each component (vert, cv, etc)
+                for i in xrange(compFn.elementCount()):
+                    value = 1.0
+                    if softSelect:
+                        value = compFn.weight(i).influence()
+                    compOpacities[compFn.element(i)] = value * opacityMult
+            except Exception as e:
+                pass
+
+        if len(compOpacities) == 0:
+            compOpacities = None
+
+        path = shapeDag.partialPathName()
+
+        if inMergePerDag and path in opacitiesDags:
+            opacities[opacitiesDags.index(path)][1].update(compOpacities)
+        else:
+            opacities.append((path, compOpacities))
+            opacitiesDags.append(path)
+
+    return opacities
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   _____                     _          __                                _           _   _             
@@ -1329,7 +1385,7 @@ def executeFromCollection(inFunc=printExecuteError, inColl=[], inObjectsMin=0, i
                 strArg = str(arg)
             formatArgs.append(strArg)
 
-        print ("tkc.{0}({1})".format(inFunc.__name__, ",".join(formatArgs)))
+        print("tkc.{0}({1})".format(inFunc.__name__, ",".join(formatArgs)))
 
         if rslt != None:
             results.append(rslt)
@@ -2265,13 +2321,12 @@ def getParent(node, root=False, model=False, ignoreNeutral=True, ignoreLayers=Fa
     return parentNode
 
 def getShapes(transform):
-    shapes = []
-    shapes.append(transform)
+    try:
+        return transform.getShapes()
+    except:
+        pass
 
-    if transform.type() == "transform":
-        shapes = pc.listRelatives(transform, shapes=True)
-
-    return shapes
+    return [transform]
 
 def getShape(inTransform):
     shapes = inTransform.getShapes()
@@ -3102,7 +3157,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
     if inEnsureAttachment and listsBarelyEquals(cnsObj.getTranslation(space="world"), [0.0, 0.0, 0.0]):
         removeAllCns(inObj, inTypes=["follicle"] if useFollicule else ["pointOnPolyConstraint"])
 
-        print ("Does not attach with values",inDetectionOffset)
+        tkLogger.debug(tc.smartJoin("Does not attach with values",inDetectionOffset))
 
         if inDetectionOffset == [0.0, 0.0, 0.0]:
             inDetectionOffset = [0.0001, 0.0001, 0.0001]
@@ -3110,7 +3165,7 @@ def constrainToPoint(inObj, inRef, inOffset=True, inU=None, inV=None, useFollicu
             inDetectionOffset = [2*v for v in inDetectionOffset]
 
         if inDetectionOffset[0] > 0.01:
-            pc.warning("Follicle attachement failed, check your UVs and UVsets, or export/reimport as obj...")
+            tkLogger.warning("Follicle attachement failed, check your UVs and UVsets, or export/reimport as obj...")
             return createdObjects
         
         createdObjects = constrainToPoint(inObj, inRef, inOffset=inOffset, useFollicule=useFollicule, inDetectionOffset=inDetectionOffset)
@@ -3216,7 +3271,6 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
         if inSource:
             cons = child.listConnections(source=True, destination=False, plugs=True, connections=True)
             for con in cons:
-                print (child,"inSource",con)
                 if con[1].node().type() in CONSTRAINT_TYPES:
                     continue
 
@@ -3231,9 +3285,7 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
                 if con[1].node().type() == "transform":
                     extInputs.append(con)
                 else:
-                    print ("1 inManaged",inManaged)
                     ins, outs = getExternalLinks(con[1].node(), inChildren=False, inSource=True, inDestination=False, inManaged=inManaged, inAllChildren=(inAllChildren or allChildren))
-                    print ("2 inManaged",inManaged)
                     for curin in ins:
                         extInputs.append(curin)
                     for out in outs:
@@ -3242,7 +3294,6 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
         if inDestination:
             cons = child.listConnections(source=False, destination=True, plugs=True, connections=True)
             for con in cons:
-                print (child,"inDestination con",con)
                 if con[1].node().type() in CONSTRAINT_TYPES:
                     continue
 
@@ -3260,7 +3311,6 @@ def getExternalLinks(inRoot, inChildren=True, inSource=True, inDestination=True,
                     extOutputs.append(con)
                 else:
                     ins, outs = getExternalLinks(con[1].node(), inChildren=False, inSource=False, inDestination=True, inManaged=inManaged, inAllChildren=(inAllChildren or allChildren))
-                    print ("inDestination ins", ins, "outs", outs)
 
     return (extInputs, extOutputs)
 
@@ -4200,11 +4250,11 @@ def curve(points, name="", parent=None, degree=3, closed=False, verbose=False):
         knots = range(len(points) + degree - 1)
         curve = pc.curve( point=points, degree=degree, knot=knots, periodic= True)
         if verbose:
-            print ("pc.curve( point={0}, degree={1}, knot={2}, periodic= True)".format(points, degree, knots))
+            tkLogger.info("pc.curve( point={0}, degree={1}, knot={2}, periodic= True)".format(points, degree, knots))
     else:
         curve = pc.curve( point=points, degree=degree)
         if verbose:
-            print ("pc.curve( point={0}, degree={1})".format(points, degree))
+            tkLogger.info("pc.curve( point={0}, degree={1})".format(points, degree))
 
     pc.rename(curve, name)
 
@@ -4481,26 +4531,12 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
     return dupe
 
 def getSkinCluster(inObject):
-    shapes = getShapes(inObject)
-    if len(shapes) == 0:
-        pc.warning("Can't get any shapes on given object ("+inObject.name()+") !")
-        return None
+    try:
+        return pc.listHistory(inObject, type="skinCluster", levels=1)[0]
+    except:
+        pass
 
-    allSkins = []
-
-    for shape in shapes:
-        skins = pc.listHistory(shape, type="skinCluster")
-        if len(skins) > 0:
-            allSkins.extend(skins)
-
-    #filter skins
-    validSkins = []
-    for skin in allSkins:
-        geos = skin.getGeometry()
-        if len(geos) > 0 and geos[-1] in shapes:
-            validSkins.append(skin)
-
-    return None if len(validSkins) == 0 else validSkins[0]
+    return None
 
 def getFFDs(inObject):
     shapes = getShapes(inObject)
@@ -4587,7 +4623,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
 
                     newValues = inValues[firstOcc*nVerts:nVerts]
                     dupValues = inValues[occ*nVerts:nVerts]
-                    for i in range(nVerts):
+                    for i in xrange(nVerts):
                         inValues[firstOcc*nVerts + i] += inValues[occ*nVerts + i]
 
                     del inValues[occ*nVerts:occ*nVerts + nVerts]
@@ -4597,7 +4633,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
 
     #verify if every influence exists
     nullInfs = []
-    for i in range(infLength):
+    for i in xrange(infLength):
         inf = inInfluences[i]
         if not palt.exists(inf):
             nullInfs.append(i)
@@ -4627,7 +4663,7 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
             if nullInfValues == None:
                 nullInfValues = inValues[i*nVerts:(i+1)*nVerts]
             else:
-                for j in range(len(nullInfValues)):
+                for j in xrange(len(nullInfValues)):
                     nullInfValues[j] += inValues[i*nVerts + j]
             del inValues[i*nVerts:(i+1)*nVerts]
 
@@ -4641,30 +4677,26 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
 
     # print "inInfluences",inInfluences
     # print "oldInfs",oldInfs
-
     #If we have old weights info
     if not oldInfs is None:
-        commonInfs = []
-        commonInfsIndices = []
 
-        for i in range(len(oldInfs)):
-            oldInfName = oldInfs[i].name()
+        oldInfsStr = [n.name() for n in oldInfs]
 
-            if not oldInfName in inInfluences:
-                #Influence not found, add it
-                inInfluences.append(oldInfName)
-                infLength += 1
+        mergedInfs = list(dict.fromkeys(inInfluences + oldInfsStr))
+        nNewInfs = len(mergedInfs) - len(inInfluences)
 
-                inValues.extend([0.0] *nVerts)
-                valLength += nVerts
+        oldInfsIndices = [oldInfsStr.index(inf) if inf in oldInfsStr else -1 for inf in mergedInfs]
 
-            commonInfs.append(oldInfName)
-            commonInfsIndices.append(i)
+        #Update full grid
+        if nNewInfs > 0:
+            infLength += nNewInfs
+            inValues.extend([0.0] * (nVerts * nNewInfs))
+            valLength += nVerts * nNewInfs
 
-
+            inInfluences = mergedInfs
 
         #Manage fusion
-        for i in range(nVerts):
+        for i in xrange(nVerts):
             weights = []
             totalWeights = 0.0
 
@@ -4672,37 +4704,30 @@ def setWeights(inObject, inInfluences=[], inValues=[], inMode=0, inOpacity=1.0, 
             totalOldWeights = 0.0
 
             #Get info
-            for j in range(infLength):
-
-                inf = inInfluences[j]
-
+            for j, inf in enumerate(inInfluences):
                 val = inValues[j*nVerts + i] * inOpacity
                 totalWeights += val
                 weights.append(val)
-
-                oldIndex = None
                 oldVal = 0.0
-
-                if inf in commonInfs:
-                    oldIndex = commonInfsIndices[commonInfs.index(inf)]
+                oldIndex = oldInfsIndices[j]
+                if oldIndex != -1:
                     oldVal = oldWeights[oldIndex*nVerts + i]
-
-                totalOldWeights += oldVal
+                    totalOldWeights += oldVal
                 oldPointWeights.append(oldVal)
-
 
             ratio = (100.0 - totalWeights) / 100.0
 
             #Set values
-            for j in range(infLength):
+            for j, (weight, oldWeight) in enumerate(zip(weights, oldPointWeights)):
                 if inMode == 1:#Overwrite
-                    inValues[j*nVerts + i] = weights[j] + ratio * oldPointWeights[j]
+                    inValues[j*nVerts + i] = weight + ratio * oldWeight
 
                 elif inMode == 2:#Add
-                    inValues[j*nVerts + i] = weights[j] + oldPointWeights[j]
+                    inValues[j*nVerts + i] = weight + oldWeight
 
                 elif inMode == 3:#Blend
-                    inValues[j*nVerts + i] = weights[j] + (1.0 - inOpacity) * oldPointWeights[j]
+                    inValues[j*nVerts + i] = weight + (1.0 - inOpacity) * oldWeight
+
 
     #If the object shape is hidden, maya will crash at binding, make everything visible
     #and store shape connections if necessary
@@ -5000,7 +5025,7 @@ def _limitDeformers(inSkin, inInfluences, inMax=4, inSharpen=.5, inVerbose=True,
 
         if remainingWeight >= 0.0001:
             if inVerbose:
-                print ("{0} deformers on vertex {1} ({2} to remove)".format(counter, i, counter - inMax))
+                tkLogger.info("{0} deformers on vertex {1} ({2} to remove)".format(counter, i, counter - inMax))
 
             currentTotal = 100.0 - remainingWeight
             mul = 100.0 / currentTotal
@@ -5105,7 +5130,7 @@ def getInfluencedPoints(inObj, inInfluences):
 def getSkinPointCount(inSkin):
     inObject, infs, weights, ns = inSkin
 
-    return len(weights) / len(infs)
+    return int(len(weights) / len(infs))
 
 def storeSkin(inObject):
     skin = getSkinCluster(inObject)
@@ -5199,7 +5224,21 @@ def zeroOutDeformers(inSkin, inInfluences=[]):
 
     return inSkin
 
-def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True, inRemapDict=None):
+def applyWeightMap(inSkin, inWeightMap):
+    infs = inSkin[1]
+    nInfs = len(infs)
+    weights = inSkin[2]
+    nVerts = int(len(weights) / nInfs)
+
+    for i in xrange(nInfs):
+        for j in xrange(nVerts):
+            weights[i * nVerts + j] *= inWeightMap.get(j, 0.0)
+
+    inSkin[2] = weights
+
+    return inSkin
+
+def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True, inRemapDict=None, inWeightMap=None):
     """
         Modes :
             0 : Replace
@@ -5211,6 +5250,11 @@ def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, in
         if isinstance(inZeroInfs, basestring):
             inZeroInfs = ",".split(inZeroInfs)
         zeroOutDeformers(inSkin, inZeroInfs)
+
+    if not inWeightMap is None and len(inWeightMap) > 0:
+        if inMode == 0:
+            inMode = 1
+        applyWeightMap(inSkin, inWeightMap)
 
     if not inRemapDict is None:
         infs = inSkin[1]
@@ -5252,7 +5296,7 @@ def loadSkin(inSkin, inObject=None, inZeroInfs=None, inMode=0, inOpacity=1.0, in
         pc.warning("No influences given !")
         return None
 
-def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True, inRemapDict=None):
+def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0, inNormalize=True, inRemapDict=None, inWeightMaps=None):
     """
         Modes :
             0 : Replace
@@ -5260,6 +5304,9 @@ def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0,
             2 : Add
             3 : Blend
     """
+
+    inWeightMaps = inWeightMaps or []
+
     if isinstance(inSkins, basestring):
         skinsPath = inSkins
 
@@ -5283,24 +5330,27 @@ def loadSkins(inSkins, inObjects=None, inZeroInfs=None, inMode=0, inOpacity=1.0,
             return
 
     if inObjects == None or len(inObjects) == 0:
-        for inSkin in inSkins:
-            loadSkin(inSkin, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict)
+        for idx, inSkin in enumerate(inSkins):
+            wm = inWeightMaps[idx] if len(inWeightMaps) > idx else None
+            loadSkin(inSkin, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict, inWeightMap=wm)
     else:
         for inObject in inObjects:
             pointCount = pc.polyEvaluate(inObject, vertex=True)
             found = None
 
-            for inSkin in inSkins:
+            for idx, inSkin in enumerate(inSkins):
+                wm = inWeightMaps[idx] if len(inWeightMaps) > idx else None
                 if not inSkin[0] is None and inObject.stripNamespace() == inSkin[0].split(":")[-1]:
-                    loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict)
+                    loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict, inWeightMap=wm)
                     found = inSkin
                     break
 
             if found is None:
                 #Second pass, apply to an object with matching pointCount
-                for inSkin in inSkins:
+                for idx, inSkin in enumerate(inSkins):
+                    wm = inWeightMaps[idx] if len(inWeightMaps) > idx else None
                     if pointCount == getSkinPointCount(inSkin):
-                        loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict)
+                        loadSkin(inSkin, inObject, inZeroInfs=inZeroInfs, inMode=inMode, inOpacity=inOpacity, inNormalize=inNormalize, inRemapDict=inRemapDict, inWeightMap=wm)
                         found = inSkin
                         break
 
@@ -5359,7 +5409,10 @@ def combine(inObjects, inMergeUVSets=1, inConstructionHistory=False,  inName="CO
 
     return mesh
 
-def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed=False):
+def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed=False, inWeightMaps=None):
+    startTimer("Gator", inReset=True)
+    inWeightMaps = inWeightMaps or []
+
     if inReversed:
         sourcesSkins = []
         skinnedSources = []
@@ -5395,16 +5448,34 @@ def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed
             storedSkin = storeSkin(inRef)
 
         infs = getDeformers([inRef])
-        for source in inSources:
-            if getSkinCluster(source) != None:
-                pc.skinCluster(source,edit=True, unbind=True)
+        for idx, source in enumerate(inSources):
+            oldWeights = None
+            wm = inWeightMaps[idx] if len(inWeightMaps) > idx else None
 
-            skin = pc.skinCluster(source,infs, toSelectedBones=True, name=source.name() + "_skinCluster")
+            if getSkinCluster(source) != None:
+                if not wm is None:
+                    oldWeights = storeSkin(source)
+                if not (inDirectCopy and not wm is None):
+                    pc.skinCluster(source,edit=True, unbind=True)
+
+            if not (inDirectCopy and not wm is None):
+                skin = pc.skinCluster(source,infs, toSelectedBones=True, name=source.name() + "_skinCluster")
 
             if inDirectCopy:
-                skin = loadSkin(storedSkin, inObject=source)
+                skin = loadSkin(storedSkin, inObject=source, inWeightMap=wm)
             else:
-                pc.copySkinWeights(ss=refSkin, ds=skin, surfaceAssociation="closestPoint", influenceAssociation="oneToOne", noMirror=True)
+                pc.copySkinWeights(ss=refSkin, ds=skin, surfaceAssociation="closestPoint", influenceAssociation=["label", "oneToOne"], noMirror=True)
+
+                if not oldWeights is None:
+                    #reverse the wm
+                    pCount = getSkinPointCount(oldWeights)
+                    reversedWm = {}
+                    for i in xrange(pCount):
+                        value = wm.get(i, 0.0)
+                        if value < 1.0:
+                            reversedWm[i] = 1.0 - value
+
+                    skin = loadSkin(oldWeights, inObject=source, inWeightMap=reversedWm)
 
             skinName = skin.name()
             if inCopyMatrices:
@@ -5429,6 +5500,8 @@ def gator(inSources, inRef, inCopyMatrices=False, inDirectCopy=False, inReversed
                 if pc.versions.current() > 201600:
                     #With maya 2016, binding pre-matrices are cached into skinCluster node so we have to consider the node dirty...
                     pc.dgdirty(skin)
+
+    stopTimer("Gator", inLog=True)
 
 def setRefPose(inDef, inSkins=None, inMatrix=None):
     attrs = pc.listConnections(inDef, type="skinCluster", plugs=True)
@@ -5814,7 +5887,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
     iterations = 0
 
     if managedHistory != sortedHistory:
-        print ("Need to reorder {0} deformers".format(objName))
+        tkLogger.debug("Need to reorder {0} deformers".format(objName))
         while managedHistory != sortedHistory:
             iterations += 1
             if maxIterations <= iterations:
@@ -5834,7 +5907,7 @@ def reorderDeformers(inObj, inTypesPriorities=None):
                         managedHistory = cmds.ls(cmds.listHistory(objName, gl=True, pdo=True, lf=True, f=False, il=2), type=list(inTypesPriorities.keys()))
                         break
     else:
-        print ("No need to reorder {0} deformers".format(objName))
+        tkLogger.debug("No need to reorder {0} deformers".format(objName))
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
   ____                                _                   __     _   _        _ _           _          __  
@@ -6037,7 +6110,7 @@ def getAllConnections(inAttr, inSource=True, inDestination=True, inExcludeTypes=
 
     if inVerbose:
         for con in cons:
-            print(str(con), con[1].node().type())
+            tkLogger.debug(str(con) + " " + con[1].node().type())
 
     return cons
 
@@ -6738,7 +6811,7 @@ def getParamsDictionary(inNode, strName, bidirectionnal=False):
 #Does not work in parallel ? Try something else than nodeState=2 ?
 def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="switch",inTranslation=True, inRotation=True, inDebug=False):
     if inDebug:
-        print ("createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")")
+        tkLogger.info(tc.smartJoin("createLazySwitch(",inConstrained, inConstrainers,inAttr,inAttrName,inTranslation,inRotation,")"))
 
     inConstrained.t.disconnect()
     inConstrained.r.disconnect()
@@ -6787,7 +6860,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                 oldConds = inConstrained.t.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
 
                 if inDebug:
-                    print ("oldConds",inConstrained.t,oldConds)
+                    tkLogger.info(tc.smartJoin("oldConds",inConstrained.t,oldConds))
 
                 for possibleOldCond in oldConds:
                     if possibleOldCond.type() == "condition":
@@ -6796,7 +6869,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     else:
                         possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
                         if inDebug:
-                            print ("possibleOldConds",possibleOldCond.input,possibleOldConds)
+                            tkLogger.info(tc.smartJoin("possibleOldConds",possibleOldCond.input,possibleOldConds))
                         if len(possibleOldConds) > 0:
                             oldCond = possibleOldConds[0]
                             break
@@ -6805,7 +6878,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     tkn.condition(switchAttr, i, "==", constrainedNode.t, t) >> inConstrained.t
                 else:
                     if inDebug:
-                        print ("Old cond for",inConstrained.t,oldCond )
+                        tkLogger.info(tc.smartJoin("Old cond for",inConstrained.t,oldCond ))
                     tkn.condition(switchAttr, i, "==", constrainedNode.t, oldCond.outColor) >> inConstrained.t
 
             #Rotation
@@ -6813,7 +6886,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                 oldCond = None
                 oldConds = inConstrained.r.listConnections(type=["condition", "unitConversion"], source=True, destination=False)
                 if inDebug:
-                    print ("oldConds",inConstrained.r,oldConds)
+                    tkLogger.info(tc.smartJoin("oldConds",inConstrained.r,oldConds))
                 for possibleOldCond in oldConds:
                     if possibleOldCond.type() == "condition":
                         oldCond = possibleOldCond
@@ -6821,7 +6894,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     else:
                         possibleOldConds = possibleOldCond.input.listConnections(type=["condition"], source=True, destination=False)
                         if inDebug:
-                            print ("possibleOldConds",possibleOldCond.input,possibleOldConds)
+                            tkLogger.info(tc.smartJoin("possibleOldConds",possibleOldCond.input,possibleOldConds))
                         if len(possibleOldConds) > 0:
                             oldCond = possibleOldConds[0]
                             break
@@ -6830,7 +6903,7 @@ def createLazySwitch(inConstrained, inConstrainers, inAttr=None, inAttrName="swi
                     tkn.condition(switchAttr, i, "==", constrainedNode.r, r) >> inConstrained.r
                 else:
                     if inDebug:
-                        print ("Old cond for",inConstrained.r,oldCond) 
+                        tkLogger.info(tc.smartJoin("Old cond for",inConstrained.r,oldCond))
                     tkn.condition(switchAttr, i, "==", constrainedNode.r, oldCond.outColor) >> inConstrained.r
 
         tkn.conditionAnd(cns.nodeState, tkn.condition(switchAttr, i, "!=", 2, 0))
@@ -7012,13 +7085,13 @@ def parseValue(strValue, strType="string", strCurrentValue="", inCounter=0, inMa
                 try:
                     rslt = eval(currentValue + " " + operator + " " + rslt)
                 except:
-                    print ("Cannot evaluate    |" + currentValue + " " + operator + " " + str(rslt) + "|")
+                    tkLogger.error("Cannot evaluate    |" + currentValue + " " + operator + " " + str(rslt) + "|")
                     return None
             else:
                 try:
                     rslt = eval(rslt)
                 except:
-                    print ("Cannot evaluate    |" + str(rslt) + "|")
+                    tkLogger.error("Cannot evaluate    |" + str(rslt) + "|")
                     return None
     else:
         strippedPart = ""
@@ -7053,7 +7126,7 @@ def parseValue(strValue, strType="string", strCurrentValue="", inCounter=0, inMa
         elif strType == "bool":
             rslt = True if eval(rslt) else False
     except:
-        print ("Cannot convert  " + str(rslt) + " to " + strType)
+        tkLogger.error("Cannot convert  " + str(rslt) + " to " + strType)
         return None
         
     return rslt
@@ -7289,10 +7362,10 @@ def applySpreadDeforms(inCurves, inRefCurve, inRefParent, inRadius=0.0):
         
         if factor > 0:
             if spreadDeformer == None:
-                print (curv.name() + " will be deformed (dist: " + str(dist) + " => factor: " + str(factor) + ")")
+                tkLogger.debug(curv.name() + " will be deformed (dist: " + str(dist) + " => factor: " + str(factor) + ")")
                 spreadDeformer = applySpreadDeform(curv, inRefCurve, inRefParent, inEnv=factor)
             else:
-                print (curv.name() + " aleady deformed, update factor (dist: " + str(dist) + " => factor: " + str(factor) + ")")
+                tkLogger.debug(curv.name() + " aleady deformed, update factor (dist: " + str(dist) + " => factor: " + str(factor) + ")")
                 pc.setAttr(spreadDeformer.name() + ".envelope", factor)
 
             if len(otherSpreadDeformers) > 0:
@@ -7374,7 +7447,7 @@ def executeCode2(strcode, strlng=1, functionName="", args=[]):
             return rslt
         return evalAsFunction(strcode, None, globs)
     else:
-        print ("Cannot evaluate language ! Only python is available in this version !")
+        tkLogger.error("Cannot evaluate language ! Only python is available in this version !")
 
     return None
 
@@ -7416,7 +7489,7 @@ def AEupdateDisplaysDC(plug, slider):
     sel = pc.selected()
     if not DISPLAY_IS_CHANGING :
         pc.undoInfo(openChunk=True)
-        print("Undo Chunk Opened")
+        tkLogger.debug("Undo Chunk Opened")
         DISPLAY_IS_CHANGING = True
     for selObj in sel:
         if pc.attributeQuery(obj_Attr[1], node=selObj, exists=True):
@@ -7442,7 +7515,7 @@ def AEupdateDisplaysCC(plug, slider):
         pass
     if DISPLAY_IS_CHANGING:
         pc.undoInfo(closeChunk=True)
-        print("Undo Chunk Closed")
+        tkLogger.debug("Undo Chunk Closed")
     DISPLAY_IS_CHANGING = False
 
 def AEupdateInitValues(plug, scrollField):
@@ -7551,14 +7624,14 @@ def showSynopTiK():
                             search, replace = setting.getElementsByTagName("value")[0].firstChild.nodeValue.split(":")
 
             if search != None and replace != None:
-                print ("search", search, "replace", replace)
+                tkLogger.debug(tc.smartJoin("search", search, "replace", replace))
                 synPaths = synPaths.replace(search, replace)
 
         customVars = {'$PROJECTPATH':projectDirectory}
         synPaths = expandVariables(synPaths, customVars)
 
         if haveVariables(synPaths, customVars):
-            print ("Synoptic pages path contains unknown environment variables or have incorrect formatting ({0}) !!".format(synPaths))
+            tkLogger.warning("Synoptic pages path contains unknown environment variables or have incorrect formatting ({0}) !!".format(synPaths))
 
         cmdLine.append(synPaths)
         #print str(cmdLine)
@@ -7991,9 +8064,9 @@ def checkGeometry(obj):
         
     if len(problems) > 0:
         for problem in problems:
-            pc.warning(problem)
+            tkLogger.warning(problem)
     else:
-        print ("No problems found on " + obj.name())
+        tkLogger.info("No problems found on " + obj.name())
         
     return problems == 0
 
@@ -8028,7 +8101,7 @@ def checkHistory(inObjects=None, inAllowedNodes=None, inCheckTypes=None):
     if len(defectObjects) > 0:
         pc.select(defectObjects)
     else:
-        print ("No problematic history found on given objects ({0})".format(",".join([n.name() for n in objs])))
+        tkLogger.info("No problematic history found on given objects ({0})".format(",".join([n.name() for n in objs])))
 
     return defectObjects
 
@@ -8189,7 +8262,7 @@ def closeAllWindows(*args):
     uis = pc.lsUI(wnd=True)
     for ui in uis:
         if pc.window(ui, query=True, exists=True) and ui.name() != mainWindow:
-            print ("closing", ui.name())
+            tkLogger.debug("closing", ui.name())
             pc.deleteUI(ui)
 
 def emptyDirectory(inPath):
@@ -8201,7 +8274,7 @@ def emptyDirectory(inPath):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print(e)
+            tkLogger.error(str(e))
 """
 def checkTextValidity(inText):
 

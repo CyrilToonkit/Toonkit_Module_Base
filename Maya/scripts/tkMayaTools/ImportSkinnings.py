@@ -48,19 +48,31 @@ class ImportSkinnings(Tool):
     def execute(self, *args, **kwargs):
         super(ImportSkinnings, self).execute(*args, **kwargs)
 
-        sel = pc.selected()
-        joints =  pc.ls(sel, type="joint")
+        richSelNodes = []
+        richSel = tkc.getSoftSelections()
+        richSelJoints = []
 
-        zeroInfs = None
-        if len(joints) > 0:
-            sel = [s for s in sel if s not in joints]
-            zeroInfs = [n.stripNamespace() for n in joints]
+        wms = []
+        for richSelObj, richSelComps in richSel:
+            richSelNode = tkc.getNode(richSelObj)
+            if richSelNode.type() == "joint":
+                richSelJoints.append(richSelNode)
+            else:
+                if richSelNode.type() != "transform":
+                    richSelNode = richSelNode.getParent()
+                richSelNodes.append(richSelNode)
+
+                wms.append(richSelComps)
 
         mode = 0
         if self.options["Opacity"] < 1.0:
             mode = 3
         elif self.options["Overwrite"]:
             mode = 1
+
+        zeroInfs = None
+        if len(richSelJoints) > 0:
+            zeroInfs = [n.stripNamespace() for n in richSelJoints]
 
         inPath = None
         inPath = pc.fileDialog2(caption="Load your envelopes", fileFilter="Text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
@@ -83,4 +95,4 @@ class ImportSkinnings(Tool):
                         key, value = line.rstrip("\r\n").split(",")[0:2]
                         mapping[key] = value
 
-            tkc.loadSkins(inPath, sel, inZeroInfs=zeroInfs, inMode=mode, inOpacity=self.options["Opacity"], inNormalize=self.options["Normalize"], inRemapDict=mapping)
+            tkc.loadSkins(inPath, richSelNodes, inZeroInfs=zeroInfs, inMode=mode, inOpacity=self.options["Opacity"], inNormalize=self.options["Normalize"], inRemapDict=mapping, inWeightMaps=wms)
