@@ -457,12 +457,17 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
         except:
             raise ValueError("Criterion string '{0}' is not valid (available values : {1}) !".format(inCriterion, tke.CONDITION_NICECRITERIA))
 
+    attrTrueScalar = isinstance(inAttrTrue, (int,float,list,tuple))
+    attrFalseScalar = isinstance(inAttrFalse, (int,float,list,tuple))
+
+    outVectors = (attrTrueScalar and isinstance(inAttrTrue, (list,tuple))) or (not attrTrueScalar and not inAttrTrue is None and inAttrTrue.type() in ["double3", "float3"])
+
     attr2Name = formatScalar(inAttr2) if attr2Scalar else formatAttr(inAttr2, True)
-    attrTrueName = "None" if inAttrTrue is None else (formatScalar(inAttrTrue) if isinstance(inAttrTrue, (int,float)) else formatAttr(inAttrTrue, True))
-    attrFalseName = "None" if inAttrFalse is None else (formatScalar(inAttrFalse) if isinstance(inAttrFalse, (int,float)) else formatAttr(inAttrFalse, True))
+    attrTrueName = "None" if inAttrTrue is None else (formatScalar(inAttrTrue) if attrTrueScalar else formatAttr(inAttrTrue, True))
+    attrFalseName = "None" if inAttrFalse is None else (formatScalar(inAttrFalse) if attrFalseScalar else formatAttr(inAttrFalse, True))
     nodeName = inName or reduceName(CONDITION_FORMAT.format(formatAttr(inAttr1), tke.CONDITION_CRITERIA[inCriterion], attr2Name,attrTrueName,attrFalseName))
     if pc.objExists(nodeName) and (not SAFE_FACTORISATION or not "___" in nodeName):
-        return pc.PyNode(nodeName).outColorR
+        return pc.PyNode(nodeName).outColorR if not outVectors else pc.PyNode(nodeName).outColor
 
     node = create("condition", nodeName, **kwargs)
     node.operation.set(inCriterion)
@@ -473,26 +478,26 @@ def condition(inAttr1, inAttr2, inCriterion=0, inAttrTrue=None, inAttrFalse=None
     else:
         inAttr2 >> node.secondTerm
 
-    outVectors = False
-
     if not inAttrTrue is None:
-        attrTrueScalar = isinstance(inAttrTrue, (int,float))
         if attrTrueScalar:
-            node.colorIfTrueR.set(inAttrTrue)
+            if outVectors:
+                node.colorIfTrue.set(inAttrTrue)
+            else:
+                node.colorIfTrueR.set(inAttrTrue)
         else:
-            if inAttrTrue.type() in ["double3", "float3"]:
-                outVectors = True
+            if outVectors:
                 inAttrTrue >> node.colorIfTrue
             else:
                 inAttrTrue >> node.colorIfTrueR
     
     if not inAttrFalse is None:
-        attrFalseScalar = isinstance(inAttrFalse, (int,float))
         if attrFalseScalar:
-            node.colorIfFalseR.set(inAttrFalse)
+            if outVectors:
+                node.colorIfFalse.set(inAttrFalse)
+            else:
+                node.colorIfFalseR.set(inAttrFalse)
         else:
-            if inAttrFalse.type() in ["double3", "float3"]:
-                outVectors = True
+            if outVectors:
                 inAttrFalse >> node.colorIfFalse
             else:
                 inAttrFalse >> node.colorIfFalseR

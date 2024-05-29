@@ -76,6 +76,13 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="tkPalApplySwitchBT">
+       <property name="text">
+        <string>APPLY with Switch</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
@@ -155,7 +162,16 @@
          <property name="spacing">
           <number>0</number>
          </property>
-         <property name="margin">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
           <number>0</number>
          </property>
          <item>

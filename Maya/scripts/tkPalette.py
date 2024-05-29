@@ -41,6 +41,7 @@ import maya.cmds as mc
 import maya.mel as mel
 
 import tkMayaCore as tkc
+import tkNodeling as tkn
 
 __author__ = "Cyril GIBAUD - Toonkit"
 
@@ -51,10 +52,10 @@ PREVIZ_COLORS = {}
 EXCLUDED_COLOR = (-1,-1,-1)
 
 def to0_255(inColor):
-    return (int(inColor[0] * 255), int(inColor[1] * 255), int(inColor[2] * 255))
+    return (int(round(inColor[0] * 255)), int(round(inColor[1] * 255)), int(round(inColor[2] * 255)))
 
 def to0_1(inColor):
-    return (inColor[0] / 255.0, inColor[1] / 255.0, inColor[2] / 255.0)
+    return (float(inColor[0]) / 255.0, float(inColor[1]) / 255.0, float(inColor[2]) / 255.0)
 
 def assignShader(inMaterial, inObj, inSG=None, inFaces=None):
     #print "assignShader(%s, %s, %s, %s)" % (str(inMaterial), str(inObj), str(inSG), str(inMultiUVs))
@@ -202,6 +203,7 @@ def gatorShaders(inObj, inRef):
         assignShader(shader, inObj.name(), inFaces=tkc.serializeComponents(faces))
 
 def roundColor(inColor):
+    return inColor
     return (round(inColor[0], 2), round(inColor[1], 2), round(inColor[2], 2))
 
 def getShaderName(inColor):
@@ -232,6 +234,31 @@ def assignColor(inMesh, inColor, inFaces=None, inAddToDict=True):
 
     if EXCLUDED_COLOR in PREVIZ_COLORS and shortName in PREVIZ_COLORS[EXCLUDED_COLOR]:
         PREVIZ_COLORS[EXCLUDED_COLOR].remove(shortName)
+
+def addColorSwitch(inMesh, inColor, inFaces=None, inAttr=None, inAttrName="colorSwitch"):
+    shaders = getShaders(inMesh, False)
+    
+    oldColors = {}
+    
+    inMeshNode = tkc.getNode(inMesh)
+    
+    if inAttr is None:
+        tkc.addParameter(inMeshNode, inAttrName, "int", 0, 0)
+        inAttr = inMeshNode.attr(inAttrName)
+
+    for shader in shaders:
+        if len(mc.listConnections(shader + ".color") or []) > 0 or len(mc.listConnections(shader + ".colorR") or []) > 0:
+            continue
+
+        oldColor = to0_255(mc.getAttr(shader + ".color")[0])
+        if not oldColor in oldColors:
+            oldColors[oldColor] = tkn.condition(inAttr, 1, inAttrTrue=to0_1(inColor), inAttrFalse=to0_1(oldColor))
+
+        mc.connectAttr(tkn.add(oldColors[oldColor].children()[0], 0).name(), shader + ".colorR")
+        mc.connectAttr(tkn.add(oldColors[oldColor].children()[1], 0).name(), shader + ".colorG")
+        mc.connectAttr(tkn.add(oldColors[oldColor].children()[2], 0).name(), shader + ".colorB")
+        
+    return inAttr
 
 def addColor(rgb, sel):
     global PREVIZ_COLORS
@@ -267,7 +294,7 @@ def addColor(rgb, sel):
 
     getFromScene(True)
 
-def setColors():
+def setColors(inSwitch=False):
 
     steps = 0
     for shd_color, meshes in PREVIZ_COLORS.items():
@@ -280,6 +307,8 @@ def setColors():
         gMainProgressBar = "palProgressBar"
     else:
         gMainProgressBar = mc.mel.eval('$tmp = $gMainProgressBar')
+
+    switchAttr = None
 
     mc.progressBar( gMainProgressBar,
     edit=True,
@@ -307,8 +336,10 @@ def setColors():
                     meshName = results[0]
 
             if mc.objExists(meshName):
-                assignColor(meshName, shd_color, faces, False)
-                pass
+                if inSwitch:
+                    switchAttr = addColorSwitch(meshName, shd_color, inAttr=switchAttr)
+                else:
+                    assignColor(meshName, shd_color, faces, False)
             else:
                 notFound.append(mesh)
                 mc.warning(mesh + " not found !")
@@ -320,6 +351,9 @@ def setColors():
 
     if len(notFound) > 0:
         mc.warning("Some meshes were not found :\n" + ",".join(notFound))
+
+    if not switchAttr is None:
+        print("Color switch connected to : "+ str(switchAttr))
 
 def colorCommand(inColor):
     global PREVIZ_COLORS
@@ -580,6 +614,10 @@ def palApplyAllClick(*args):
     setColors()
     tkc.deleteUnusedNodes()
 
+def palApplySwitchClick(*args):
+    setColors(inSwitch=True)
+    tkc.deleteUnusedNodes()
+
 def palGetFromSceneClick(*args):
     getFromScene()
 
@@ -590,6 +628,7 @@ def connectControls():
     mc.button("tkPalLoadBT", edit=True, c=palLoadClick)
     mc.button("tkPalSaveBT", edit=True, c=palSaveClick)
     mc.button("tkPalApplyAllBT", edit=True, c=palApplyAllClick)
+    mc.button("tkPalApplySwitchBT", edit=True, c=palApplySwitchClick)
 
     mc.button("tkPalGetFromSceneBT", edit=True, c=palGetFromSceneClick)
     mc.button("tkPalRefreshBT", edit=True, c=palRefreshClick)
