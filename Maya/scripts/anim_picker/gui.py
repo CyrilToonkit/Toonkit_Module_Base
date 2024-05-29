@@ -31,6 +31,161 @@ from anim_picker.handlers import __SELECTION__
 
 __USE_OPENGL__ = False # seems to conflicts with maya viewports...
 
+__OPA__ = 50
+
+__PALETTE__ = [
+    #QtGui.QColor(205, 92, 92, __OPA__),#IndianRed
+    #QtGui.QColor(240, 128, 128, __OPA__),#LightCoral
+    #QtGui.QColor(250, 128, 114, __OPA__),#Salmon
+    #QtGui.QColor(233, 150, 122, __OPA__),#DarkSalmon
+    #QtGui.QColor(255, 160, 122, __OPA__),#LightSalmon
+    #QtGui.QColor(220, 20, 60, __OPA__),#Crimson
+    QtGui.QColor(255, 0, 0, __OPA__),#Red
+    #QtGui.QColor(178, 34, 34, __OPA__),#FireBrick
+    #QtGui.QColor(139, 0, 0, __OPA__),#DarkRed
+    #QtGui.QColor(255, 192, 203, __OPA__),#Pink
+    QtGui.QColor(255, 182, 193, __OPA__),#LightPink
+    #QtGui.QColor(255, 105, 180, __OPA__),#HotPink
+    #QtGui.QColor(255, 20, 147, __OPA__),#DeepPink
+    #QtGui.QColor(199, 21, 133, __OPA__),#MediumVioletRed
+    #QtGui.QColor(219, 112, 147, __OPA__),#PaleVioletRed
+    #QtGui.QColor(255, 160, 122, __OPA__),#LightSalmon
+    #QtGui.QColor(255, 127, 80, __OPA__),#Coral
+    #QtGui.QColor(255, 99, 71, __OPA__),#Tomato
+    #QtGui.QColor(255, 69, 0, __OPA__),#OrangeRed
+    #QtGui.QColor(255, 140, 0, __OPA__),#DarkOrange
+    QtGui.QColor(255, 165, 0, __OPA__),#Orange
+    #QtGui.QColor(255, 215, 0, __OPA__),#Gold
+    QtGui.QColor(255, 255, 0, __OPA__),#Yellow
+    #QtGui.QColor(255, 255, 224, __OPA__),#LightYellow
+    #QtGui.QColor(255, 250, 205, __OPA__),#LemonChiffon
+    #QtGui.QColor(250, 250, 210, __OPA__),#LightGoldenrodYellow
+    #QtGui.QColor(255, 239, 213, __OPA__),#PapayaWhip
+    #QtGui.QColor(255, 228, 181, __OPA__),#Moccasin
+    #QtGui.QColor(255, 218, 185, __OPA__),#PeachPuff
+    #QtGui.QColor(238, 232, 170, __OPA__),#PaleGoldenrod
+    #QtGui.QColor(240, 230, 140, __OPA__),#Khaki
+    #QtGui.QColor(189, 183, 107, __OPA__),#DarkKhaki
+    #QtGui.QColor(230, 230, 250, __OPA__),#Lavender
+    #QtGui.QColor(216, 191, 216, __OPA__),#Thistle
+    #QtGui.QColor(221, 160, 221, __OPA__),#Plum
+    #QtGui.QColor(238, 130, 238, __OPA__),#Violet
+    #QtGui.QColor(218, 112, 214, __OPA__),#Orchid
+    #QtGui.QColor(255, 0, 255, __OPA__),#Fuchsia
+    QtGui.QColor(255, 0, 255, __OPA__),#Magenta
+    #QtGui.QColor(186, 85, 211, __OPA__),#MediumOrchid
+    #QtGui.QColor(147, 112, 219, __OPA__),#MediumPurple
+    #QtGui.QColor(102, 51, 153, __OPA__),#RebeccaPurple
+    #QtGui.QColor(138, 43, 226, __OPA__),#BlueViolet
+    QtGui.QColor(148, 0, 211, __OPA__),#DarkViolet
+    #QtGui.QColor(153, 50, 204, __OPA__),#DarkOrchid
+    #QtGui.QColor(139, 0, 139, __OPA__),#DarkMagenta
+    #QtGui.QColor(128, 0, 128, __OPA__),#Purple
+    #QtGui.QColor(75, 0, 130, __OPA__),#Indigo
+    #QtGui.QColor(106, 90, 205, __OPA__),#SlateBlue
+    #QtGui.QColor(72, 61, 139, __OPA__),#DarkSlateBlue
+    #QtGui.QColor(123, 104, 238, __OPA__),#MediumSlateBlue
+    #QtGui.QColor(173, 255, 47, __OPA__),#GreenYellow
+    #QtGui.QColor(127, 255, 0, __OPA__),#Chartreuse
+    #QtGui.QColor(124, 252, 0, __OPA__),#LawnGreen
+    QtGui.QColor(0, 255, 0, __OPA__),#Lime
+    #QtGui.QColor(50, 205, 50, __OPA__),#LimeGreen
+    #QtGui.QColor(152, 251, 152, __OPA__),#PaleGreen
+    #QtGui.QColor(144, 238, 144, __OPA__),#LightGreen
+    #QtGui.QColor(0, 250, 154, __OPA__),#MediumSpringGreen
+    #QtGui.QColor(0, 255, 127, __OPA__),#SpringGreen
+    #QtGui.QColor(60, 179, 113, __OPA__),#MediumSeaGreen
+    #QtGui.QColor(46, 139, 87, __OPA__),#SeaGreen
+    #QtGui.QColor(34, 139, 34, __OPA__),#ForestGreen
+    #QtGui.QColor(0, 128, 0, __OPA__),#Green
+    #QtGui.QColor(0, 100, 0, __OPA__),#DarkGreen
+    #QtGui.QColor(154, 205, 50, __OPA__),#YellowGreen
+    #QtGui.QColor(107, 142, 35, __OPA__),#OliveDrab
+    QtGui.QColor(128, 128, 0, __OPA__),#Olive
+    #QtGui.QColor(85, 107, 47, __OPA__),#DarkOliveGreen
+    #QtGui.QColor(102, 205, 170, __OPA__),#MediumAquamarine
+    #QtGui.QColor(143, 188, 139, __OPA__),#DarkSeaGreen
+    #QtGui.QColor(32, 178, 170, __OPA__),#LightSeaGreen
+    QtGui.QColor(0, 139, 139, __OPA__),#DarkCyan
+    #QtGui.QColor(0, 128, 128, __OPA__),#Teal
+    QtGui.QColor(0, 255, 255, __OPA__),#Aqua
+    #QtGui.QColor(0, 255, 255, __OPA__),#Cyan
+    #QtGui.QColor(224, 255, 255, __OPA__),#LightCyan
+    #QtGui.QColor(175, 238, 238, __OPA__),#PaleTurquoise
+    QtGui.QColor(127, 255, 212, __OPA__),#Aquamarine
+    #QtGui.QColor(64, 224, 208, __OPA__),#Turquoise
+    #QtGui.QColor(72, 209, 204, __OPA__),#MediumTurquoise
+    #QtGui.QColor(0, 206, 209, __OPA__),#DarkTurquoise
+    #QtGui.QColor(95, 158, 160, __OPA__),#CadetBlue
+    #QtGui.QColor(70, 130, 180, __OPA__),#SteelBlue
+    #QtGui.QColor(176, 196, 222, __OPA__),#LightSteelBlue
+    #QtGui.QColor(176, 224, 230, __OPA__),#PowderBlue
+    #QtGui.QColor(173, 216, 230, __OPA__),#LightBlue
+    #QtGui.QColor(135, 206, 235, __OPA__),#SkyBlue
+    #QtGui.QColor(135, 206, 250, __OPA__),#LightSkyBlue
+    #QtGui.QColor(0, 191, 255, __OPA__),#DeepSkyBlue
+    #QtGui.QColor(30, 144, 255, __OPA__),#DodgerBlue
+    #QtGui.QColor(100, 149, 237, __OPA__),#CornflowerBlue
+    #QtGui.QColor(123, 104, 238, __OPA__),#MediumSlateBlue
+    #QtGui.QColor(65, 105, 225, __OPA__),#RoyalBlue
+    QtGui.QColor(0, 0, 255, __OPA__),#Blue
+    #QtGui.QColor(0, 0, 205, __OPA__),#MediumBlue
+    #QtGui.QColor(0, 0, 139, __OPA__),#DarkBlue
+    #QtGui.QColor(0, 0, 128, __OPA__),#Navy
+    #QtGui.QColor(25, 25, 112, __OPA__),#MidnightBlue
+    QtGui.QColor(255, 248, 220, __OPA__),#Cornsilk
+    #QtGui.QColor(255, 235, 205, __OPA__),#BlanchedAlmond
+    #QtGui.QColor(255, 228, 196, __OPA__),#Bisque
+    #QtGui.QColor(255, 222, 173, __OPA__),#NavajoWhite
+    #QtGui.QColor(245, 222, 179, __OPA__),#Wheat
+    #QtGui.QColor(222, 184, 135, __OPA__),#BurlyWood
+    #QtGui.QColor(210, 180, 140, __OPA__),#Tan
+    #QtGui.QColor(188, 143, 143, __OPA__),#RosyBrown
+    #QtGui.QColor(244, 164, 96, __OPA__),#SandyBrown
+    #QtGui.QColor(218, 165, 32, __OPA__),#Goldenrod
+    #QtGui.QColor(184, 134, 11, __OPA__),#DarkGoldenrod
+    QtGui.QColor(205, 133, 63, __OPA__),#Peru
+    #QtGui.QColor(210, 105, 30, __OPA__),#Chocolate
+    #QtGui.QColor(139, 69, 19, __OPA__),#SaddleBrown
+    #QtGui.QColor(160, 82, 45, __OPA__),#Sienna
+    #QtGui.QColor(165, 42, 42, __OPA__),#Brown
+    #QtGui.QColor(128, 0, 0, __OPA__),#Maroon
+    QtGui.QColor(255, 255, 255, __OPA__),#White
+    #QtGui.QColor(255, 250, 250, __OPA__),#Snow
+    #QtGui.QColor(240, 255, 240, __OPA__),#HoneyDew
+    #QtGui.QColor(245, 255, 250, __OPA__),#MintCream
+    #QtGui.QColor(240, 255, 255, __OPA__),#Azure
+    #QtGui.QColor(240, 248, 255, __OPA__),#AliceBlue
+    #QtGui.QColor(248, 248, 255, __OPA__),#GhostWhite
+    #QtGui.QColor(245, 245, 245, __OPA__),#WhiteSmoke
+    #QtGui.QColor(255, 245, 238, __OPA__),#SeaShell
+    #QtGui.QColor(245, 245, 220, __OPA__),#Beige
+    #QtGui.QColor(253, 245, 230, __OPA__),#OldLace
+    #QtGui.QColor(255, 250, 240, __OPA__),#FloralWhite
+    #QtGui.QColor(255, 255, 240, __OPA__),#Ivory
+    #QtGui.QColor(250, 235, 215, __OPA__),#AntiqueWhite
+    #QtGui.QColor(250, 240, 230, __OPA__),#Linen
+    #QtGui.QColor(255, 240, 245, __OPA__),#LavenderBlush
+    #QtGui.QColor(255, 228, 225, __OPA__),#MistyRose
+    #QtGui.QColor(220, 220, 220, __OPA__),#Gainsboro
+    #QtGui.QColor(211, 211, 211, __OPA__),#LightGray
+    #QtGui.QColor(192, 192, 192, __OPA__),#Silver
+    #QtGui.QColor(169, 169, 169, __OPA__),#DarkGray
+    #QtGui.QColor(128, 128, 128, __OPA__),#Gray
+    #QtGui.QColor(105, 105, 105, __OPA__),#DimGray
+    #QtGui.QColor(119, 136, 153, __OPA__),#LightSlateGray
+    #QtGui.QColor(112, 128, 144, __OPA__),#SlateGray
+    #QtGui.QColor(47, 79, 79, __OPA__),#DarkSlateGray
+    QtGui.QColor(0, 0, 0, __OPA__),#Black
+]
+
+def _get_ascii_sum(inText):
+    asciiSum = 0
+    for c in inText:
+        asciiSum += ord(c)
+
+    return asciiSum
+
 #===============================================================================
 # Dependencies ---
 #===============================================================================
@@ -1180,6 +1335,8 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         self.setBackgroundBrush(brush)
         self.background_image = None
         self.background_image_path = None
+
+        self.custom_colors = None
         
     def get_center_pos(self):
         return self.mapToScene(QtCore.QPoint(self.width()/2, self.height()/2))
@@ -1390,6 +1547,45 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         self.main_window.reset_default_size()
         self.main_window.refresh()
     
+    def _get_custom_tint(self, ns):
+        if self.custom_colors is None:
+            if self.background_image_path is None:
+                return None
+
+            folderName, fileName = os.path.split(self.background_image_path)
+            custom_colors_path = os.path.join(folderName, "custom_colors.txt")
+
+            try:
+                if os.path.isfile(custom_colors_path):
+                    with open(custom_colors_path, "r") as custom_colors_file:
+                        self.custom_colors = eval(custom_colors_file.read())
+            except:
+                pass
+
+        if not self.custom_colors is None:
+            for pattern, color in self.custom_colors:
+                if re.search(pattern, self.namespace.lower()):
+                    return QtGui.QColor(color[0], color[1], color[2], __OPA__)
+
+        return None
+
+    def _get_tinted_background(self, img):
+        colorMask = QtGui.QImage(img.size(), QtGui.QImage.Format_RGB32)
+        p = QtGui.QPainter(colorMask)
+
+        ns = str(self.namespace).lower()
+        color = self._get_custom_tint(ns)
+        color = color or __PALETTE__[_get_ascii_sum(ns) % len(__PALETTE__)]
+        p.fillRect(img.rect(), color)
+        p.end()
+
+        p.begin(img)
+        p.setCompositionMode(QtGui.QPainter.CompositionMode_Multiply)
+        p.drawImage(0, 0, colorMask)
+        p.end()
+
+        return img
+
     def set_background(self, path=None):
         '''Set tab index widget background image
         '''
@@ -1403,10 +1599,15 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
             return
         
         self.background_image_path = path
-        
+
         # Load image and mirror it vertically
-        self.background_image = QtGui.QImage(path).mirrored(False, True)
-        
+        img = QtGui.QImage(path).mirrored(False, True)
+
+        # Apply a color tint
+        img = self._get_tinted_background(img)
+
+        self.background_image = img
+
         # Set scene size to background picture
         width = self.background_image.width()
         height = self.background_image.height()
@@ -1500,7 +1701,7 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         background = data.get('background', None)
         if background:
             self.set_background(background)
-        
+
         # Add items to view
         for item_data in data.get('items', list()):
             item = self.add_picker_item()

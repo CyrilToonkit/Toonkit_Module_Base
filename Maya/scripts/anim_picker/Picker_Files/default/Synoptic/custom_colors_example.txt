@@ -1,0 +1,13 @@
+(
+	#This is an example of a custom colors file that can be used to assign specific colors to characters depending on their names (their namespaces). The actual name for this file should be "custom_colors.txt", so just rename or re-save this file without the "_example" suffix to make it live.
+
+	#Add your custom colors here, using this format : ("mycharactername", (RedValue, GreenValue, BlueValue)), (don't forget the comma at the end !)
+	#The character name is compared to the character's namespace, in lowercase. This is actually a regular expression, so more advanced filters can be created using regular expression tokens (https://en.wikipedia.org/wiki/Regular_expression)
+	#Color values are 8-bit (0 to 255)
+	#Finally, each pattern is evaluated top to bottom, and the first matching color will be used, so use more precise criteria first and more generic ones afterwards (for instance, put "minnie_costume" before "minnie", or "minnie_costume" will never be tested as "minnie" will match before "minnie_costume" can be evaluated).
+
+	("mickey", (128, 0, 128)),
+	("minnie_costume", (127, 255, 212)),
+	("minnie_pirate", (0, 191, 255)),
+	("minnie", (70, 130, 180)),
+)
