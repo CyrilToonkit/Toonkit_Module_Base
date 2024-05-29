@@ -66,4 +66,4 @@ class Gator(Tool):
             message = "Please select at least two objects (any number of meshes to receive weights, then a \"Reference\" mesh) !"
             if self.options["Reversed"]:
                 message = "Please select at least two objects (any number of meshes to copy weights from, then the \"Target\" mesh) !"
-            self.warning()
+            self.warning(message)
