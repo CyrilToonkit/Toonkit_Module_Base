@@ -4531,10 +4531,17 @@ def duplicateAndClean(inSourceMesh, inTargetName="$REF_dupe", inMuteDeformers=Tr
     return dupe
 
 def getSkinCluster(inObject):
-    try:
-        return pc.listHistory(inObject, type="skinCluster", levels=1)[0]
-    except:
-        pass
+    skins = pc.listHistory(inObject, type="skinCluster", levels=3)
+
+    for skin in skins:
+        if skin.getGeometry()[0].getParent() == inObject:
+            return skin
+
+    skins = pc.listHistory(inObject, type="skinCluster")
+
+    for skin in skins:
+        if skin.getGeometry()[0].getParent() == inObject:
+            return skin
 
     return None
 
