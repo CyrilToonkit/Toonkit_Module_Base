@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>633</width>
+    <width>855</width>
     <height>910</height>
    </rect>
   </property>
@@ -107,13 +107,6 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QCheckBox" name="batcherSelectionCB">
-          <property name="text">
-           <string>Batch on selection only</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="QPushButton" name="batcherOpenSelectedCB">
           <property name="text">
            <string>Open selected</string>
@@ -122,6 +115,12 @@
         </item>
         <item>
          <widget class="QCheckBox" name="batcherLoadReferencesCB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="text">
            <string>Load references</string>
           </property>
@@ -131,9 +130,36 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="batcherExecuteScriptsCB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Script nodes</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="batcherExploreSelectedCB">
           <property name="text">
            <string>Explore selected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="batcherCopyFilenameCB">
+          <property name="text">
+           <string>Copy FileName(s)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="batcherCopyPathCB">
+          <property name="text">
+           <string>Copy Path(s)</string>
           </property>
          </widget>
         </item>
@@ -155,6 +181,22 @@
          <widget class="QPushButton" name="batcherReferenceSelectedBT">
           <property name="text">
            <string>Reference selected</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="batcherNamespaceCB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Namespace</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -357,6 +399,19 @@
         <property name="topMargin">
          <number>0</number>
         </property>
+        <item>
+         <widget class="QCheckBox" name="batcherSelectionCB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Batch on sel. only</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="QPushButton" name="batcherSimBT">
           <property name="text">

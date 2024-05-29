@@ -29,4 +29,4 @@ from Toonkit_Core.tkToolOptions.tkOptions import Options
 
 def do(inDataPath):
     data = Options(None, inDataPath)
-    return tkBatcher.doBatch(data['batchName'], data['node'], data['code'], inForce=data['force'], inSaveFile=data['saveFile'], inSavePath=data['savefilePath'], inVariables=data['variables'], inLogDirPath=data["logpath"], inLoadRefs=data['loadRefs'])
+    return tkBatcher.doBatch(data['batchName'], data['node'], data['code'], inForce=data['force'], inSaveFile=data['saveFile'], inSavePath=data['savefilePath'], inVariables=data['variables'], inLogDirPath=data["logpath"], inLoadRefs=data['loadRefs'], inScriptNodes=data['scriptNodes'])

@@ -41,7 +41,10 @@ __author__ = "Cyril GIBAUD - Toonkit"
 
 RESULTS = {}
 
-def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSaveFile=False, inSavePath="", inVariables=None, inLogDirPath=None, inLoadRefs=True):
+def addToClipBoard(inText):
+    subprocess.run(['clip.exe'], input=inText.encode('UTF-16LE'), shell=False)
+
+def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSaveFile=False, inSavePath="", inVariables=None, inLogDirPath=None, inLoadRefs=True, inScriptNodes=False):
 
     if inVariables is None:
         inVariables = RESULTS[inPath]
@@ -65,12 +68,13 @@ def doBatch(inBatchName, inPath, inCode, inSimulate=False, inForce=False, inSave
                 os.remove(os.path.join(inLogDirPath, inBatchName + ".ok"))
 
     loadRefsSentence = ", loadReferenceDepth='none'" if not inLoadRefs else ""
+    scriptNodesSentence = ", executeScriptNodes=False" if not inScriptNodes else ""
 
     code = "import maya.cmds\r\n"
     code += "def batcherDoBatch(fileName, filePath, saveFilePath=r\""+inSavePath+"\", saveFile="+str(inSaveFile)+", success=True, pathVariables="+str(inVariables)+"):\r\n"
     code += "    print ('Batch "+inBatchName+" begins')\r\n"
     code += "    try:\r\n"
-    code += "        maya.cmds.file(filePath, open=True"+loadRefsSentence+", force=True, prompt=False)\r\n"
+    code += "        maya.cmds.file(filePath, open=True"+loadRefsSentence+scriptNodesSentence+", force=True, prompt=False)\r\n"
     code += "\r\n".join(["        " + line.rstrip("\r") for line in inCode.split("\n")]) + "\r\n"
     code += "    except Exception as e:\r\n"
     code += "        print ('Exception  : '+str(e))\r\n"
@@ -183,8 +187,9 @@ def batcherSimClick(*args):
         savefilePath = getSavePath(mc.textField("batcherSavepathLE", query=True, text=True), node, os.path.splitext(filename)[0], variables)
         logFilePath = getLogPath(mc.textField("batcherLogSavepathLE", query=True, text=True), node, os.path.splitext(filename)[0], variables)
         loadRefs = mc.checkBox("batcherLoadReferencesCB", query=True, value=True)
+        scriptNodes = mc.checkBox("batcherExecuteScriptsCB", query=True, value=True)
 
-        doBatch(batchName, node, code, True, force, savefile, savefilePath, variables, logFilePath, loadRefs)
+        doBatch(batchName, node, code, True, force, savefile, savefilePath, variables, logFilePath, loadRefs, scriptNodes)
         pc.progressBar("batcherProgressBar", edit=True, step=1)
 
     mc.progressBar("batcherProgressBar", edit=True, endProgress=True)
@@ -199,8 +204,9 @@ def batcherDoBatchClick(*args):
     savePath = mc.textField("batcherSavepathLE", query=True, text=True)
     logPath = mc.textField("batcherLogSavepathLE", query=True, text=True)
     loadRefs = mc.checkBox("batcherLoadReferencesCB", query=True, value=True)
+    scriptNodes = mc.checkBox("batcherExecuteScriptsCB", query=True, value=True)
 
-    batcherDoBatches(nodes, RESULTS, batchName, code, force, savefile, savePath, logPath, "batcherProgressBar", 0, loadRefs)
+    batcherDoBatches(nodes, RESULTS, batchName, code, force, savefile, savePath, logPath, "batcherProgressBar", 0, loadRefs, scriptNodes)
 
 def batcherDoMayaBatchClick(*args):
     batchName = mc.textField("batcherNameLE", query=True, text=True)
@@ -211,10 +217,11 @@ def batcherDoMayaBatchClick(*args):
     savePath = mc.textField("batcherSavepathLE", query=True, text=True)
     logPath = mc.textField("batcherLogSavepathLE", query=True, text=True)
     loadRefs = mc.checkBox("batcherLoadReferencesCB", query=True, value=True)
+    scriptNodes = mc.checkBox("batcherExecuteScriptsCB", query=True, value=True)
 
-    batcherDoBatches(nodes, RESULTS, batchName, code, force, savefile, savePath, logPath, "batcherProgressBar", 1, loadRefs)
+    batcherDoBatches(nodes, RESULTS, batchName, code, force, savefile, savePath, logPath, "batcherProgressBar", 1, loadRefs, scriptNodes)
 
-def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePath, logPath, inProgressBar=None, inMode=0, inLoadRefs=True):
+def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePath, logPath, inProgressBar=None, inMode=0, inLoadRefs=True, inScriptNodes=False):
     if inProgressBar is not None:
         mc.control(inProgressBar, edit=True, visible=True)
 
@@ -237,7 +244,7 @@ def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePat
         result = None
 
         if inMode == 0:
-            result = doBatch(batchName, node, code, False, force, savefile, savefilePath, thisVariables, logFilePath, inLoadRefs)
+            result = doBatch(batchName, node, code, False, force, savefile, savefilePath, thisVariables, logFilePath, inLoadRefs, inScriptNodes)
         else:
             #Save the variables we need to options
             optionsDic = {
@@ -249,7 +256,9 @@ def batcherDoBatches(nodes, variables, batchName, code, force, savefile, savePat
                 "saveFile":savefile,
                 "savefilePath":savefilePath,
                 "variables":thisVariables,
-                "logpath":logFilePath
+                "logpath":logFilePath,
+                "loadRefs":inLoadRefs,
+                "scriptNodes":inScriptNodes,
                 }
 
             tmpFile = tempfile.NamedTemporaryFile(prefix='tkBatcher',suffix='.json', delete=False)
@@ -322,6 +331,7 @@ def batcherSaveClick(*args):
     options["skip"] = mc.checkBox("batcherSkipCB", query=True, value=True)
     options["logSavePath"] = mc.textField("batcherLogSavepathLE", query=True, text=True)
     options["loadRefs"] = mc.checkBox("batcherLoadReferencesCB", query=True, value=True)
+    options["scriptNodes"] = mc.checkBox("batcherExecuteScriptsCB", query=True, value=True)
 
     options.save(optionsPath)
 
@@ -330,18 +340,22 @@ def batcherSaveClick(*args):
 
 def batcherInit(inPath = "", inData = None):
     content = ""
+    optionsPath = ""
 
-    with open(inPath) as pyFile:
-        content = pyFile.read()
+    if inPath:
+        try:
+            with open(inPath) as pyFile:
+                content = pyFile.read()
+        except:
+            pass
 
-    dirname, filename = os.path.split(os.path.abspath(inPath))
+        dirname, filename = os.path.split(os.path.abspath(inPath))
 
-    mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
-    mc.scrollField("batcherCodeLE", edit=True, text=content)
-    mc.textField("batcherFilePathLE", edit=True, text=inPath)
+        mc.textField("batcherNameLE", edit=True, text=os.path.splitext(filename)[0])
+        mc.scrollField("batcherCodeLE", edit=True, text=content)
+        mc.textField("batcherFilePathLE", edit=True, text=inPath)
 
-    
-    optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
+        optionsPath = os.path.join(dirname, filename.replace(".py",".json"))
     
     if os.path.isfile(optionsPath) or not inData is None :
         if os.path.isfile(optionsPath):
@@ -349,14 +363,20 @@ def batcherInit(inPath = "", inData = None):
         elif not inData is None:
             options = Options(inData=inData)
         mc.textField("batcherPathLE", edit=True, text=options["path"])
-        mc.checkBox("batcherSelectionCB", edit=True, value=options["selection"])
-        mc.checkBox("batcherSaveByDefaultCB", edit=True, value=options["saveByDefault"])
-        mc.textField("batcherSavepathLE", edit=True, text=options["savePath"])
-        mc.checkBox("batcherSkipCB", edit=True, value=options["skip"])
-        mc.textField("batcherLogSavepathLE", edit=True, text=options["logSavePath"])
+        if "selection" in options:
+            mc.checkBox("batcherSelectionCB", edit=True, value=options["selection"])
+        if "saveByDefault" in options:
+            mc.checkBox("batcherSaveByDefaultCB", edit=True, value=options["saveByDefault"])
+        if "savePath" in options:
+            mc.textField("batcherSavepathLE", edit=True, text=options["savePath"])
+        if "skip" in options:
+            mc.checkBox("batcherSkipCB", edit=True, value=options["skip"])
+        if "logSavePath" in options:
+            mc.textField("batcherLogSavepathLE", edit=True, text=options["logSavePath"])
         if "loadRefs" in options:
             mc.checkBox("batcherLoadReferencesCB", edit=True, value=options["loadRefs"])
-
+        if "scriptNodes" in options:
+            mc.checkBox("batcherExecuteScriptsCB", edit=True, value=options["loadRefs"])
     initUI()
 
 def batcherOpenClick(*args):
@@ -437,33 +457,53 @@ def batcherOpenSelectedClick(*args):
     nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
     if nodesText != None and len(nodesText) > 0:
         path = nodesText[0].split("(")[1][:-1]
-        mc.file(path, open=True, force=True)
+        mc.file(path, open=True, force=True,
+            executeScriptNodes=mc.checkBox("batcherExecuteScriptsCB", query=True, value=True),
+            loadReferenceDepth='all' if mc.checkBox("batcherLoadReferencesCB", query=True, value=True) else 'none'
+            )
 
 def batcherImportSelectedClick(*args):
     nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
     if nodesText != None and len(nodesText) > 0:
         for nodeText in nodesText:
             path = nodeText.split("(")[1][:-1]
-            mc.file(path, i=True, force=True)
+            mc.file(path, i=True, force=True,
+                namespace="" if mc.checkBox("batcherNamespaceCB", query=True, value=True) else ":",
+                executeScriptNodes=mc.checkBox("batcherExecuteScriptsCB", query=True, value=True),
+                loadReferenceDepth='all' if mc.checkBox("batcherLoadReferencesCB", query=True, value=True) else 'none'
+                )
 
 def batcherReferenceSelectedClick(*args):
     nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
     if nodesText != None and len(nodesText) > 0:
         for nodeText in nodesText:
             path = nodeText.split("(")[1][:-1]
-            pc.system.createReference(path, namespace=os.path.splitext(os.path.basename(path))[0])
-
-def batcherOpenSelectedClick(*args):
-    nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
-    if nodesText != None and len(nodesText) > 0:
-        path = nodesText[0].split("(")[1][:-1]
-        mc.file(path, open=True, force=True)
+            pc.system.createReference(path, namespace="", loadReferenceDepth='all' if mc.checkBox("batcherLoadReferencesCB", query=True, value=True) else 'none')#os.path.splitext(os.path.basename(path))[0])
 
 def batcherExploreSelectedClick(*args):
     nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
     if nodesText != None and len(nodesText) > 0:
         path = nodesText[0].split("(")[1][:-1]
         subprocess.Popen(r'explorer /select,"'+path+'"')
+
+def batcherCopyFilenameClick(*args):
+    nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
+    if nodesText != None and len(nodesText) > 0:
+        clipBoardItems = []
+        for nodeText in nodesText:
+            path = nodeText.split("(")[1][:-1]
+            dirname, filename = os.path.split(os.path.abspath(path))
+            clipBoardItems.append(filename)
+        addToClipBoard(",".join(clipBoardItems))
+
+def batcherCopyPathClick(*args):
+    nodesText = mc.textScrollList("batcherNodesLB", query=True, selectItem=True)
+    if nodesText != None and len(nodesText) > 0:
+        clipBoardItems = []
+        for nodeText in nodesText:
+            path = nodeText.split("(")[1][:-1]
+            clipBoardItems.append(path)
+        addToClipBoard(",".join(clipBoardItems))
 
 def batcherExportFilesClick(*args):
     if RESULTS is None or len(RESULTS) == 0:
@@ -476,7 +516,7 @@ def batcherExportFilesClick(*args):
         choosenFile = choosenFile[0]
 
         with open(choosenFile, "w") as f:
-            f.write("\r\n".join([pc.textField("batcherPathLE", query=True, text=True)] + RESULTS.keys()))
+            f.write("\r\n".join([pc.textField("batcherPathLE", query=True, text=True)] + list(RESULTS.keys())))
 
 def batcherImportFilesClick(*args):
     choosenFile = mc.fileDialog2(caption="Select your file list", fileFilter="text file (*.txt)(*.txt)", dialogStyle=1, fileMode=1)
@@ -509,6 +549,7 @@ def batcherImportFilesClick(*args):
                     pc.textScrollList("batcherNodesLB", edit=True, append="{0} ({1})".format(fileName, fullPath))
                 elif(tkContext.match(pattern, fullPath, inVariables=variables)):
                     RESULTS[fullPath] = variables
+                    pc.textScrollList("batcherNodesLB", edit=True, append="{0} ({1})".format(fileName, fullPath))
 
 def connectControls():
     #mc.textField("batcherPathLE", edit=True, cc=initUI)
@@ -527,6 +568,9 @@ def connectControls():
     mc.button("batcherImportSelectedBT", edit=True, c=batcherImportSelectedClick)
     mc.button("batcherReferenceSelectedBT", edit=True, c=batcherReferenceSelectedClick)
     mc.button("batcherExploreSelectedCB", edit=True, c=batcherExploreSelectedClick)
+
+    mc.button("batcherCopyFilenameCB", edit=True, c=batcherCopyFilenameClick)
+    mc.button("batcherCopyPathCB", edit=True, c=batcherCopyPathClick)
 
     mc.button("batcherExportFilesBT", edit=True, c=batcherExportFilesClick)
     mc.button("batcherImportFilesBT", edit=True, c=batcherImportFilesClick)
