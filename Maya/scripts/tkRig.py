@@ -3268,6 +3268,70 @@ def createCurveAttributes(inCurve, inAttrParent, inAttrFormat="mod_Scale_{}", in
         
         poc.result.position.positionY >> inAttrParent.attr(attrName)
 
+def connectTextureToTargetWeights(inTexture, inDeformerWeightAttr, inGeo):
+    #inDeformerWeightAttr for blendShape weights looks like : blendShape1.inputTarget[0].inputTargetGroup[0].targetWeights
+    
+    #assert inTexture validity
+    #assert cmds.attributeQuery("uvCoord", n=inTexture, ex=True), 
+    
+    #Example :
+    #createdNodes = connectTextureToTargetWeights("ramp1", "blendShape6.inputTarget[0].inputTargetGroup[0].targetWeights", "Left_Jacket_drv")
+
+    inGeoNode = tkc.getNode(inGeo)
+    pointCount = tkc.getPointsCount(inGeoNode)
+    
+    inGeoShape = inGeoNode
+    if inGeoNode.type() == "transform":
+        inGeoShape = inGeoNode.getShape()
+    
+    pointTag = "vtx"
+    
+    if inGeoShape.type() == "nurbsSurface":
+        pointTag = "cv"
+    
+    createdNodes = []
+    
+    for i in range(pointCount):
+        # duplicate the texture and connect everything to source, except "uvCoord"
+        pointTexture = pc.duplicate(inTexture, name=inTexture + "_point_{:03d}_{}".format(i, inGeoNode.stripNamespace()), inputConnections=True)[0]
+        createdNodes.append(pointTexture)
+        
+        for plug in cmds.listConnections(pointTexture + ".uvCoord", plugs=True):
+            cmds.disconnectAttr(plug, pointTexture + ".uvCoord")
+            
+        for plug in cmds.listConnections(pointTexture + ".uvFilterSize", plugs=True):
+            cmds.disconnectAttr(plug, pointTexture + ".uvFilterSize")
+        
+        # set "uvCoord" to the actual point coords
+        worldPos = cmds.pointPosition( inGeo + '.'+pointTag+'[{}]'.format(i), local=pointTag == "vtx")
+        #cmds.spaceLocator(name="loc_{:03d}".format(i), position=worldPos)
+        #closestInfo = tkc.closestPoint(inGeoNode, worldPos)
+        
+        closestNode = cmds.createNode("closestPointOnMesh" if pointTag == "vtx" else "closestPointOnSurface", name=inGeo + "_closestPoint")
+        cmds.connectAttr(inGeoShape.name() + (".worldMesh[0]" if pointTag == "vtx" else ".worldSpace[0]"), closestNode + (".inMesh" if pointTag == "vtx" else ".inputSurface"))
+        
+        cmds.setAttr(closestNode + ".inPositionX", worldPos[0])
+        cmds.setAttr(closestNode + ".inPositionY", worldPos[1])
+        cmds.setAttr(closestNode + ".inPositionZ", worldPos[2])
+        
+        closestInfo = {"u":cmds.getAttr(closestNode + ".parameterU"), "v":cmds.getAttr(closestNode + ".parameterV")}
+        cmds.delete(closestNode)
+        
+        floatConstantU = cmds.createNode("floatConstant", name=inTexture + "_point_{:03d}_{}_U".format(i, inGeoNode.stripNamespace()))
+        floatConstantV = cmds.createNode("floatConstant", name=inTexture + "_point_{:03d}_{}_V".format(i, inGeoNode.stripNamespace()))
+
+        cmds.setAttr(floatConstantU + ".inFloat", closestInfo['u'])
+        cmds.setAttr(floatConstantV + ".inFloat", closestInfo['v'])
+
+        cmds.connectAttr(floatConstantU + ".outFloat", pointTexture + ".uCoord")
+        cmds.connectAttr(floatConstantV + ".outFloat", pointTexture + ".vCoord")
+
+        #print("{:03d}".format(i), worldPos, (closestInfo['u'], closestInfo['v']))
+        # connect "colorR" to the Target weight
+        cmds.connectAttr(pointTexture + ".outColorR", inDeformerWeightAttr + "[{}]".format(i))
+        
+    return createdNodes
+
 def applyDeltas(inDeltaPath, inPath=None, inSkinFiles=None, inFunction=None):
     filePath = inPath
     deltaPath = inDeltaPath
@@ -4727,7 +4791,13 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
                 curParent = newParent
                 break
             else:
+                oldParent = curParent
                 curParent = hierarchyDict[curParent]['parent']
+                if isinstance(hierarchyDict[oldParent]['parent'], (list, tuple)):
+                    for parentName in hierarchyDict[oldParent]['parent']:
+                        parent = tkc.getNode((inNs or '') + (inPrefix or '') + parentName + (inSuffix or ''))
+                        if not parent is None:
+                            curParent = parentName
 
         tkLogger.debug((' -parent :', curParent))
         if not inDryRun:
@@ -5081,7 +5151,7 @@ def exportToUnrealAutoDetect(inNs="", inPath=None, inStart=None, inEnd=None, inR
     topNode = geometry_GRP.getParent()
     geoNode = geometry_GRP.getChildren()[0]
 
-    exportToUnreal(inNs=inNs, inPath=inPath, inStart=inStart, inEnd=inEnd, inRootName=inRootName,inCharName=topNode.name()[:-4], inGeoTopNode=geoNode.name(), inAddedTransforms=None, inCacheBS=False)
+    exportToUnreal(inNs=inNs, inPath=inPath, inStart=inStart, inEnd=inEnd, inRootName=inRootName,inCharName=topNode.name()[:-4], inGeoTopNode=geoNode.name(), inAddedTransforms=None, inCacheBS=True)
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
    ___                       ____                     
@@ -7830,6 +7900,7 @@ toggleInPlace("Left_Arm_ParamHolder.IkFk", 0.0, IK_To_FK, 1.0, FK_To_IK, ns)
 """
 
 def getWorldMat(inObj, inOffset=None):
+    #print("inOffset {} ({})".format(inOffset, type(inOffset)))
     if not inOffset is None:
         grp = pc.group(empty=True, parent=inObj)
         grp.t.set(inOffset[0])
@@ -8031,17 +8102,17 @@ def matchInPlace(inBlendAttrName, inBlendAttrValue, inMatchData, inNs=""):
                         exprComponents = tkExpressions.Expr.getTerms(matchRef)
                         for exprComponent in exprComponents:
                             if "." in exprComponent:
-                                #print " -exprComponent",exprComponent
+                                #print(" -exprComponent " + exprComponent)
                                 #Check if this component is really an attribute name (may be a floating point number)
                                 idx = exprComponent.index(".")
                                 if not ( (idx == 0 or exprComponent[idx-1].isdigit()) and
                                     (idx == len(exprComponent) + 1 or exprComponent[idx+1].isdigit())):
                                     matchRef = matchRef.replace(exprComponent, str(pc.getAttr(inNs + exprComponent)))
 
-                        #print " -MODIFIED matchRef",matchRef
-                        matchRef = None
+                        #print(" -MODIFIED matchRef" + matchRef)
+                        #matchRef = None
                         try:
-                            eval(matchRef)
+                            matchRef = eval(matchRef)
                         except:
                             pass
                     if not matchRef is None:
