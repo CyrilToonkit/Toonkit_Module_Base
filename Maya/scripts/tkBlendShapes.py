@@ -401,6 +401,10 @@ def matchPointPositionsFromInfluences(inRef, inTarget, inInfluences, inSkinGeome
 def cutBsFromInfluences(inRef, inTarget, inInfluences, inSkinGeometry=None):
     results = []
 
+    #Use specific "ref" geometry instead of the given one if it exists
+    if not inSkinGeometry is None and not inSkinGeometry.name().startswith(inRef.name()):
+        inSkinGeometry = pc.PyNode(inRef.name() + "_" + inSkinGeometry.name()) or inSkinGeometry
+
     for influence in inInfluences:
         infMesh = duplicateAndClean(inTarget.name(), "{0}_{1}".format(inRef.name(), str(influence.stripNamespace())))
         node = pc.PyNode(infMesh)
@@ -1046,3 +1050,496 @@ def updateScene(inTreshold=2.0):
             updateBs(mesh)
 
         pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+#Constants
+DEFAULT_SHORT_TRESHOLD = .15
+DEFAULT_MID_TRESHOLD = .3
+DEFAULT_WIDE_TRESHOLD = 1.3
+
+SHORT_TRESHOLD = DEFAULT_SHORT_TRESHOLD
+MID_TRESHOLD = DEFAULT_MID_TRESHOLD
+WIDE_TRESHOLD = DEFAULT_WIDE_TRESHOLD
+
+#Constants, functions needs to take strings and not nodes, just an example (from WRT)
+'''
+BS = [
+    {"source":"brow_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_browA"), tkc.getNode("L_browB"), tkc.getNode("L_browC"), tkc.getNode("L_browD"), tkc.getNode("L_browE")), tkc.getNode("L_browCut")), "outputs":[{},{},{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_browA"), tkc.getNode("R_browB"), tkc.getNode("R_browC"), tkc.getNode("R_browD"), tkc.getNode("R_browE")), tkc.getNode("R_browCut")), "outputs":[{},{},{},{},{}]},
+    ]},
+    {"source":"brow_In",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"brow_Out",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"brow_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_browA"), tkc.getNode("L_browB"), tkc.getNode("L_browC"), tkc.getNode("L_browD"), tkc.getNode("L_browE")), tkc.getNode("L_browCut")), "outputs":[{},{},{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_browA"), tkc.getNode("R_browB"), tkc.getNode("R_browC"), tkc.getNode("R_browD"), tkc.getNode("R_browE")), tkc.getNode("R_browCut")), "outputs":[{},{},{},{},{}]},
+    ]},
+
+    {"source":"cheekBone_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_cheekBoneA"), tkc.getNode("L_cheekBoneB"), tkc.getNode("L_cheekBoneC")), tkc.getNode("cheekBoneCut")), "outputs":[{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_cheekBoneA"), tkc.getNode("R_cheekBoneB"), tkc.getNode("R_cheekBoneC")), tkc.getNode("cheekBoneCut")), "outputs":[{},{},{}]},
+    ]},
+    {"source":"cheekBone_In",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheekBone_Out",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheekBone_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_cheekBoneA"), tkc.getNode("L_cheekBoneB"), tkc.getNode("L_cheekBoneC")), tkc.getNode("cheekBoneCut")), "outputs":[{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_cheekBoneA"), tkc.getNode("R_cheekBoneB"), tkc.getNode("R_cheekBoneC")), tkc.getNode("cheekBoneCut")), "outputs":[{},{},{}]},
+    ]},
+
+    {"source":"cheek_Bw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheek_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheek_Fw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheek_In",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheek_Out",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"cheek_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+
+    {"source":"chin_Dn" },
+    {"source":"chin_Up" },
+
+    {"source":"jawMuscle",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"jawSide_Lft" },
+    {"source":"jawSide_Rgt" },
+    {"source":"jaw_Bw" },
+    {"source":"jaw_Dn" }, 
+    {"source":"jaw_Fw" },
+    {"source":"jaw_Up" },
+
+    {"source":"lowerEyelid_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_eyeLidA"), tkc.getNode("L_eyeLidB"), tkc.getNode("L_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_eyeLidA"), tkc.getNode("R_eyeLidB"), tkc.getNode("R_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+    ]},
+    {"source":"lowerEyelid_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_eyeLidA"), tkc.getNode("L_eyeLidB"), tkc.getNode("L_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_eyeLidA"), tkc.getNode("R_eyeLidB"), tkc.getNode("R_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+    ]},
+    
+    {"source":"lowerLipCenter_Dn" },
+    {"source":"lowerLipCenter_Up" },
+
+    {"source":"lowerLipCorner_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipCorner_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipCurl_Bw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipCurl_Fw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipPuff_Bw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipPuff_Fw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipSide_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLipSide_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+
+    {"source":"lowerLip_Bw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    #{"source":"lowerLip_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"lowerLip_Fw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    #{"source":"lowerLip_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+
+    {"source":"mouthCorner_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"mouthCorner_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"mouthRot_Ng" },
+    {"source":"mouthRot_Ps" },
+    {"source":"mouthSide_Lft" },
+    {"source":"mouthSide_Rgt" },
+    {"source":"mouth_Dn" },
+    {"source":"mouth_In",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"mouth_Out",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"mouth_Up" },
+
+    {"source":"neck",      "function":(cutLeftRight, "$targetNode", "$sourceNode", WIDE_TRESHOLD), "outputs":[{},{}]},
+    {"source":"neckSide",      "function":(cutLeftRight, "$targetNode", "$sourceNode", WIDE_TRESHOLD), "outputs":[{},{}]},
+
+    {"source":"noseDilate_In",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"noseDilate_Out",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"nose_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"nose_In",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"nose_Out",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"nose_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+
+    {"source":"pinch",          "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_pinchA"), tkc.getNode("L_pinchB"), tkc.getNode("L_pinchC"), tkc.getNode("L_pinchD"), tkc.getNode("L_pinchE"), tkc.getNode("L_pinchF"), tkc.getNode("L_pinchG"), tkc.getNode("L_pinchH")), tkc.getNode("L_pinchCut")), "outputs":[{},{},{},{},{},{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_pinchA"), tkc.getNode("R_pinchB"), tkc.getNode("R_pinchC"), tkc.getNode("R_pinchD"), tkc.getNode("R_pinchE"), tkc.getNode("R_pinchF"), tkc.getNode("R_pinchG"), tkc.getNode("R_pinchH")), tkc.getNode("R_pinchCut")), "outputs":[{},{},{},{},{},{},{},{}]},
+    ]},
+
+    {"source":"snear_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+    {"source":"snear_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[{},{}]},
+
+    {"source":"upperEyelid_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_eyeLidA"), tkc.getNode("L_eyeLidB"), tkc.getNode("L_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_eyeLidA"), tkc.getNode("R_eyeLidB"), tkc.getNode("R_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+    ]},
+    {"source":"upperEyelid_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", SHORT_TRESHOLD), "outputs":[
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("L_eyeLidA"), tkc.getNode("L_eyeLidB"), tkc.getNode("L_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+        {"function":(cutBsFromInfluences, "$sourceNode", "$targetNode", (tkc.getNode("R_eyeLidA"), tkc.getNode("R_eyeLidB"), tkc.getNode("R_eyeLidC")), tkc.getNode("eyeLidCut")), "outputs":[{},{},{}]},
+    ]},
+
+    {"source":"upperLipCenter_Dn" },
+    {"source":"upperLipCenter_Up" },
+
+    {"source":"upperLipCorner_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipCorner_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipCurl_Bw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipCurl_Fw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipPuff_Bw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipPuff_Fw",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipSide_Dn",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+    {"source":"upperLipSide_Up",      "function":(cutLeftRight, "$targetNode", "$sourceNode", MID_TRESHOLD), "outputs":[{},{}]},
+]
+'''
+
+def addBS(inObjects=None, inBetweenName=None, inBetweenValue=0.5, inComboShapes=None, inComboValus=None):
+    tkc.storeSelection()
+    if inObjects is None:
+        inObjects = pc.selected()
+    else:
+        pc.select(inObjects)
+
+    inTarget = inObjects[-1]
+    blenshapes = inObjects[0:-1]
+    
+    ns = str(inTarget.namespace())
+    if ":" in ns:
+        ns = ns.replace(":", "")
+
+    rigParamsName = ns + ":" + ns + "_Root_RigParameters"
+    rigParams = None
+
+    if not pc.objExists(rigParamsName):
+        
+        hierarchy = [
+            {
+            "name"      :ns + ":Geometries",
+            "type"      :"locator",
+            "parent"    :ns+":"+ns,
+            "groups"    :[ns+":Hidden", ns+":Unselectable"],
+            },
+            {
+            "name"      :ns + ":" + ns + "_Root",
+            "type"      :"locator",
+            "parent"    :ns + ":Geometries",
+            "groups"    :[ns+":Hidden", ns+":Unselectable"],
+            },
+            {
+            "name"      :ns + ":" + ns + "_Root_RigParameters",
+            "type"      :"transform",
+            "parent"    :ns + ":" + ns + "_Root",
+            "groups"    :[ns+":Hidden", ns+":Unselectable"],
+            "attrs"     :[
+                    {"name":"tx", "type":"float", "value":None, "keyable":False},
+                    {"name":"ty", "type":"float", "value":None, "keyable":False},
+                    {"name":"tz", "type":"float", "value":None, "keyable":False},
+
+                    {"name":"rx", "type":"float", "value":None, "keyable":False},
+                    {"name":"ry", "type":"float", "value":None, "keyable":False},
+                    {"name":"rz", "type":"float", "value":None, "keyable":False},
+
+                    {"name":"sx", "type":"float", "value":None, "keyable":False},
+                    {"name":"sy", "type":"float", "value":None, "keyable":False},
+                    {"name":"sz", "type":"float", "value":None, "keyable":False},
+
+                    {"name":"visibility", "type":"bool", "value":False, "keyable":False},
+                    {"name":"inheritsTransform", "type":"bool", "value":False, "keyable":False},
+                ],
+            },
+        ]
+
+        hi = tkRig.buildHierarchy(hierarchy)
+        rigParams = hi[ns + ":" + ns + "_Root_RigParameters"]["node"]
+
+        pc.select(inObjects)
+    else:
+        rigParams = pc.PyNode(rigParamsName)
+
+    bsName = inTarget.name() + "_BS"
+    bsExists = pc.objExists(bsName)
+    bsNode = None
+    if not bsExists:
+
+        bsNode = pc.blendShape(name=bsName)[0]
+    else:
+        bsNode = pc.PyNode(bsName)
+
+    for blenshape in blenshapes:
+        if bsExists:
+            #Add target
+
+            if not inBetweenName is None:
+                #Find in between target
+                index = getBSIndexFromTarget(bsName, inBetweenName)
+                if index != None:
+                    pc.blendShape(bsNode, edit=True, ib=True, t=(inTarget.name(), index, blenshape, inBetweenValue))
+                else:
+                    pc.warning("Cant find index of target '{0}' on {1}".format(inBetweenName, bsName))
+            
+            elif not inComboShapes is None:
+                # ApplyPose
+                pc.setAttr(SHAPES_PARAM_FORMAT.format(rigParamsName, ns, inComboShapes[0]), inComboValus[0])
+                pc.setAttr(SHAPES_PARAM_FORMAT.format(rigParamsName, ns, inComboShapes[1]), inComboValus[1])
+                # Extract Deltas
+                print("extractDelta {} {}".format(inTarget, blenshape))
+                deltaMesh = tkc.getNode(pc.extractDeltas(s=inTarget.name(), c=blenshape.name()))
+                deltaMesh = deltaMesh.rename(inComboShapes[0]+"_"+inComboShapes[1]+"_Combo")
+                # ResetPose
+                pc.setAttr(SHAPES_PARAM_FORMAT.format(rigParamsName, ns, inComboShapes[0]), 0)
+                pc.setAttr(SHAPES_PARAM_FORMAT.format(rigParamsName, ns, inComboShapes[1]), 0)
+                #add Target
+                indices = bsNode.weightIndexList()
+                index = indices[-1] + 1 if len(indices) > 0 else 0
+                pc.blendShape(bsNode, edit=True, t=(inTarget.name(), index, deltaMesh, 1.0))
+
+                # Normalize pose 1 activator if reference value is not 1
+                poseAttr1 = SHAPES_PARAM_FORMAT.format(rigParamsName, ns, inComboShapes[0])
+                poseAttr1Norm = poseAttr1
+                if inComboValus[0] != 1:
+                    poseAttr1Norm = tkn.mul(poseAttr1, 1.0 / float(inComboValus[0]))
+
+                poseAttr2 = SHAPES_PARAM_FORMAT.format(rigParamsName, ns, inComboShapes[1])
+                poseAttr2Norm = poseAttr2
+                if inComboValus[1] != 1:
+                    poseAttr2Norm = tkn.mul(poseAttr2, 1.0/ float(inComboValus[1]))
+                
+                # Create Combinatory weight based on the maximum value of both activators
+                combi =  tkn.mul(tkn.clamp(poseAttr1Norm, inMin=0.0, inMax=poseAttr2Norm), -1)
+                combi >> bsNode.attr(deltaMesh.name())
+
+            else:
+                #Find existing shape index
+                index = getBSIndexFromTarget(bsName, blenshape)
+                if not index is None:
+                    shape = cmds.listRelatives(blenshape.name(), shapes=True, ni=True, path=True)[0]
+                    cmds.connectAttr(shape + ".worldMesh[0]", bsName + ".inputTarget[0].inputTargetGroup["+str(index)+"].inputTargetItem[6000].inputGeomTarget", force=True)
+                    cmds.disconnectAttr(shape + ".worldMesh[0]", bsName + ".inputTarget[0].inputTargetGroup["+str(index)+"].inputTargetItem[6000].inputGeomTarget")
+                else:
+                    #First available index
+                    indices = bsNode.weightIndexList()
+                    index = indices[-1] + 1 if len(indices) > 0 else 0
+                    pc.blendShape(bsNode, edit=True, t=(inTarget.name(), index, blenshape, 1.0))
+        
+        shapeShortName = str(blenshape.stripNamespace())
+
+        bsAttrName = shapeShortName
+
+        if bsAttrName.startswith("{0}__".format(inTarget.stripNamespace())):
+            bsAttrName = bsAttrName[len(inTarget.stripNamespace()) + 2:]
+
+        if bsAttrName.startswith("{0}_".format(inTarget.stripNamespace())):
+            bsAttrName = bsAttrName[len(inTarget.stripNamespace()) + 1:]
+
+        if inBetweenName is None and inComboShapes is None and not rigParams is None:
+            attrName = "{0}.{1}".format(rigParams.name(), ns + "_" + bsAttrName)
+            if not pc.objExists(attrName):
+                attrName = tkc.addParameter(rigParams, ns + "_" + bsAttrName)
+            
+            pc.PyNode(attrName) >> bsNode.attr(shapeShortName)
+
+    tkc.loadSelection()
+
+def bsOperations(inPreset, inTarget, inSource=None, inDryRun=False, inSkipCuts=False):
+    source = inPreset.get("source", inSource)
+    sourceNode = tkc.getNode(source)
+
+    target = inTarget
+    targetNode = tkc.getNode(target)
+
+    func = inPreset.get("function")
+
+    results = []
+
+    if not inSkipCuts and not func is None:
+        args = list(func[1:])
+
+        for i in range(len(args)):
+            if args[i] == "$target":
+                args[i] = target
+            elif args[i] == "$targetNode":
+                args[i] = targetNode
+            if args[i] == "$source":
+                args[i] = source
+            elif args[i] == "$sourceNode":
+                args[i] = sourceNode
+
+        outs = []
+        outsNumber = len(inPreset["outputs"])
+        
+        if inDryRun:
+            print("DRYRUN | {0}({1}) would have been called and returned {2} results".format(func[0].__name__, ",".join([str(args) for arg in args]), outsNumber))
+            outs = [targetNode] * outsNumber
+        else:
+            outs = func[0](*args)
+
+        for i in range(len(inPreset["outputs"])):
+            out = outs[i]
+            outPreset = inPreset["outputs"][i]
+
+            results.extend(tkc.getNodes(bsOperations(outPreset, inTarget, inSource=out, inDryRun=inDryRun)))
+    else:
+        return [tkc.getNode(source)]
+
+    return results
+
+INBETWEEN_PATTERN = r".*__((?:\d_\d+)|\d)"
+COMBO_PATTERN = r"(.*)__((?:\d_\d+)|\d)__(.*)__((?:\d_\d+)|\d)"
+def integrateBS(inPreset=[], inTargetsDict={}, inVerbose=False, inDryRun=False, inSkipCuts=False):
+    inTargetsDict = inTargetsDict or {}
+
+    finalTargets = {}
+    
+    gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+
+    pc.progressBar( gMainProgressBar,
+    edit=True,
+    beginProgress=True,
+    isInterruptable=True,
+    status="Integrate BS...",
+    maxValue=len(inPreset) + 1)
+
+    for bsPreset in inPreset:
+        source = bsPreset["source"]
+
+        foundAShape = False
+
+        targetCandidates = pc.ls(["*:*__{0}".format(source), "*__{0}".format(source)], transforms=True)
+
+        for targetCandidate in targetCandidates:
+            if targetCandidate.getShape() is None:
+                continue
+
+            if not targetCandidate.getShape().type() in ["mesh", "nurbsSurface"]:
+                continue
+
+            targetName = targetCandidate.name()[:-(len(source) + 2)]
+            targetNode = tkc.getNode(targetName, inConsiderNs=True)
+
+            if not targetNode is None:
+                target = targetNode.name()
+
+                if not target in finalTargets:
+                    finalTargets[target] = []
+                
+                foundAShape=True
+
+                bsThisPreset = bsPreset.copy()
+                bsThisPreset["source"] = targetCandidate.name()
+                meshes = bsOperations(bsThisPreset, target, inDryRun=inDryRun, inSkipCuts=inSkipCuts)
+
+                if len(meshes) > 0:
+                    finalTargets[target].extend(meshes)
+
+            else:
+                pc.warning("Can't find target mesh '{0}'".format(targetName))
+
+            #Autodetect inbetweens and combos
+            siblings = pc.ls(targetCandidate.name()+"__*", transforms=True)
+            
+            for sibling in siblings:
+                shortName = sibling.name()[len(targetName) + 2:]
+                if re.match(COMBO_PATTERN, shortName) or re.match(INBETWEEN_PATTERN, shortName):
+                    subPreset = bsPreset.copy()
+                    subPreset["source"] = sibling.name()
+
+                    meshes = bsOperations(subPreset, target, inDryRun=inDryRun, inSkipCuts=inSkipCuts)
+
+                    if len(meshes) > 0:
+                        finalTargets[target].extend(meshes)
+
+        if not foundAShape:
+            pc.warning("No targets found for shape '{0}'".format(source))
+
+        pc.progressBar(gMainProgressBar, edit=True, step=1)
+
+    for targetName, blendShapes in finalTargets.items():
+        target = pc.PyNode(targetName)
+
+        if inDryRun:
+            print("DRYRUN | target:{0}, shapes:{1}".format(targetName, blendShapes))
+            continue
+
+        renamings = {}
+
+        inBetweens = []
+        inCombos = []
+
+        realBlendShapes = []
+
+        for blendShape in blendShapes:
+            renamings[blendShape.name()] = blendShape
+
+            for origName, newName in inTargetsDict.items():
+                if origName in blendShape.name():
+                    blendShape.rename(blendShape.name().replace(origName, newName))
+                    break
+
+            #remove target prefix
+            blendShape.rename(blendShape.name().replace(str(target.stripNamespace()) + "__", ""))
+            inCombosMatch = re.match(COMBO_PATTERN, blendShape.name())
+            inBetweenMatch = re.match(INBETWEEN_PATTERN, blendShape.name())
+            
+            #Manage inBetweens
+            if inCombosMatch:
+                #print("inCombosMatch")
+                if inVerbose:
+                    print(" name " + blendShape.name())
+                activator1 = inCombosMatch.groups()[0] + blendShape.name()[inCombosMatch.end(4):]
+                activator2 = inCombosMatch.groups()[2] + blendShape.name()[inCombosMatch.end(4):]
+                value1 = eval(inCombosMatch.groups()[1].replace("_", "."))
+                value2 = eval(inCombosMatch.groups()[3].replace("_", "."))
+                if inVerbose:
+                    print(" Combo from Shape " + activator1 + " " + activator2)
+                    print(" values " + str(value1) + " " + str(value2))
+                inCombos.append((blendShape, activator1, activator2, value1, value2))
+            elif inBetweenMatch:
+                print("inBetweenMatch")
+                if inVerbose:
+                    print(" name" + blendShape.name())
+                refBsName = blendShape.name()[:inBetweenMatch.start(1)-2] + blendShape.name()[inBetweenMatch.end(1):]
+                if inVerbose:
+                    print(" refBs " + refBsName)
+                value = eval(inBetweenMatch.groups()[0].replace("_", "."))
+                if inVerbose:
+                    print(" value " + str(value))
+                    print("")
+                inBetweens.append((blendShape, refBsName, value))
+            else:
+                realBlendShapes.append(blendShape)
+
+        addBS(realBlendShapes + [target])
+
+        #Integrate inBetweens
+        for inBetween, inBetweenName, inBetweenValue in inBetweens:
+            addBS([inBetween, target], inBetweenName, inBetweenValue)
+
+        #Integrate combos
+        for inBlendShape, comboShape1, comboShape2, value1, value2 in inCombos:
+            addBS([inBlendShape, target], inComboShapes=(comboShape1, comboShape2), inComboValus=(value1, value2))
+
+        #Restore original names
+        for origName, mesh in renamings.items():
+            mesh.rename(origName)
+
+    pc.progressBar(gMainProgressBar, edit=True, step=1)
+    pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+#integrateBS call
+'''
+result = pc.promptDialog(
+        title="Threshold multiplier",
+        message="Left/Right cuts presets were set on Heimer, modify this multpiplier if needed",
+        text="1.0",
+        button=['OK', 'Cancel'],
+        defaultButton='OK',
+        cancelButton='Cancel',
+        dismissString='Cancel')
+if result == 'OK':
+    value = pc.promptDialog(query=True, text=True)
+
+    factor = None
+
+    try:
+        factor = float(value)
+    except:
+        pass
+
+    if not factor is None and factor > 0.0:
+        SHORT_TRESHOLD = DEFAULT_SHORT_TRESHOLD * factor
+        MID_TRESHOLD = DEFAULT_MID_TRESHOLD * factor
+        WIDE_TRESHOLD = DEFAULT_WIDE_TRESHOLD * factor
+
+        print("Using thresholds : {} {} {}".format(SHORT_TRESHOLD, MID_TRESHOLD, WIDE_TRESHOLD))
+        integrateBS(inPreset=BS, inSkipCuts=False)
+    else:
+        pc.warning("Can't read value '{0}' as valid float multiplier !. Aborting...")
+'''
