@@ -2851,7 +2851,7 @@ def jointsFromCurve(inCurve, inNbJoints=4, inSplineIK=False, inScl=False, inSqua
                 pc.addAttr(crvInfo, sn="stretch", dv=1.0)
             pc.setAttr(crvInfo.name() + ".restLength", length)
 
-            #factoir returns the current length in regard to rest length
+            #factor returns the current length in regard to rest length
             if not pc.attributeQuery("factor", node=crvInfo, exists=True):
                 pc.addAttr(crvInfo, sn="factor")
                 mulDiv = pc.shadingNode("multiplyDivide", asUtility=True, name=crvInfoName + "_MulDiv")
@@ -4735,7 +4735,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
             inForceInfluences = [inForceInfluences]
         for influenceName in inForceInfluences:
             influence = tkc.getNode(inNs + influenceName)
-            if not influence is None:
+            if not influence is None and not (influence in deformers):
                 deformers.append(influence)
 
     remainingdeformers = deformers[:]
@@ -4904,7 +4904,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
 
     return
 
-def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True, inCharName="charGroup", inGeoTopNode=None, inAddedTransforms=None, inCacheBS=True):
+def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True, inCharName="charGroup", inGeoTopNode=None, inAddedTransforms=None, inCacheBS=True, inEulerFilter=True):
     inRoot = tkc.getNode(inRoot)
     allObjs = [inRoot] if inRoot.type() == "joint" else []
     allObjs.extend(tkc.getChildren(inRoot, True, False, False))
@@ -4951,6 +4951,17 @@ def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True,
         removeBakedAttributeFromLayer=False, removeBakedAnimFromLayer=False, bakeOnOverrideLayer=False, minimizeRotation=False, controlPoints=False, shape=False)
 
     pc.cycleCheck(e=1)
+
+    if inEulerFilter: 
+        title0 = "Filtering {} objects".format(len(skeleton + addedTransforms))
+        tkc.startTimer(title0)
+        curves = pc.listConnections(skeleton + addedTransforms, source=True, destination=False, type="animCurveTA")
+        title = "Filtering {} curves".format(len(curves))
+        tkc.startTimer(title)
+        if len(curves) > 0:
+            pc.filterCurve(curves)
+        tkc.stopTimer(title, inLog=True)
+        tkc.stopTimer(title0, inLog=True)
 
     if inClean:
         geoTopNode = None
@@ -6818,10 +6829,10 @@ def getGeometries(inModel):
     children = []
 
     if geoNullName == None:
-        children = pc.ls(tkc.stripMockNamespace(inModel + ":*"), type="mesh")
+        children = pc.ls(tkc.stripMockNamespace(inModel + ":*"), type=["mesh", "nurbsCurve"])
     else:
         geoNull = pc.PyNode(geoNullName)
-        children = pc.listRelatives( geoNull, allDescendents=True, type="mesh" )
+        children = pc.listRelatives( geoNull, allDescendents=True, type=["mesh", "nurbsCurve"])
     
     refMeshesT = []
     for mesh in children:
@@ -6839,8 +6850,9 @@ def smooth(inModel, inSubdiv):
         for geo in ctrls:
             shapes = geo.getShapes()
             for shape in shapes:
-                shape.displaySmoothMesh.set(2)
-                shape.smoothLevel.set(0)
+                if(shape.type() == "mesh"):
+                    shape.displaySmoothMesh.set(2)
+                    shape.smoothLevel.set(0)
 
     pc.undoInfo(closeChunk=True)
 
