@@ -31,7 +31,7 @@ VERSIONINFO = "1.0.0.0"
 
 class JointsFromCurve(Tool):
     def __init__(self, inContext=None, inDebug=False):
-        super(JointsFromCurve, self).__init__(inName="Joints from curve", inDescription="Create a certain number of joints on a curve and add envenutally add splineIk, clusters, stretching...",
+        super(JointsFromCurve, self).__init__(inName="Joints from curve", inDescription="Create a certain number of joints on a curve and add evenutally add splineIk, clusters, stretching...",
             inUsage="Select a curve and run", inVersion=VERSIONINFO, inContext=inContext, inDebug=inDebug, inOptions=None)
 
         self.options = Options(inPath=self.getOptionsPath())
