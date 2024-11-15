@@ -319,7 +319,7 @@ def setColors(inSwitch=False):
 
     notFound = []
     for shd_color, meshes in PREVIZ_COLORS.items():
-        #print shd_color, meshes
+        #print(shd_color, meshes)
         for mesh in meshes:
             mc.progressBar(gMainProgressBar, edit=True, step=1)
 

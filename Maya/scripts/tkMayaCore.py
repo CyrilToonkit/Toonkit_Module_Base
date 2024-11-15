@@ -4534,13 +4534,15 @@ def getSkinCluster(inObject):
     skins = pc.listHistory(inObject, type="skinCluster", levels=3)
 
     for skin in skins:
-        if skin.getGeometry()[0].getParent() == inObject:
+        geo = skin.getGeometry()[0]
+        if geo == inObject or geo.getParent() == inObject:
             return skin
 
     skins = pc.listHistory(inObject, type="skinCluster")
 
     for skin in skins:
-        if skin.getGeometry()[0].getParent() == inObject:
+        geo = skin.getGeometry()[0]
+        if geo == inObject or skin.getGeometry()[0].getParent() == inObject:
             return skin
 
     return None
@@ -7276,7 +7278,7 @@ def applySpreadDeform(inCurve, inRefCurve, inRefParent, inEnv=1.0):
     #Get Orig shape before skinCluster
     skin = skins[0]
 
-	# Python37 compatibility:
+    # Python37 compatibility:
     orig = pc.listConnections(skin, type="nurbsCurve", plugs=True, destination=False)
     if orig == []:
         grp = pc.listConnections(skin, type="groupParts", destination=False)
