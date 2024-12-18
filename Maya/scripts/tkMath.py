@@ -41,9 +41,11 @@ def hermiteInterp(x0, y0, x1, y1, x):
     lin = linearInterp(x0, y0, x1, y1, x)
     return -2 * pow(lin,3) + 3 * pow(lin,2)
 
-def normalize(*inLists, inUnits=1.0):
+def normalize(*inLists, **kwargs):
     """Normalize a single vector with itself, or multiple lists versus one another"""
     #Flat case (vectortype)
+    inUnits = kwargs.get("inUnits", 1.0)
+
     if len(inLists) == 1:
         total = 0
         for item in inLists[0]:

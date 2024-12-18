@@ -30,9 +30,11 @@ except:
         try:
             import shiboken2 as shiboken
         except:
-            raise Exception('Failed to import sip or shiboken')
+            try:
+                import shiboken6 as shiboken
+            except:
+                raise Exception('Failed to import sip or shiboken')
         
-    
 # Instance handling
 def wrap_instance(ptr, base):
     '''Return QtGui object instance based on pointer address

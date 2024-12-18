@@ -744,12 +744,22 @@ class OverlayWidget(QtWidgets.QWidget):
     
     def set_default_background_color(self):
         palette = self.parent().palette()
-        color = palette.color(palette.Background)
+        try:
+            colorGroup = palette.Background
+        except:
+            colorGroup = QtGui.QPalette.Base
+
+        color = palette.color(colorGroup)
         self.set_overlay_background(color)
         
     def set_overlay_background(self, color=QtGui.QColor(20, 20, 20, 90)):
         palette = QtGui.QPalette(self.parent().palette())
-        palette.setColor(palette.Background, color)
+        try:
+            colorGroup = palette.Background
+        except:
+            colorGroup = QtGui.QPalette.Base
+
+        palette.setColor(colorGroup, color)
         self.setPalette(palette)        
         self.setAutoFillBackground(True)
 
@@ -1316,8 +1326,13 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
 
             # use the GL widget for viewing
             self.setViewport(gl_widget)
-            
-        self.setResizeAnchor( self.AnchorViewCenter ) 
+        
+        try:
+            AnchorViewCenter = self.AnchorViewCenter
+        except:
+            AnchorViewCenter = QtWidgets.QGraphicsView.AnchorViewCenter
+
+        self.setResizeAnchor( AnchorViewCenter ) 
     
 #        # Set selection mode
 #        self.setRubberBandSelectionMode(QtCore.Qt.IntersectsItemBoundingRect)
@@ -1802,7 +1817,12 @@ class DefaultPolygon(QtWidgets.QGraphicsObject):
         '''itemChange update behavior
         '''
         # Catch position update
-        if change == self.ItemPositionChange:
+        try:
+            ItemPositionChange = self.ItemPositionChange
+        except:
+            ItemPositionChange = QtWidgets.QGraphicsObject.ItemPositionChange
+
+        if change == ItemPositionChange:
             # Force scene update to prevent "ghosts"
             # (ghost happen when the previous polygon is out of the new bounding rect when updating)
             if self.scene():
@@ -1849,9 +1869,23 @@ class PointHandle(DefaultPolygon):
         
         
         # Make movable
-        self.setFlag(self.ItemIsMovable)
-        self.setFlag(self.ItemSendsScenePositionChanges)
-        self.setFlag(self.ItemIgnoresTransformations)
+        try:
+            ItemIsMovable = self.ItemIsMovable
+        except:
+            ItemIsMovable = QtWidgets.QGraphicsObject.ItemIsMovable
+        self.setFlag(ItemIsMovable, True)
+
+        try:
+            ItemSendsScenePositionChanges = self.ItemSendsScenePositionChanges
+        except:
+            ItemSendsScenePositionChanges = QtWidgets.QGraphicsObject.ItemSendsScenePositionChanges
+        self.setFlag(ItemSendsScenePositionChanges, True)
+
+        try:
+            ItemIgnoresTransformations = self.ItemIgnoresTransformations
+        except:
+            ItemIgnoresTransformations = QtWidgets.QGraphicsObject.ItemIgnoresTransformations
+        self.setFlag(ItemIgnoresTransformations, True)
 
         # Set values
         self.setPos(x, y)
@@ -2123,7 +2157,12 @@ class PointHandleIndex(QtWidgets.QGraphicsSimpleTextItem):
         self.set_size()
         self.set_color(PointHandleIndex.__DEFAULT_COLOR__)
         self.setPos(QtCore.QPointF(-9,-14))
-        self.setFlag(self.ItemIgnoresTransformations)
+
+        try:
+            ItemIgnoresTransformations = self.ItemIgnoresTransformations
+        except:
+            ItemIgnoresTransformations = QtWidgets.QGraphicsObject.ItemIgnoresTransformations
+        self.setFlag(ItemIgnoresTransformations)
         
         # Hide by default
         self.setVisible(False)
@@ -2240,8 +2279,17 @@ class PickerItem(DefaultPolygon):
         
         # Make item movable
         if __EDIT_MODE__.get():
-            self.setFlag(self.ItemIsMovable)
-            self.setFlag(self.ItemSendsScenePositionChanges)
+            try:
+                ItemIsMovable = self.ItemIsMovable
+            except:
+                ItemIsMovable = QtWidgets.QGraphicsObject.ItemIsMovable
+            self.setFlag(ItemIsMovable)
+
+            try:
+                ItemSendsScenePositionChanges = self.ItemSendsScenePositionChanges
+            except:
+                ItemSendsScenePositionChanges = QtWidgets.QGraphicsObject.ItemSendsScenePositionChanges
+            self.setFlag(ItemSendsScenePositionChanges)
         
         # Default vars
         self.namespace = namespace
