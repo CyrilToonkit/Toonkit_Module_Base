@@ -1104,10 +1104,10 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
     root.v.set(False)
 
     if inRecut:
-        for object, shapes in inShapeConversions.iteritems():
+        for object, shapes in inShapeConversions.items():
             newDict = {}
             orphans = []
-            for poseName, poseData in shapes.iteritems():
+            for poseName, poseData in shapes.items():
                 if "Right" in poseName:
                     if poseName in orphans:
                         orphans.remove(poseName)
@@ -1130,7 +1130,7 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
 
             inShapeConversions[object] = newDict
 
-    for object, shapes in inShapeConversions.iteritems():
+    for object, shapes in inShapeConversions.items():
 
         origName = object
         if not pc.objExists(object):
@@ -1170,7 +1170,7 @@ def storeShapeConversions(inShapeConversions, inShapeAliases=None, inName="TK_SH
                         bsAttrs.append(bsAttr)
 
         objectRoot = pc.group(empty=True, parent=root, name="{0}_{1}".format(object, inName))
-        for poseName, poseData in shapes.iteritems():
+        for poseName, poseData in shapes.items():
 
             poseNames = [poseName]
             poseDatas = [poseData]
@@ -1614,7 +1614,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
 
         postSmooths = {}
         if not inPostSmooths is None:
-            for mesh, deformers in inPostSmooths.iteritems():
+            for mesh, deformers in inPostSmooths.items():
                 if pc.objExists(mesh):
                     meshNode = pc.PyNode(mesh)
                     postSmooths[meshNode] = tkc.getInfluencedPoints(meshNode, deformers)
@@ -1632,14 +1632,14 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
         status="Replacing deformers",
         maxValue=len(skinningReplacements))
 
-        for newDef, oldDefs in skinningReplacements.iteritems():
+        for newDef, oldDefs in skinningReplacements.items():
             pc.progressBar(gMainProgressBar, edit=True, step=1)
             print ("replaceDeformers",oldDefs,newDef,meshSkins)
             tkc.replaceDeformers(oldDefs, tkc.getNode(newDef), inSkins=meshSkins)
 
         pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
 
-        for mesh, points in postSmooths.iteritems():
+        for mesh, points in postSmooths.items():
             pc.select(points)
             for i in range(inPostSmoothGrows):
                 pc.mel.eval("GrowPolygonSelectionRegion")
@@ -1666,12 +1666,12 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
         root = pc.group(empty=True, name=TerriblyArbitraryTmpName)
         inRootParent.addChild(root)
 
-    for control, jointData in controlsToMove.iteritems():
+    for control, jointData in controlsToMove.items():
         joint, meshesData = jointData
 
         surfaceMesh = None
         #Find the good mesh to connect the moved controls to
-        for mesh, meshData in meshesData.iteritems():
+        for mesh, meshData in meshesData.items():
             if "under" in mesh.name() and pc.polyEvaluate(mesh, vertex=True) == nVertsNewSkinCluster:
                 surfaceMesh = mesh
 
@@ -1684,7 +1684,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
         #Add source transforms in neededTransforms
         neededTransforms.extend(list(set(controller.listHistory(type="transform") + controller.getShape().listHistory(type="transform"))))
 
-        for mesh, weights in meshesData.iteritems():
+        for mesh, weights in meshesData.items():
             if not mesh in addSkinData:
                 addSkinData[mesh] = [[deformer], [weights]]
             else:
@@ -1692,7 +1692,7 @@ def convertToBlendShapes(inShapeConversions, inNodesToRemove, inDefaultReskin, i
                 addSkinData[mesh][1].append(weights)
 
     
-    for mesh, jointData in addSkinData.iteritems():
+    for mesh, jointData in addSkinData.items():
         if pc.polyEvaluate(mesh, vertex=True) == nVertsNewSkinCluster:
             tkc.addWeights(newSkinCluster, jointData[0], jointData[1])
             break

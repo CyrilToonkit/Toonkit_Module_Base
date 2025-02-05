@@ -108,7 +108,7 @@ def setWeightsMap(inObj, inAttrName, inRefObjects=None, inMode=0, inSetter=0, in
                 if not node.getParent() == obj:
                     continue
 
-                for index, value in allOpacities[dagIndex].iteritems():
+                for index, value in allOpacities[dagIndex].items():
                     components.append(index)
                     opacities.append(value)
         else:

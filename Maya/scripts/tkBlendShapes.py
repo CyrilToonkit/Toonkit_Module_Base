@@ -999,7 +999,7 @@ def updateScene(inTreshold=2.0):
 
     nRebuilds = 0
 
-    for poseName, meshList in correctives.iteritems():
+    for poseName, meshList in correctives.items():
         for mesh in meshList:
             nRebuilds += 1
             if not mesh in meshes:
@@ -1034,7 +1034,7 @@ def updateScene(inTreshold=2.0):
         print ("Rebuild correctives")
         for mesh in meshes:
             refMeshName = MESH_REF_NAME.format(mesh)
-            for poseName, meshList in correctives.iteritems():
+            for poseName, meshList in correctives.items():
                 if mesh in meshList:
                     editMeshName = EDIT_MESH_NAME.format(mesh, poseName)
                     print (" - Rebuild " + editMeshName)

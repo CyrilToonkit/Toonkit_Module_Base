@@ -238,7 +238,7 @@ class ToonkitMayaCore(Tool):
 
 
         savedOption = Options(inPath=self.getOptionsPath())
-        for key, value in savedOption.iteritems():
+        for key, value in savedOption.items():
             if key in self.options.keys():
                 tkLogger.debug("The option '" +key+ "' already exists, his value is set to " + str(value))
                 self.options[key] = value

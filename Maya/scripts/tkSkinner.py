@@ -100,19 +100,20 @@ def getSoftSelection (opacityMult=1.0):
             continue
         
         compOpacities = {}
-        compFn = OpenMaya.MFnSingleIndexedComponent(shapeComp)
-        try:
-            # get the secret hidden opacity value for each component (vert, cv, etc)
-            for i in xrange(compFn.elementCount()):
-                weight = compFn.weight(i)
-                compOpacities[compFn.element(i)] = weight.influence() * opacityMult
-        except Exception as e:
-            print (e.__str__())
-            print ('Soft selection appears invalid, skipping for shape "%s".' % shapeDag.partialPathName())
+        if(shapeComp.hasFn(OpenMaya.MFn.kSingleIndexedComponent)):
+            compFn = OpenMaya.MFnSingleIndexedComponent(shapeComp)
+            try:
+                # get the secret hidden opacity value for each component (vert, cv, etc)
+                for i in xrange(compFn.elementCount()):
+                    weight = compFn.weight(i)
+                    compOpacities[compFn.element(i)] = weight.influence() * opacityMult
+            except Exception as e:
+                print (e.__str__())
+                print ('Soft selection appears invalid, skipping for shape "%s".' % shapeDag.partialPathName())
 
-        allDags.append(shapeDag)
-        allComps.append(shapeComp)
-        allOpacities.append(compOpacities)
+            allDags.append(shapeDag)
+            allComps.append(shapeComp)
+            allOpacities.append(compOpacities)
         
     if UI["debug"]:
         tkc.stopTimer("getSoftSelection", inLog=True)
@@ -159,7 +160,7 @@ def getSkinInfo(inObjects=None):
             if len(allOpacities) > 0:
                 for dagIndex in range(len(allOpacities)):
                     node = pc.PyNode(allDags[dagIndex].partialPathName())
-                    for index, value in allOpacities[dagIndex].iteritems():
+                    for index, value in allOpacities[dagIndex].items():
                         rawSelObj = node.vtx[index]
                         SEL["comps"].append(rawSelObj)
                         OPACITIES[str(rawSelObj)] = value
@@ -198,7 +199,7 @@ def getSkinInfo(inObjects=None):
         if UI["debug"]:
             elapsed = tkc.stopTimer("getSkinInfo")
             print ("getSkinInfo took {0:.5f} s (no points selected)".format(elapsed))
-            for timer, elapsed in timers.iteritems():
+            for timer, elapsed in timers.items():
                 tkc.stopTimer(timer, inReset=True)
 
         progressEnd()
@@ -289,7 +290,7 @@ def getSkinInfo(inObjects=None):
         lenComps = len(SEL["comps"])
         print ("getSkinInfo took {0:.3f} s for {1} points ({2:.2f} ms / point)".format(elapsed, lenComps, (elapsed * 1000.0)/lenComps))
         
-        for timer, elapsed in timers.iteritems():
+        for timer, elapsed in timers.items():
             print ("  - {0} took {1:.3f} s".format(timer, elapsed))
             tkc.stopTimer(timer, inReset=True)
 

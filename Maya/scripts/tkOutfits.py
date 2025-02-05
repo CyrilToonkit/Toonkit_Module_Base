@@ -534,7 +534,7 @@ def getIncludedObjects(in_nAsset, inOutfits=None):
     cases = []
 
     if inOutfits !=None:
-        for outfit,current in inOutfits.iteritems():
+        for outfit,current in inOutfits.items():
             cases.append("tk_"+outfit+"_is_"+current)
     else:
         for outfit in outfits.keys():
@@ -886,7 +886,7 @@ def removeOutfits(in_nAsset):
 
         pc.delete(outfitsProperty)
 
-        for attr, attrValue in storedValues.iteritems():
+        for attr, attrValue in storedValues.items():
             try:
                 attr.set(attrValue)
                 attr.lock()
@@ -1211,7 +1211,7 @@ def cleanCurrent(in_nAsset, asBatch=False, alternateRoots=None):
                                 geoObj.rename(geoObj.name().replace("_"+preset, ""))
 
         if len(toRename) > 0:
-            renamedObjs = ["{0} => {1}".format(key, value) for key, value in toRename.iteritems()]
+            renamedObjs = ["{0} => {1}".format(key, value) for key, value in toRename.items()]
             pc.warning("{0} objects were containing outift name and were renamed :\n{1}".format(len(toRename), "\n".join(renamedObjs)))
 
         #rename outfit specific materials if possible
@@ -1488,7 +1488,7 @@ def rebuildLayersClick(*args):
 
         presets = getPresets(TOPNODE)
         if len(presets) > 0:
-            for preset, outfits in presets.iteritems():
+            for preset, outfits in presets.items():
                 objs = getIncludedObjects(TOPNODE, outfits)
 
                 newLayer = pc.createRenderLayer(name=TOPNODE.namespace()+"layer_"+preset, makeCurrent=True, empty=True)

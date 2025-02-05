@@ -2613,7 +2613,7 @@ global proc dagMenuProc(string $parent, string $object)
 		    createSelectMenuItems($parent, $object, $defaultObject);
 
 		    print "import tkContextMenu";
-			string $PyCmd = "import tkContextMenu\nreload(tkContextMenu)\ntkContextMenu.add_items('"+$parent + "','" + $object +  "')";
+			string $PyCmd = "import tkContextMenu\ntkContextMenu.add_items('"+$parent + "','" + $object +  "')";
 			python($PyCmd);
 
 		    menuItem -d true;
