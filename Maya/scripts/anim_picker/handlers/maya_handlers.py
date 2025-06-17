@@ -174,3 +174,5 @@ class SelectionCheck():
         return self.sel.hasItem(node)
         
         
+def clearSelection():
+    cmds.select(clear=True)

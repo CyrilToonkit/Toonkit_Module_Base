@@ -1352,6 +1352,16 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         self.background_image_path = None
 
         self.custom_colors = None
+
+        self._isSelecting = False
+        self._lastPos = QtCore.QPointF(0, 0)
+        self._selRect = None
+
+        self._isDragging = False
+        self._isRightClicked = False
+        self._dragPath = None
+        self._dragPathItem = None
+
         
     def get_center_pos(self):
         return self.mapToScene(QtCore.QPoint(self.width()/2, self.height()/2))
@@ -1359,6 +1369,27 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
     def mousePressEvent(self, event):
         '''Overload to clear selection on empty area
         '''
+        if event.buttons() == QtCore.Qt.LeftButton:
+            
+            if not self.isOverActionItem():                
+
+                if self._selRect in self.scene().items():
+                    self.scene().removeItem(self._selRect)
+
+                self._isSelecting = True
+                self._lastPos = self.mapToScene(event.pos())
+                
+                self._selRect = QtWidgets.QGraphicsRectItem(self._lastPos.x(), self._lastPos.y(), 1, 1)
+                brush = QtGui.QBrush(QtGui.QColor(85,228,255,100))
+                pen = QtGui.QPen(QtCore.Qt.cyan)
+                self._selRect.setBrush(brush)
+                self._selRect.setPen(pen)
+
+                self._selRect.setZValue(10)
+                self.scene().addItem(self._selRect)
+
+
+
         QtWidgets.QGraphicsView.mousePressEvent(self, event)
         if event.buttons() == QtCore.Qt.LeftButton:
             scene_pos = self.mapToScene(event.pos())
@@ -1374,12 +1405,63 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         elif event.buttons() == QtCore.Qt.MidButton:
             self.pan_active = True
             self.scene_mouse_origin = self.mapToScene(event.pos())
+
+        elif event.buttons() == QtCore.Qt.RightButton:
+            self._isRightClicked = True
+
+            if self._dragPathItem in self.scene().items():
+                self.scene().removeItem(self._dragPathItem)
+
+            self._dragPath = QtGui.QPainterPath(self.mapToScene(event.pos()))
+            self._dragPathItem = QtWidgets.QGraphicsPathItem(self._dragPath)
+            self._dragPathItem.setZValue(10)
+            self._dragPathItem.setPen(QtGui.QPen(QtCore.Qt.cyan, 4))
+            self.scene().addItem(self._dragPathItem)
+            self._lastDragPos = self.mapToScene(event.pos())
+
             
 #        # Rubber band selection support
 #        self.scene_mouse_origin = self.mapToScene(event.pos())
 #        self.drag_active = True            
     
+    def isOverActionItem(self):
+        for item in self.scene().items():
+            if not isinstance(item, PickerItem):
+                continue
+                
+            if not item.get_custom_action_mode(): # Buttons on the side
+                continue
+
+            if item.isUnderMouse():
+                return True
+
+        return False
+
     def mouseMoveEvent(self, event):
+        pos = self.mapToScene(event.pos())
+        if self._isSelecting:
+            x = min(self._lastPos.x(), pos.x())
+            y = min(self._lastPos.y(), pos.y())
+            w = abs(self._lastPos.x() - pos.x())
+            h = abs(self._lastPos.y() - pos.y())
+            rect = QtCore.QRectF(x, y, w, h)
+            self._selRect.setRect(rect)
+            return
+        
+
+        if self._isRightClicked:
+            
+            self._isDragging = True
+            # self.selectItemUnderMouse(event)
+            self._dragline = QtWidgets.QGraphicsLineItem()
+            self._dragline.setLine(self._lastDragPos.x(), self._lastDragPos.y(), pos.x(), pos.y())
+            self.selectItemsUnderLine(event)
+
+            self._dragPath.lineTo(pos)
+            self._dragPathItem.setPath(self._dragPath)
+            self._lastDragPos = pos
+            return
+
         result = QtWidgets.QGraphicsView.mouseMoveEvent(self, event)
         
         if self.pan_active:
@@ -1393,6 +1475,21 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         
         
     def mouseReleaseEvent(self, event):
+        if self._isSelecting:
+            self._isSelecting = False
+            self.scene().removeItem(self._selRect)
+            self.selectItemInSelection(event)
+
+        if event.button() == QtCore.Qt.RightButton:
+            self._isRightClicked = False
+            self.scene().removeItem(self._dragPathItem)
+            if not self._isDragging:
+                self.openContext(event)
+            else:
+                self._isDragging = False
+                # self.selectItemInDrag(event)
+                return
+        
         result = QtWidgets.QGraphicsView.mouseReleaseEvent(self, event)
 
 #        # Area selection
@@ -1428,6 +1525,59 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
     
         return result
     
+
+    def selectItemsUnderLine(self, event):
+        for item in self.scene().items():
+            if not isinstance(item, PickerItem):
+                continue
+                
+            if item.get_custom_action_mode(): # Buttons on the side
+                continue
+
+            if self._dragline.collidesWithItem(item):
+                pressEvent = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, event.pos(), event.pos(), QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier)
+                item.mousePressEvent(pressEvent)
+
+
+
+    def selectItemInDrag(self, event):
+        for item in self.scene().items():
+            if not isinstance(item, PickerItem):
+                continue
+                
+            if item.get_custom_action_mode(): # Buttons on the side
+                continue
+
+            if item.collidesWithPath(self._dragPath):
+                pressEvent = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, event.pos(), event.pos(), QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier)
+                item.mousePressEvent(pressEvent)
+
+    def selectItemUnderMouse(self, event):
+        for item in self.scene().items():
+            if not isinstance(item, PickerItem):
+                continue
+                
+            if item.get_custom_action_mode(): # Buttons on the side
+                continue
+
+            if item.isUnderMouse():
+                pressEvent = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, event.pos(), event.pos(), QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier)
+                item.mousePressEvent(pressEvent)
+
+    def selectItemInSelection(self, event):
+        if event.modifiers() != QtCore.Qt.ShiftModifier:
+            maya_handlers.clearSelection()
+        for item in self.scene().items():
+            if not isinstance(item, PickerItem):
+                continue
+                
+            if item.get_custom_action_mode(): # Buttons on the side
+                continue
+
+            if self._selRect.collidesWithItem(item):
+                pressEvent = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, event.pos(), event.pos(), QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier)
+                item.mousePressEvent(pressEvent)
+
     def wheelEvent(self, event):
         '''Wheel event overload to add zoom support
         '''
@@ -1450,7 +1600,7 @@ class GraphicViewWidget(QtWidgets.QGraphicsView):
         self.scale(factor, factor)
         self.centerOn(center)
         
-    def contextMenuEvent(self, event):
+    def openContext(self, event):
         '''Right click menu options
         '''
         # Item area
@@ -2436,7 +2586,12 @@ class PickerItem(DefaultPolygon):
             text = '\n'.join(self.get_controls())
             self.setToolTip(text)
         DefaultPolygon.hoverEnterEvent(self, event)
-    
+        
+        return
+        if event.modifiers() == QtCore.Qt.ShiftModifier:
+            self.mousePressEvent(QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, event.pos(), event.pos(), QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, event.modifiers()))
+
+
     def mousePressEvent(self, event):
         '''Event called on mouse press
         '''
@@ -2445,13 +2600,14 @@ class PickerItem(DefaultPolygon):
             return DefaultPolygon.mousePressEvent(self, event)
 
         # Run selection on left mouse button event
-        if event.buttons() == QtCore.Qt.LeftButton:
+        if event.button() == QtCore.Qt.LeftButton:
             # Run custom script action
             if self.get_custom_action_mode():
                 self.mouse_press_custom_action(event)
             # Run default selection action
             else:
                 self.mouse_press_select_event(event)
+        
             
         # Set focus to maya window
         maya_window = qt_handlers.get_maya_window()
