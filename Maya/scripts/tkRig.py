@@ -4904,7 +4904,7 @@ def makeShadowRig(  inHierarchy = {}, inNs = '', inParentName = None, inPrefix =
 
     return
 
-def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True, inCharName="charGroup", inGeoTopNode=None, inAddedTransforms=None, inCacheBS=True, inEulerFilter=True):
+def bakeShadowRig(inRoot, inStart=None, inEnd=None, inMeshes=None, inClean=True, inCharName="charGroup",inGeoTopNode=None, inAddedTransforms=None, inCacheBS=True, inEulerFilter=True):
     inRoot = tkc.getNode(inRoot)
     allObjs = [inRoot] if inRoot.type() == "joint" else []
     allObjs.extend(tkc.getChildren(inRoot, True, False, False))

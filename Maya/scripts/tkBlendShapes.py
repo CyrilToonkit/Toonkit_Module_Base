@@ -402,17 +402,23 @@ def cutBsFromInfluences(inRef, inTarget, inInfluences, inSkinGeometry=None):
     results = []
 
     #Use specific "ref" geometry instead of the given one if it exists
-    if not inSkinGeometry is None and not inSkinGeometry.name().startswith(inRef.name()):
-        inSkinGeometry = pc.PyNode(inRef.name() + "_" + inSkinGeometry.name()) or inSkinGeometry
+    refShortName = inRef.stripNamespace().split("__")[0]
+    if not inSkinGeometry is None and not inSkinGeometry.name().startswith(refShortName):
+        
+        inSkinGeometry = tkc.getNode(refShortName + "_" + inSkinGeometry.name()) or inSkinGeometry
+        #print("Spec geo: {} {}".format(refShortName + "_" + inSkinGeometry.name(), inSkinGeometry))
 
     for influence in inInfluences:
         infMesh = duplicateAndClean(inTarget.name(), "{0}_{1}".format(inRef.name(), str(influence.stripNamespace())))
         node = pc.PyNode(infMesh)
         results.append(node)
 
+        #print("FromInf : {} {} {} {}".format(inRef, node, influence, inSkinGeometry))
+
         matchPointPositionsFromInfluences(inRef, node, influence, inSkinGeometry=inSkinGeometry)
 
     return results
+
 #cutLeftRight(pc.selected()[0], pc.selected()[1], 2.0)
 def cutLeftRight(inRef, inTarget, treshold=2.0):
     if mc.objExists(inTarget.name() + "_Left"):
@@ -1511,6 +1517,39 @@ def integrateBS(inPreset=[], inTargetsDict={}, inVerbose=False, inDryRun=False, 
             mesh.rename(origName)
 
     pc.progressBar(gMainProgressBar, edit=True, step=1)
+    pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
+def buildBSScene(inPreset=[], inSourceObjs=None, inOffset=[20.0, 0.0, 0.0]):
+    """TODO : cuts ?"""
+    if inSourceObjs is None:
+        inSourceObjs = [n.name() for n in pc.ls(sl=True)]
+
+    gMainProgressBar = pc.mel.eval('$tmp = $gMainProgressBar')
+    pc.progressBar( gMainProgressBar,
+    edit=True,
+    beginProgress=True,
+    isInterruptable=True,
+    status="Build BS scene",
+    maxValue=len(inPreset) * len(inSourceObjs))
+
+    cutsInfo = []
+
+    step = inOffset[:]
+    for bsPreset in inPreset:
+        source = bsPreset["source"]
+
+        for sourceObj in inSourceObjs:
+            targetName = sourceObj + "__" + source
+            if not pc.objExists(targetName):
+                dupe = tkbs.duplicateAndClean(sourceObj, inTargetName=targetName)
+                pc.move(*step, dupe, r=True)
+
+            pc.progressBar(gMainProgressBar, edit=True, step=1)
+        
+        for i in range(3):
+            step[i] += inOffset[i]
+
+
     pc.progressBar(gMainProgressBar, edit=True, endProgress=True)
 
 #integrateBS call
