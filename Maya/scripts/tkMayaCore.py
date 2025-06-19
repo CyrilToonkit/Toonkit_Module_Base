@@ -844,7 +844,7 @@ def renameFromMapping(inRenamings, inRememberOldName=True):
     for origName, newName in inRenamings.items():
         origObject = getNode(origName)
         if not origObject is None:
-            origObject.rename(str(origObject.namespace) + newName)
+            origObject.rename(str(origObject.namespace()) + newName)
 
 def renameRemember(inObj, inName, inRememberOldName=True):
     inObj = getNode(inObj)
